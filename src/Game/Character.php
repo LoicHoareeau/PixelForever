@@ -9,8 +9,8 @@ use InvalidArgumentException;
 
 final class Character
 {
-    private const SPECIAL_MANA_COST = 10;
-    private const ATTACK_COOLDOWN_MS = 500;
+    public const SPECIAL_MANA_COST = 10;
+    public const ATTACK_COOLDOWN_MS = 500;
 
     private int $health;
     private int $mana;

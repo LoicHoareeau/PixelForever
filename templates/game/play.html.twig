@@ -18,7 +18,24 @@
         </div>
         <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD.</p>
         <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
-        <div id="world" class="game-map" data-class="{{ character.class.value }}" data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"></div>
+        <section id="combat-vitals" class="combat-vitals" aria-label="État du combat" hidden>
+            <label>Vie <meter id="combat-health" max="{{ combat.health }}" value="{{ combat.health }}"></meter>
+                <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
+            </label>
+            <label>Mana <meter id="combat-mana" max="{{ combat.mana }}" value="{{ combat.mana }}"></meter>
+                <span id="combat-mana-value">{{ combat.mana }} / {{ combat.mana }}</span>
+            </label>
+            <label>Saphyr <meter id="combat-target-health" max="96" value="96"></meter>
+                <span id="combat-target-health-value">96 / 96</span>
+            </label>
+        </section>
+        <div id="world" class="game-map" data-class="{{ character.class.value }}" data-asset-path="{{ app.request.basePath }}/game/val-des-saules/" data-combat="{{ combat|json_encode|e('html_attr') }}"></div>
+        <div id="combat-actions" class="combat-actions" role="group" aria-label="Actions de combat" hidden>
+            <button type="button" data-attack="basic" aria-keyshortcuts="1"><kbd>1</kbd> Attaque de base</button>
+            <button type="button" data-attack="special" aria-keyshortcuts="2"><kbd>2</kbd> {{ combat.specialName }} <small>{{ combat.specialManaCost }} mana</small></button>
+            <button type="button" id="combat-reset" class="quiet" hidden>Reprendre l’entraînement</button>
+            <p id="combat-status" role="status">Approche-toi de Saphyr pour t’entraîner.</p>
+        </div>
         <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
             <button class="quiet" type="button" data-direction="north" aria-label="Monter">↑</button>
             <button class="quiet" type="button" data-direction="west" aria-label="Aller à gauche">←</button>
@@ -28,5 +45,5 @@
         <noscript><p>Active JavaScript pour déplacer ton personnage.</p></noscript>
     </section>
     <script src="{{ app.request.basePath }}/game/phaser-3.90.0.min.js" defer></script>
-    <script src="{{ app.request.basePath }}/game/world.js" defer></script>
+    <script src="{{ app.request.basePath }}/game/world.js" type="module"></script>
 {% endblock %}

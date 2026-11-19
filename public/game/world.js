@@ -1,3 +1,5 @@
+import { TrainingCombat } from './combat.js';
+
 (() => {
     const world = document.getElementById('world');
     const status = document.getElementById('game-status');
@@ -21,6 +23,7 @@
         ArrowDown: 'south', KeyS: 'south',
         ArrowRight: 'east', KeyD: 'east',
     };
+    const attacks = { Digit1: 'basic', Digit2: 'special' };
     const vectors = { north: [0, -1], west: [-1, 0], south: [0, 1], east: [1, 0] };
     const directions = [
         'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east',
@@ -71,7 +74,11 @@
                 } else {
                     this.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
                 }
+                if (name === 'saphyr') {
+                    this.saphyr = sprite;
+                }
             }
+            this.combat = new TrainingCombat(this, this.saphyr, JSON.parse(world.dataset.combat), this.skin === 'lina', tileSize);
 
             const canvas = this.game.canvas;
             canvas.tabIndex = 0;
@@ -81,13 +88,20 @@
             const keyboard = new AbortController();
             const releaseKeys = () => this.heldKeys.clear();
             window.addEventListener('keydown', event => {
-                if (event.defaultPrevented || !Object.hasOwn(bindings, event.code) || event.altKey || event.ctrlKey || event.metaKey) return;
+                if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+                const movement = Object.hasOwn(bindings, event.code);
+                const attack = attacks[event.code];
+                if (!movement && !attack) return;
                 const target = event.target;
                 if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, select, textarea'))) {
                     return;
                 }
                 event.preventDefault();
-                this.heldKeys.add(event.code);
+                if (movement) {
+                    this.heldKeys.add(event.code);
+                } else if (!event.repeat) {
+                    this.combat.attack(attack, this.time.now);
+                }
             }, { signal: keyboard.signal });
             window.addEventListener('keyup', event => this.heldKeys.delete(event.code), { signal: keyboard.signal });
             this.game.events.on(Phaser.Core.Events.BLUR, releaseKeys);
@@ -96,20 +110,36 @@
                 const [x, y] = vectors[event.currentTarget.dataset.direction];
                 this.move(x * 10, y * 10);
             };
-            const buttons = Array.from(controls.querySelectorAll('button'));
-            buttons.forEach(button => button.addEventListener('click', moveFromButton));
+            controls.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', moveFromButton, { signal: keyboard.signal });
+            });
+            this.combat.buttons.forEach(button => {
+                button.addEventListener('click', () => this.combat.attack(button.dataset.attack, this.time.now), { signal: keyboard.signal });
+            });
+            this.combat.resetButton.addEventListener('click', () => {
+                releaseKeys();
+                const spawn = villagers[this.skin];
+                this.position.set(spawn.x, spawn.y);
+                this.avatar.setPosition(spawn.x, spawn.y).setDepth(spawn.y).setTexture(this.skin + '-' + spawn.facing);
+                this.combat.reset();
+                this.combat.buttons[0].focus({ preventScroll: true });
+            }, { signal: keyboard.signal });
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
                 keyboard.abort();
                 releaseKeys();
                 this.game.events.off(Phaser.Core.Events.BLUR, releaseKeys);
-                buttons.forEach(button => button.removeEventListener('click', moveFromButton));
             });
 
             status.hidden = true;
             controls.hidden = false;
         }
 
-        update(_time, delta) {
+        update(time, delta) {
+            this.moveFromKeys(delta);
+            this.combat?.update(time);
+        }
+
+        moveFromKeys(delta) {
             if (this.heldKeys.size === 0) return;
             const active = new Set(Array.from(this.heldKeys, code => bindings[code]));
             const x = Number(active.has('east')) - Number(active.has('west'));
@@ -129,10 +159,15 @@
             return true;
         }
 
-        move(x, y) {
+        face(x, y) {
             const direction = directions[(Math.round(Math.atan2(y, x) / (Math.PI / 4)) + 8) % 8];
             const texture = this.skin + '-' + direction;
             if (this.avatar.texture.key !== texture) this.avatar.setTexture(texture);
+        }
+
+        move(x, y) {
+            if (this.combat.health === 0) return;
+            this.face(x, y);
 
             // Limit each step so keyboard and touch use the same collision checks.
             const steps = Math.ceil(Math.max(Math.abs(x), Math.abs(y)) / 2);

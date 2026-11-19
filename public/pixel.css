@@ -171,6 +171,25 @@ small { display: block; }
 .game-map { aspect-ratio: 7 / 5; overflow: hidden; background: var(--well); outline: 1px solid var(--border); }
 .game-map canvas { display: block; image-rendering: pixelated; }
 .game-map canvas:focus-visible { outline-offset: -4px; }
+.combat-vitals:not([hidden]), .combat-actions:not([hidden]) { display: flex; flex-wrap: wrap; gap: .5rem; }
+.combat-vitals { margin-bottom: .65rem; }
+.combat-vitals label {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: .15rem .6rem;
+    flex: 1 1 9rem;
+    padding: .35rem .6rem;
+    background: var(--well);
+    border: 1px solid var(--border);
+}
+.combat-vitals meter { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+.combat-vitals span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.combat-actions { align-items: stretch; margin-top: .75rem; }
+.combat-actions button:disabled { opacity: .55; cursor: default; }
+.combat-actions button[hidden] { display: none; }
+.combat-actions button small { color: inherit; }
+.combat-actions kbd { margin-right: .2rem; }
+#combat-status { flex-basis: 100%; min-height: 1.55em; margin: 0; color: var(--muted); }
 .game-directions:not([hidden]) { display: flex; justify-content: center; flex-wrap: wrap; gap: .45rem; margin-top: .9rem; }
 .game-directions button { min-width: 2.75rem; touch-action: manipulation; }
 

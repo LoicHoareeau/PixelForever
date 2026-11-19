@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\PlayerCharacter;
 use App\Entity\User;
+use App\Game\Character;
 use App\Game\CharacterClass;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -112,6 +113,20 @@ final class CharacterController extends AbstractController
             return $this->redirectToRoute('character_list');
         }
 
-        return $this->render('game/play.html.twig', ['character' => $character]);
+        $class = $character->getClass();
+
+        return $this->render('game/play.html.twig', [
+            'character' => $character,
+            'combat' => [
+                'health' => $class->maxHealth(),
+                'mana' => $class->maxMana(),
+                'range' => $class->attackRange(),
+                'basicDamage' => $class->damage(false),
+                'specialDamage' => $class->damage(true),
+                'specialName' => $class === CharacterClass::Warrior ? 'Attaque chargée' : 'Boule de feu',
+                'specialManaCost' => Character::SPECIAL_MANA_COST,
+                'cooldownMs' => Character::ATTACK_COOLDOWN_MS,
+            ],
+        ]);
     }
 }
