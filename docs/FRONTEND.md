@@ -2,7 +2,9 @@
 
 PixelForever se joue dans un navigateur. Le premier parcours va de l’inscription à l’exploration d’une carte pixel art. Les écrans de compte et de personnage utilisent Twig. Phaser affiche la carte et les sprites dans un canvas, avec une interface HTML pour les formulaires, les panneaux et les commandes.
 
-Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. Symfony vérifie que le personnage appartient au compte connecté, puis ouvre la clairière de Braise. Cette première scène permet d’explorer le hameau et ses sentiers en solo, avec les flèches, ZQSD, WASD ou les boutons de direction. Phaser 3.90.0 et sa licence sont servis depuis `public/game/`.
+Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. Symfony vérifie que le personnage appartient au compte connecté, puis ouvre **Val-des-Saules**. Le joueur se déplace avec les flèches, ZQSD, WASD ou les boutons de direction. L’eau et les bords de la carte bloquent le déplacement.
+
+Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab du dossier `PIxel/`. Les fichiers utilisés par le navigateur sont dans `public/game/val-des-saules/`. La grille de tuiles 28 × 20 a été reconstituée depuis `val-des-saules-apercu.png`, avec les bords hors cadre complétés. Le Mage utilise les huit vues de Lina et le Guerrier celles de Noé. Les exports de personnages contiennent des vues au repos qui changent selon la direction du mouvement. Saphyr reste dans la clairière.
 
 ## Écrans
 

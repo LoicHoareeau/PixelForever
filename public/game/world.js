@@ -4,72 +4,92 @@
     const controls = document.querySelector('.game-directions');
 
     if (!window.Phaser) {
-        status.textContent = 'Le moteur de jeu n’a pas pu se charger. Recharge la page pour réessayer.';
+        status.textContent = 'Le moteur du jeu n’a pas pu se charger. Recharge la page pour réessayer.';
         return;
     }
 
     const { Phaser } = window;
-    const width = 768;
-    const height = 512;
-    const speed = 105;
+    const tileSize = 16;
+    const width = 28 * tileSize;
+    const height = 20 * tileSize;
+    const renderScale = 2;
+    const speed = 92;
+    const assetPath = world.dataset.assetPath;
     const bindings = {
-        ArrowUp: 'up', KeyW: 'up',
-        ArrowLeft: 'left', KeyA: 'left',
-        ArrowDown: 'down', KeyS: 'down',
-        ArrowRight: 'right', KeyD: 'right',
+        ArrowUp: 'north', KeyW: 'north',
+        ArrowLeft: 'west', KeyA: 'west',
+        ArrowDown: 'south', KeyS: 'south',
+        ArrowRight: 'east', KeyD: 'east',
     };
-    const directions = { up: [0, -1], left: [-1, 0], down: [0, 1], right: [1, 0] };
+    const vectors = { north: [0, -1], west: [-1, 0], south: [0, 1], east: [1, 0] };
+    const directions = [
+        'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east',
+    ];
+    const villagers = {
+        lina: { x: 184, y: 190, facing: 'south-east', bounds: [176, 178, 17, 12] },
+        noe: { x: 248, y: 207, facing: 'east', bounds: [235, 195, 19, 12] },
+        saphyr: { x: 312, y: 175, facing: 'south-west', bounds: [291, 163, 42, 12] },
+    };
+    // IDs 0–15 and 16–31 are frames of the two PixelLab terrain transition sheets.
+    const baseTiles = ['chemin', 'herbe', 'eau'];
 
-    // Each polygon follows the walkable ground on the painted map.
-    const walkable = [
-        // Hamlet and stairs
-        [165, 124, 207, 108, 250, 110, 265, 130, 226, 164, 238, 194, 265, 205, 264, 240, 232, 236, 223, 205, 186, 194, 204, 170, 188, 145],
-        // Central clearing
-        [250, 224, 314, 209, 355, 188, 420, 180, 466, 207, 514, 223, 532, 251, 510, 300, 465, 326, 413, 368, 270, 367, 226, 345, 189, 319, 195, 293],
-        // Bridge
-        [34, 319, 81, 301, 169, 300, 213, 278, 229, 294, 201, 328, 162, 318, 81, 320, 48, 339],
-        // Ruins and their stairs
-        [494, 229, 526, 211, 559, 205, 581, 178, 587, 160, 620, 131, 650, 118, 682, 127, 696, 142, 667, 150, 626, 170, 602, 194, 584, 213, 550, 234, 516, 262],
-        // Trail along the woodland
-        [389, 350, 427, 345, 424, 369, 394, 403, 367, 434, 373, 450, 436, 474, 477, 509, 435, 511, 403, 485, 356, 469, 337, 448, 342, 420],
-    ].map(points => new Phaser.Geom.Polygon(points));
-
-    class Clearing extends Phaser.Scene {
-        position = new Phaser.Math.Vector2(225, 151);
+    class ValDesSaules extends Phaser.Scene {
         heldKeys = new Set();
-        facing = 1;
 
         preload() {
-            this.load.image('clearing', world.dataset.mapUrl);
+            this.load.setPath(assetPath);
+            this.load.json('terrain', 'terrain.json');
+            this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
+            this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
+            baseTiles.forEach((tile, index) => this.load.image(tile, 'terrain-' + (index + 1) + '.png'));
+            for (const name of ['lina', 'noe']) {
+                directions.forEach(direction => this.load.image(name + '-' + direction, name + '/' + direction + '.png'));
+            }
+            this.load.image('saphyr-south-west', 'saphyr/south-west.png');
+            this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
+                status.textContent = 'Un élément de la carte manque. Recharge la page pour réessayer.';
+            });
         }
 
         create() {
-            if (!this.textures.exists('clearing')) {
-                status.textContent = 'La carte n’a pas pu se charger. Recharge la page pour réessayer.';
-                return;
-            }
+            if (this.load.totalFailed > 0) return;
+            this.cameras.main.setZoom(renderScale).centerOn(width / 2, height / 2);
+            this.terrain = this.cache.json.get('terrain');
+            this.terrain.forEach((row, y) => row.forEach((tile, x) => {
+                const texture = tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
+                const frame = tile < 32 ? tile % 16 : undefined;
+                this.add.image(x * tileSize, y * tileSize, texture, frame).setOrigin(0);
+            }));
 
-            this.add.image(0, 0, 'clearing').setOrigin(0).setDisplaySize(width, height);
-            this.avatar = this.add.graphics();
-            this.drawAvatar();
+            this.skin = world.dataset.class === 'warrior' ? 'noe' : 'lina';
+            this.obstacles = [];
+            for (const [name, { x, y, facing, bounds }] of Object.entries(villagers)) {
+                const sprite = this.add.image(x, y, name + '-' + facing).setOrigin(.5, 1).setDepth(y);
+                if (name === this.skin) {
+                    this.avatar = sprite;
+                    this.position = new Phaser.Math.Vector2(x, y);
+                } else {
+                    this.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
+                }
+            }
 
             const canvas = this.game.canvas;
             canvas.tabIndex = 0;
-            canvas.setAttribute('aria-label', 'Carte de la clairière');
+            canvas.setAttribute('aria-label', 'Carte de Val-des-Saules');
             canvas.setAttribute('aria-describedby', 'game-controls');
+            const releaseKeys = () => this.heldKeys.clear();
             canvas.addEventListener('keydown', event => {
-                if (!Object.hasOwn(bindings, event.code) || event.ctrlKey || event.altKey || event.metaKey) return;
+                if (!Object.hasOwn(bindings, event.code) || event.altKey || event.ctrlKey || event.metaKey) return;
                 event.preventDefault();
                 this.heldKeys.add(event.code);
             });
             canvas.addEventListener('keyup', event => this.heldKeys.delete(event.code));
-            const releaseKeys = () => this.heldKeys.clear();
             canvas.addEventListener('blur', releaseKeys);
             this.game.events.on(Phaser.Core.Events.BLUR, releaseKeys);
 
             const moveFromButton = event => {
-                const [x, y] = directions[bindings[event.currentTarget.dataset.direction]];
-                this.move(x * 12, y * 12);
+                const [x, y] = vectors[event.currentTarget.dataset.direction];
+                this.move(x * 10, y * 10);
             };
             const buttons = Array.from(controls.querySelectorAll('button'));
             buttons.forEach(button => button.addEventListener('click', moveFromButton));
@@ -83,56 +103,53 @@
             if (document.activeElement === document.body) canvas.focus({ preventScroll: true });
         }
 
-        update(time, delta) {
+        update(_time, delta) {
             if (this.heldKeys.size === 0) return;
             const active = new Set(Array.from(this.heldKeys, code => bindings[code]));
-            const x = Number(active.has('right')) - Number(active.has('left'));
-            const y = Number(active.has('down')) - Number(active.has('up'));
+            const x = Number(active.has('east')) - Number(active.has('west'));
+            const y = Number(active.has('south')) - Number(active.has('north'));
             const length = Math.hypot(x, y);
             if (length === 0) return;
             const distance = speed * Math.min(delta, 40) / 1000;
             this.move(x * distance / length, y * distance / length);
         }
 
+        canStand(x, y) {
+            for (const foot of [x - 3, x + 3]) {
+                const tile = this.terrain[Math.floor(y / tileSize)]?.[Math.floor(foot / tileSize)];
+                if (tile === undefined || tile < 16 || tile === 34) return false;
+                if (this.obstacles.some(bounds => bounds.contains(foot, y))) return false;
+            }
+            return true;
+        }
+
         move(x, y) {
-            const canStand = (px, py) => walkable.some(area => Phaser.Geom.Polygon.Contains(area, px, py));
-            // Small steps keep touch and keyboard movement inside narrow paths.
+            const direction = directions[(Math.round(Math.atan2(y, x) / (Math.PI / 4)) + 8) % 8];
+            const texture = this.skin + '-' + direction;
+            if (this.avatar.texture.key !== texture) this.avatar.setTexture(texture);
+
+            // Limit each step so keyboard and touch use the same collision checks.
             const steps = Math.ceil(Math.max(Math.abs(x), Math.abs(y)) / 2);
             for (let step = 0; step < steps; step++) {
                 const nextX = this.position.x + x / steps;
                 const nextY = this.position.y + y / steps;
-                if (canStand(nextX, this.position.y)) this.position.x = nextX;
-                if (canStand(this.position.x, nextY)) this.position.y = nextY;
+                if (this.canStand(nextX, this.position.y)) this.position.x = nextX;
+                if (this.canStand(this.position.x, nextY)) this.position.y = nextY;
             }
-            if (x !== 0) this.facing = Math.sign(x);
-            this.drawAvatar();
-        }
-
-        drawAvatar() {
-            const mage = world.dataset.class === 'mage';
-            const sprite = this.avatar;
-            sprite.setPosition(Math.round(this.position.x), Math.round(this.position.y));
-            sprite.setScale(this.facing, 1);
-            sprite.clear();
-            sprite.fillStyle(0x10141d, .44).fillEllipse(0, 0, 23, 8);
-            sprite.fillStyle(0x191624).fillRect(-7, -16, 14, 16).fillRect(-5, -23, 10, 10);
-            sprite.fillStyle(mage ? 0x7562bf : 0x3b8090).fillRect(-5, -13, 10, 10);
-            sprite.fillStyle(0xf0bc8f).fillRect(-3, -21, 6, 7);
-            sprite.fillStyle(mage ? 0x55418b : 0x8fa6b2).fillRect(-5, -23, 10, 4);
-            sprite.fillStyle(0xebe0b3).fillRect(7, -18, 3, 5);
-            sprite.fillStyle(0x76513e).fillRect(8, -13, 2, 11);
+            this.avatar.setPosition(this.position.x, this.position.y).setDepth(this.position.y);
         }
     }
 
     new Phaser.Game({
         type: Phaser.AUTO,
         parent: world,
-        width,
-        height,
-        pixelArt: true,
+        width: width * renderScale,
+        height: height * renderScale,
+        antialias: false,
+        roundPixels: false,
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
         input: { keyboard: false },
         audio: { noAudio: true },
-        scene: Clearing,
+        scene: ValDesSaules,
     });
 })();
