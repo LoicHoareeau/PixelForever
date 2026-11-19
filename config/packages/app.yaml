@@ -27,3 +27,9 @@ doctrine_migrations:
     migrations_paths:
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+
+when@prod:
+    framework:
+        secret: '%env(APP_SECRET)%'
+        session:
+            cookie_secure: true
