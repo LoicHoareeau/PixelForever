@@ -1,6 +1,7 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { ensureMonsterTextures, Monster } from './monsters.js';
+import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSize, zones } from './exploration.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -13,9 +14,8 @@ import { ensureMonsterTextures, Monster } from './monsters.js';
     }
 
     const { Phaser } = window;
-    const tileSize = 16;
-    const width = 28 * tileSize;
-    const height = 20 * tileSize;
+    const width = columns * tileSize;
+    const height = rows * tileSize;
     const speed = 92;
     const walkFrames = 8;
     const pixelsPerWalkFrame = 7;
@@ -76,17 +76,16 @@ import { ensureMonsterTextures, Monster } from './monsters.js';
 
         updateCameraZoom(viewWidth, viewHeight) {
             const cam = this.cameras.main;
-            // Zoom pixel art entier qui remplit l'écran tout en gardant des pixels nets
-            const coverZoom = Math.max(viewWidth / width, viewHeight / height);
-            const zoom = Math.max(2, Math.min(5, Math.ceil(coverZoom)));
-            cam.setZoom(zoom);
+            cam.setZoom(cameraZoom(viewWidth, viewHeight));
+            cam.roundPixels = true;
             cam.setBounds(0, 0, width, height);
-            cam.startFollow(this.avatar, true, 0.16, 0.16);
+            const follow = this.motionPreference.matches ? 1 : 0.16;
+            cam.startFollow(this.avatar, true, follow, follow);
         }
 
         create() {
             if (this.load.totalFailed > 0) return;
-            this.terrain = this.cache.json.get('terrain');
+            this.terrain = buildTerrain(this.cache.json.get('terrain'));
             this.obstacles = [];
             this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
@@ -340,6 +339,10 @@ import { ensureMonsterTextures, Monster } from './monsters.js';
             this.combat.update(time, delta);
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
+            const zone = Object.values(zones).find(zone => inZone(zone, this.position.x, this.position.y));
+            const label = document.getElementById('current-zone');
+            const name = zone?.name ?? 'Sentier des Saules';
+            if (label && label.textContent !== name) label.textContent = name;
         }
 
         moveFromKeys(time, delta) {
@@ -362,9 +365,8 @@ import { ensureMonsterTextures, Monster } from './monsters.js';
         }
 
         canStand(x, y) {
+            if (!groundWalkable(this.terrain, x, y)) return false;
             for (const foot of [x - 3, x, x + 3]) {
-                const tile = this.terrain[Math.floor(y / tileSize)]?.[Math.floor(foot / tileSize)];
-                if (tile === undefined || tile < 16 || tile === 34) return false;
                 if (this.obstacles.some(bounds => bounds.contains(foot, y))) return false;
             }
             return true;

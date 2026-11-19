@@ -130,7 +130,7 @@ export class TrainingCombat {
         }));
 
         this.warning = scene.add.graphics().setDepth(2);
-        this.effect = scene.add.graphics().setDepth(321);
+        this.effect = scene.add.graphics().setDepth(scene.terrain.length * tileSize + 1);
 
         // Cooldowns individuels par compétence + buff Berserk
         this.spellCooldowns = new Map();
@@ -224,7 +224,7 @@ export class TrainingCombat {
         this.refreshInventory();
         this.refreshActionSlots();
         this.updateCooldowns(0);
-        this.tell('Explore Val-des-Saules : Sangliers (N.1-5), Squelettes (N.5-10) et Saphyr (N.10-20).');
+        this.tell('Sangliers près de la clairière · Suis le sentier vers le cimetière, puis les montagnes.');
     }
 
     /**

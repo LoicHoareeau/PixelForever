@@ -1,4 +1,5 @@
 // Définition des espèces de monstres, génération pixel-art et IA de patrouille/combat
+import { inZone, zones } from './exploration.js';
 
 const stepDirections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 const dragonFrames = 9;
@@ -11,7 +12,8 @@ export const monsterTemplates = {
         maxLevel: 5,
         attackType: 'melee',
         meleeDistance: 17,
-        patrolCells: [[4, 14], [7, 16], [10, 13], [5, 11], [9, 9], [6, 8]],
+        zone: zones.boar,
+        patrolCells: [[8, 14], [16, 20], [23, 18], [5, 11], [18, 9], [6, 8]],
         respawnMs: 4000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 1);
@@ -34,7 +36,8 @@ export const monsterTemplates = {
         maxLevel: 10,
         attackType: 'slash',
         meleeDistance: 19,
-        patrolCells: [[21, 6], [23, 9], [20, 12], [24, 15], [18, 6], [22, 17]],
+        zone: zones.skeleton,
+        patrolCells: [[35, 28], [46, 29], [41, 35], [49, 37], [46, 39], [35, 38]],
         respawnMs: 5000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 5);
@@ -57,7 +60,8 @@ export const monsterTemplates = {
         maxLevel: 20,
         attackType: 'aoe',
         meleeDistance: 22,
-        patrolCells: [[19, 10], [14, 9], [11, 4], [15, 17], [19, 14], [16, 12]],
+        zone: zones.dragon,
+        patrolCells: [[62, 42], [72, 43], [77, 50], [68, 53], [60, 49], [73, 52]],
         respawnMs: 6500,
         statsForLevel(level) {
             const offset = Math.max(0, level - 10);
@@ -225,7 +229,8 @@ export class Monster {
             x: (x + 0.5) * tileSize,
             y: (y + 0.5) * tileSize,
         })));
-        this.walkable = this.cells.map((cell) => scene.canStand(cell.x, cell.y));
+        this.walkable = this.cells.map((cell) => inZone(this.template.zone, cell.x, cell.y)
+            && scene.canStand(cell.x, cell.y));
         this.patrol = this.template.patrolCells
             .map(([x, y]) => y * this.columns + x)
             .filter((index) => this.walkable[index]);
@@ -386,10 +391,11 @@ export class Monster {
         const headOffset = this.species === 'dragon' ? 24 : 18;
         this.shadow.setPosition(x, y + (this.species === 'dragon' ? 11 : 7));
         this.targetRing.setPosition(x, y + (this.species === 'dragon' ? 10 : 6));
-        this.hpBg.setPosition(x, y - headOffset);
+        const overlayDepth = this.scene.terrain.length * this.tileSize + 2;
+        this.hpBg.setPosition(x, y - headOffset).setDepth(overlayDepth);
         const ratio = Math.max(0, Math.min(1, this.health / this.maxHealth));
-        this.hpFill.setPosition(x - 12, y - headOffset).setDisplaySize(Math.max(0, 24 * ratio), 2);
-        this.nameTag.setPosition(x, y - headOffset - 3);
+        this.hpFill.setPosition(x - 12, y - headOffset).setDisplaySize(Math.max(0, 24 * ratio), 2).setDepth(overlayDepth + 1);
+        this.nameTag.setPosition(x, y - headOffset - 3).setDepth(overlayDepth + 2);
     }
 
     renderPose(now) {
@@ -439,6 +445,14 @@ export class Monster {
             return;
         }
         this.breath = null;
+
+        if (this.alert && !inZone(this.template.zone, player.x, player.y)) {
+            this.alert = false;
+            this.counterAt = Infinity;
+            this.warningEndsAt = 0;
+            this.path = this.route(this.home);
+            this.destination = null;
+        }
 
         const dx = player.x - this.sprite.x;
         const dy = player.y - this.sprite.y;
@@ -496,7 +510,7 @@ export class Monster {
         const traveled = Math.min(distance, step);
         const x = this.sprite.x + dx * traveled / distance;
         const y = this.sprite.y + dy * traveled / distance;
-        if (!this.scene.canStand(x, y)) return false;
+        if (!inZone(this.template.zone, x, y) || !this.scene.canStand(x, y)) return false;
         this.face(dx, dy);
         this.walkDistance += traveled;
         this.sprite.setPosition(x, y);
