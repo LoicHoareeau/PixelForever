@@ -1,4 +1,5 @@
 // Définition des espèces de monstres, génération pixel-art et IA de patrouille/combat
+import { inZone, zones } from './exploration.js';
 
 const stepDirections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 const dragonFrames = 9;
@@ -9,20 +10,20 @@ export const monsterTemplates = {
         label: 'Sanglier',
         minLevel: 1,
         maxLevel: 5,
-        attackType: 'melee',
-        meleeDistance: 17,
-        patrolCells: [[4, 14], [7, 16], [10, 13], [5, 11], [9, 9], [6, 8]],
+        attackRange: 20,
+        aggroRange: 48,
+        zone: zones.boar,
+        patrolCells: [[8, 14], [6, 11], [21, 20], [25, 22], [28, 7], [28, 12]],
         respawnMs: 4000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 1);
             return {
-                maxHealth: 28 + offset * 12,
-                damage: 4 + offset * 2,
+                maxHealth: 52 + offset * 14 + offset ** 2 * 8,
+                damage: 6 + offset + offset ** 2,
                 patrolSpeed: 42,
-                chaseSpeed: 84 + offset * 5,
-                warningMs: Math.max(240, 380 - offset * 25),
-                counterIntervalMs: Math.max(900, 1250 - offset * 60),
-                attackRadius: 22,
+                chaseSpeed: 100 + offset * 3,
+                windupMs: 240,
+                attackIntervalMs: 1100 - offset * 40,
                 xp: 30 + level * 12,
             };
         },
@@ -32,20 +33,20 @@ export const monsterTemplates = {
         label: 'Squelette',
         minLevel: 5,
         maxLevel: 10,
-        attackType: 'slash',
-        meleeDistance: 19,
-        patrolCells: [[21, 6], [23, 9], [20, 12], [24, 15], [18, 6], [22, 17]],
+        attackRange: 24,
+        aggroRange: 64,
+        zone: zones.skeleton,
+        patrolCells: [[75, 58], [86, 59], [81, 65], [89, 67], [86, 69], [75, 68]],
         respawnMs: 5000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 5);
             return {
-                maxHealth: 65 + offset * 18,
-                damage: 8 + offset * 2,
+                maxHealth: 260 + offset * 30 + offset ** 2 * 8,
+                damage: 26 + offset * 3 + Math.floor(offset ** 2 * .6),
                 patrolSpeed: 28,
-                chaseSpeed: 54 + offset * 3,
-                warningMs: Math.max(420, 620 - offset * 30),
-                counterIntervalMs: Math.max(1300, 1750 - offset * 60),
-                attackRadius: 26,
+                chaseSpeed: 94 + offset * 2,
+                windupMs: 320,
+                attackIntervalMs: 1300 - offset * 40,
                 xp: 60 + level * 14,
             };
         },
@@ -55,20 +56,20 @@ export const monsterTemplates = {
         label: 'Saphyr (Dragon)',
         minLevel: 10,
         maxLevel: 20,
-        attackType: 'aoe',
-        meleeDistance: 22,
-        patrolCells: [[19, 10], [14, 9], [11, 4], [15, 17], [19, 14], [16, 12]],
+        attackRange: 88,
+        aggroRange: 112,
+        zone: zones.dragon,
+        patrolCells: [[126, 86], [136, 87], [141, 94], [132, 97], [124, 93], [137, 96]],
         respawnMs: 6500,
         statsForLevel(level) {
             const offset = Math.max(0, level - 10);
             return {
-                maxHealth: 140 + offset * 28,
-                damage: 14 + offset * 3,
+                maxHealth: 800 + offset * 70 + offset ** 2 * 10,
+                damage: 60 + offset * 5 + Math.floor(offset ** 2 * .5),
                 patrolSpeed: 36,
-                chaseSpeed: 74 + offset * 3,
-                warningMs: Math.max(580, 880 - offset * 22),
-                counterIntervalMs: Math.max(1450, 2000 - offset * 45),
-                attackRadius: 44 + offset * 2,
+                chaseSpeed: 98 + offset * 2,
+                windupMs: 450,
+                attackIntervalMs: 1500 - offset * 30,
                 xp: 120 + level * 18,
             };
         },
@@ -225,8 +226,12 @@ export class Monster {
             x: (x + 0.5) * tileSize,
             y: (y + 0.5) * tileSize,
         })));
-        this.walkable = this.cells.map((cell) => scene.canStand(cell.x, cell.y));
-        this.patrol = this.template.patrolCells
+        this.walkable = this.cells.map((cell) => inZone(this.template.zone, cell.x, cell.y)
+            && scene.canStand(cell.x, cell.y));
+        const patrolCells = species === 'boar'
+            ? this.template.patrolCells.slice(initialSpawnIndex, initialSpawnIndex + 2)
+            : this.template.patrolCells;
+        this.patrol = patrolCells
             .map(([x, y]) => y * this.columns + x)
             .filter((index) => this.walkable[index]);
         if (this.patrol.length === 0) {
@@ -270,18 +275,15 @@ export class Monster {
         this.stunUntil = 0;
         this.slowUntil = 0;
         this.counterAt = Infinity;
-        this.warningEndsAt = 0;
+        this.attackEndsAt = 0;
 
-        const spawnIdx = this.patrol[initialSpawnIndex % this.patrol.length];
-        this.place(spawnIdx, randomInt(this.template.minLevel, this.template.maxLevel));
+        this.spawnLevel = Math.min(this.template.maxLevel, this.template.minLevel + initialSpawnIndex);
+        const spawnIdx = this.patrol[species === 'boar' ? 0 : initialSpawnIndex % this.patrol.length];
+        this.place(spawnIdx, this.spawnLevel);
     }
 
     get name() {
         return this.template.label;
-    }
-
-    get attackType() {
-        return this.template.attackType;
     }
 
     get isAlive() {
@@ -309,7 +311,7 @@ export class Monster {
         this.home = index;
         this.patrolIndex = Math.max(0, this.patrol.indexOf(index));
         this.alert = false;
-        this.breath = null;
+        this.cancelAttack();
         this.facing = 3;
         this.walkDistance = 0;
         this.path = [];
@@ -318,7 +320,6 @@ export class Monster {
         this.stunUntil = 0;
         this.slowUntil = 0;
         this.counterAt = Infinity;
-        this.warningEndsAt = 0;
 
         this.renderPose(0);
         this.syncOverlays();
@@ -331,14 +332,15 @@ export class Monster {
             return Math.hypot(cell.x - player.x, cell.y - player.y) >= 64;
         });
         const pool = away.length ? away : (alternatives.length ? alternatives : this.patrol);
-        const nextLevel = randomInt(this.template.minLevel, this.template.maxLevel);
+        const nextLevel = this.species === 'boar'
+            ? randomInt(Math.max(this.template.minLevel, this.spawnLevel - 1), Math.min(this.template.maxLevel, this.spawnLevel + 1))
+            : randomInt(this.template.minLevel, this.template.maxLevel);
         this.place(pool[Math.floor(Math.random() * pool.length)], nextLevel);
     }
 
     hide() {
-        this.breath = null;
+        this.cancelAttack();
         this.alert = false;
-        this.warningEndsAt = 0;
         this.counterAt = Infinity;
         this.sprite.clearTint().setVisible(false);
         this.shadow.setVisible(false);
@@ -353,15 +355,43 @@ export class Monster {
         this.alert = true;
         this.path = [];
         this.nextRouteAt = 0;
+        this.counterAt = 0;
+    }
+
+    cancelAttack() {
+        this.attackEndsAt = 0;
+        this.attackVisual = null;
+        this.breath = null;
+        this.sprite.clearTint();
+    }
+
+    canAttack(player) {
+        if (!inZone(this.template.zone, player.x, player.y)) return false;
+        const dx = player.x - this.sprite.x;
+        const dy = player.y - this.sprite.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance > this.template.attackRange) return false;
+        const steps = Math.max(1, Math.ceil(distance / 4));
+        for (let step = 1; step <= steps; step++) {
+            if (!this.scene.canStand(this.sprite.x + dx * step / steps, this.sprite.y + dy * step / steps)) return false;
+        }
+        return true;
     }
 
     startAttack(player, now) {
         this.face(player.x - this.sprite.x, player.y - this.sprite.y);
+        const castEnd = now + this.stats.windupMs;
+        this.attackEndsAt = castEnd + (this.species === 'dragon' ? 250 : 0);
+        this.attackVisual = {
+            start: now, castEnd, end: this.attackEndsAt,
+            x: this.sprite.x, y: this.sprite.y - 12,
+            angle: Math.atan2(player.y - this.sprite.y, player.x - this.sprite.x),
+        };
         if (this.species === 'dragon') {
             this.breath = {
                 start: now,
-                strike: now + this.stats.warningMs,
-                end: now + this.stats.warningMs + 270,
+                strike: castEnd,
+                end: this.attackEndsAt,
             };
             this.sprite.setTint(0xb0f5ff);
         } else if (this.species === 'boar') {
@@ -386,10 +416,11 @@ export class Monster {
         const headOffset = this.species === 'dragon' ? 24 : 18;
         this.shadow.setPosition(x, y + (this.species === 'dragon' ? 11 : 7));
         this.targetRing.setPosition(x, y + (this.species === 'dragon' ? 10 : 6));
-        this.hpBg.setPosition(x, y - headOffset);
+        const overlayDepth = this.scene.terrain.length * this.tileSize + 2;
+        this.hpBg.setPosition(x, y - headOffset).setDepth(overlayDepth);
         const ratio = Math.max(0, Math.min(1, this.health / this.maxHealth));
-        this.hpFill.setPosition(x - 12, y - headOffset).setDisplaySize(Math.max(0, 24 * ratio), 2);
-        this.nameTag.setPosition(x, y - headOffset - 3);
+        this.hpFill.setPosition(x - 12, y - headOffset).setDisplaySize(Math.max(0, 24 * ratio), 2).setDepth(overlayDepth + 1);
+        this.nameTag.setPosition(x, y - headOffset - 3).setDepth(overlayDepth + 2);
     }
 
     renderPose(now) {
@@ -412,7 +443,7 @@ export class Monster {
         }
 
         const textureKey = this.species === 'boar' ? 'boar-pixel' : 'skeleton-pixel';
-        const frame = Math.floor(this.walkDistance / 6) % 2;
+        const frame = now < this.attackEndsAt ? 1 : Math.floor(this.walkDistance / 6) % 2;
         const flipX = this.directions[this.facing]?.includes('west') ?? false;
         this.sprite.setTexture(textureKey, frame).setFlipX(flipX).setDepth(this.sprite.y);
     }
@@ -427,13 +458,21 @@ export class Monster {
     update(now, delta, player) {
         if (!this.sprite.visible) return;
 
+        if (this.alert && !inZone(this.template.zone, player.x, player.y)) {
+            this.alert = false;
+            this.counterAt = Infinity;
+            this.cancelAttack();
+            this.path = this.route(this.home);
+            this.destination = null;
+        }
+
         if (now < this.stunUntil) {
             this.sprite.setTint(0x9be0de);
             this.syncOverlays();
             return;
         }
 
-        if (this.species === 'dragon' && this.breath && now < this.breath.end) {
+        if (now < this.attackEndsAt) {
             this.renderPose(now);
             this.syncOverlays();
             return;
@@ -443,13 +482,15 @@ export class Monster {
         const dx = player.x - this.sprite.x;
         const dy = player.y - this.sprite.y;
         const distance = Math.hypot(dx, dy);
+        if (!this.alert && this.scene.combat?.health > 0 && distance <= this.template.aggroRange
+            && inZone(this.template.zone, player.x, player.y)) this.pursue();
         const slowFactor = now < this.slowUntil ? 0.5 : 1;
         const baseSpeed = this.alert ? this.stats.chaseSpeed : this.stats.patrolSpeed;
         const step = baseSpeed * slowFactor * Math.min(delta, 40) / 1000;
-        const meleeDist = this.template.meleeDistance;
+        const meleeDist = this.template.attackRange - 3;
         let moved = false;
 
-        if (this.alert && distance <= meleeDist) {
+        if (this.alert && distance <= meleeDist && this.canAttack(player)) {
             this.face(dx, dy);
         } else if (this.alert && distance <= 36 && this.advance(player, Math.min(step, distance - meleeDist))) {
             moved = true;
@@ -496,7 +537,7 @@ export class Monster {
         const traveled = Math.min(distance, step);
         const x = this.sprite.x + dx * traveled / distance;
         const y = this.sprite.y + dy * traveled / distance;
-        if (!this.scene.canStand(x, y)) return false;
+        if (!inZone(this.template.zone, x, y) || !this.scene.canStand(x, y)) return false;
         this.face(dx, dy);
         this.walkDistance += traveled;
         this.sprite.setPosition(x, y);

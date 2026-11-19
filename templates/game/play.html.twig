@@ -61,6 +61,7 @@
                 id="world"
                 class="game-map"
                 data-class="{{ character.class.value }}"
+                data-skin="{{ character.class.skin }}"
                 data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"
                 data-combat="{{ combat|json_encode|e('html_attr') }}"
             ></div>
@@ -70,7 +71,7 @@
                 <section class="player-hud" aria-label="État du personnage">
                     <img
                         class="hud-portrait"
-                        src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'noe' : 'lina' }}/south.png"
+                        src="{{ app.request.basePath }}/game/val-des-saules/{{ character.class.skin }}/south.png"
                         width="48"
                         height="48"
                         alt=""
@@ -82,6 +83,7 @@
                                 {{ character.class.label }} · Niv. <span id="combat-level">{{ character.level }}</span>
                             </small>
                         </div>
+                        <small id="progress-save-status" role="status"></small>
                         <label>
                             <span>Vie</span>
                             <meter
@@ -125,7 +127,8 @@
                 </section>
 
                 <div class="top-right-hud">
-                    <span class="zone-badge">Val-des-Saules</span>
+                    <span id="current-zone" class="zone-badge">Clairière · N.1–5</span>
+                    <button id="quest-open" class="hud-quick-btn" type="button" aria-haspopup="dialog" aria-controls="quest-dialog">Quête (E)</button>
                     <button
                         id="hud-sheet-open"
                         class="hud-quick-btn"
@@ -293,7 +296,7 @@
             </div>
         </div>
 
-        <p id="game-controls" class="sr-only">Déplacement avec les flèches, ZQSD ou WASD · Sorts (1-6) · Potions (R/F) · Fiche (C) · Talents (T) · Sac (I).</p>
+        <p id="game-controls" class="sr-only">Déplacement avec les flèches, ZQSD ou WASD · Parler (E) · Sorts (1-6) · Potions (R/F) · Fiche (C) · Talents (T) · Sac (I).</p>
 
         {# Fenêtre modale : Inventaire #}
         <dialog id="inventory" aria-labelledby="inventory-title" aria-describedby="inventory-description">
@@ -361,6 +364,20 @@
                 {% endfor %}
             </ul>
             <p id="inventory-status" role="status"></p>
+        </dialog>
+
+        <dialog id="quest-dialog" aria-labelledby="quest-title" aria-describedby="quest-description">
+            <div class="inventory-heading">
+                <h2 id="quest-title">Sécuriser le sentier</h2>
+                <form method="dialog">
+                    <button class="quiet" type="submit" autofocus>Fermer</button>
+                </form>
+            </div>
+            <p>Habitante du hameau</p>
+            <p id="quest-description"></p>
+            <p id="quest-progress" role="status"></p>
+            <p>Récompense : <strong>2 potions de vie</strong></p>
+            <button id="quest-action" type="button">Accepter la quête</button>
         </dialog>
 
         {# Fenêtre modale : Arbre de Talents & Sorts (3 branches) #}

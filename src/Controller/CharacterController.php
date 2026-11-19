@@ -13,6 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Exception\JsonException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
@@ -148,6 +149,9 @@ final class CharacterController extends AbstractController
                 'manaRestore' => Character::MANA_POTION_RESTORE,
                 'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
                 'level' => $character->getLevel(),
+                'progress' => ['level' => max(1, $character->getLevel()), 'xp' => $character->getExperience()],
+                'progressUrl' => $this->generateUrl('character_progress', ['id' => $character->getId()]),
+                'progressToken' => $this->container->get('security.csrf.token_manager')->getToken('character_progress_'.$character->getId())->getValue(),
                 'baseStats' => $class->baseStats(),
                 'growthStats' => $class->levelGrowthStats(),
                 'baseManaRegen' => $class->baseManaRegen(),
@@ -184,5 +188,38 @@ final class CharacterController extends AbstractController
                 ],
             ],
         ]);
+    }
+
+    #[Route('/{id}/progression', name: 'character_progress', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function saveProgress(int $id, Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $character = $entities->getRepository(PlayerCharacter::class)->findOneBy(['id' => $id, 'owner' => $owner]);
+        if ($character === null) {
+            throw $this->createNotFoundException();
+        }
+        if (strlen($request->getContent()) > 4096) {
+            return $this->json(['error' => 'Requête trop volumineuse.'], 413);
+        }
+        try {
+            $data = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(['error' => 'JSON invalide.'], 400);
+        }
+        if (!is_string($data['_token'] ?? null) || !$this->isCsrfTokenValid('character_progress_'.$id, $data['_token'])) {
+            return $this->json(['error' => 'Session de sauvegarde invalide.'], 403);
+        }
+        $level = $data['level'] ?? null;
+        $xp = $data['xp'] ?? null;
+        if (!is_int($level) || $level < 1 || $level > 9999 || !is_int($xp) || $xp < 0 || $xp >= 100 + ($level - 1) * 50) {
+            return $this->json(['error' => 'Niveau ou expérience invalide.'], 400);
+        }
+
+        // shortcut: combat is client-side; validate victories on the server before competitive play.
+        $entities->createQuery('UPDATE App\Entity\PlayerCharacter c SET c.level = :level, c.experience = :xp
+            WHERE c.id = :id AND c.owner = :owner AND (c.level < :level OR (c.level = :level AND c.experience < :xp))')
+            ->setParameters(['level' => $level, 'xp' => $xp, 'id' => $id, 'owner' => $owner])->execute();
+        $entities->refresh($character);
+
+        return $this->json(['level' => $character->getLevel(), 'xp' => $character->getExperience()]);
     }
 }

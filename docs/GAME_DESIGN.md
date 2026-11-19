@@ -49,7 +49,7 @@ Prévoir les gestes dans les quatre directions de déplacement. Pour un sort à 
 
 Le niveau 5 est le plafond proposé pour la première version. Le journal compte les défaites après acceptation de la quête et indique quand retourner voir le PNJ. En combat partagé, chaque personnage ayant réussi au moins une attaque reçoit l’XP complète du monstre, son tirage de butin et le crédit de sa propre quête active si l’objectif correspond.
 
-Les sangliers et les squelettes réapparaissent après un délai. Le dragon annonce son souffle par une zone visible au sol, laissant aux joueurs le temps de se déplacer. Le Guerrier peut l’attirer avec Provocation pendant que le Mage attaque à distance. Un personnage vaincu réapparaît au hameau en conservant son or et ses objets.
+Les sangliers et les squelettes réapparaissent après un délai. Dans le prototype, les monstres engagent à proximité et répètent des auto-attaques ciblées : corps à corps pour les sangliers et les squelettes, projectile pour le dragon, avec préparation et recharge. Sortir de portée, se mettre à couvert ou étourdir le monstre peut empêcher l’impact. Les niveaux 1–2 restent abordables ; les PV et les dégâts augmentent ensuite plus fortement, et les monstres de haut niveau nécessitent une progression et des talents adaptés. Un personnage vaincu peut se relever au camp en conservant sa progression et ses objets.
 
 ## Butin et raretés
 

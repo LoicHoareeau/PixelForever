@@ -1,6 +1,6 @@
 # PixelForever · Back-end
 
-Symfony et Doctrine gèrent l’inscription, la connexion et la création de personnages. La sélection est enregistrée dans la session après vérification du propriétaire. Le jeton de connexion au monde, le serveur temps réel et la persistance de la progression de jeu restent à intégrer. Le Blob de `src/Game/` sert de référence pour le combat et le butin. Le bestiaire cible figure dans le [game design](GAME_DESIGN.md).
+Symfony et Doctrine gèrent l’inscription, la connexion, les personnages et la sauvegarde de leur niveau/XP. La sélection est enregistrée dans la session après vérification du propriétaire. `POST /personnages/{id}/progression` vérifie le compte, le jeton CSRF et les bornes du niveau et de l’XP. Une mise à jour conditionnelle atomique empêche une requête ancienne de faire régresser le niveau ou l’XP. L’entrée dans le jeu recharge ces valeurs depuis la base ; un cache local plus avancé peut être repris lors du premier enregistrement. Le combat reste calculé par le client dans ce prototype : cette route ne valide pas encore chaque victoire. Le serveur temps réel et la persistance du reste de la progression restent à intégrer. Le Blob de `src/Game/` sert de référence pour le combat et le butin. Le bestiaire cible figure dans le [game design](GAME_DESIGN.md).
 
 ## Parcours du compte au monde
 

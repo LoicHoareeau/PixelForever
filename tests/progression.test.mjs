@@ -7,6 +7,7 @@ import {
     createInitialProgress,
     getUnlockedActiveSpells,
     investTalent,
+    loadProgress,
     regenerateResource,
     resetTalents,
     rollLoot,
@@ -70,8 +71,8 @@ test('les victoires créditent le butin, le niveau, les points de stats et de so
         levelUp: false,
     });
     assert.equal(progress.xp, 50);
-    assert.equal(progress.statPoints, 2);
-    assert.equal(progress.spellPoints, 1);
+    assert.equal(progress.statPoints, 0);
+    assert.equal(progress.spellPoints, 0);
 
     assert.deepEqual(awardVictory(progress, loot, () => 0.99), {
         item: 'epic',
@@ -80,23 +81,24 @@ test('les victoires créditent le butin, le niveau, les points de stats et de so
     assert.equal(progress.level, 2);
     assert.equal(progress.xp, 0);
     assert.equal(xpRequired(progress.level), 150);
-    assert.equal(progress.statPoints, 5);
-    assert.equal(progress.spellPoints, 2);
+    assert.equal(progress.statPoints, 3);
+    assert.equal(progress.spellPoints, 1);
     assert.deepEqual(progress.items, { health: 0, mana: 0, rare: 1, epic: 1 });
 });
 
 test('la répartition de points de stats et de sorts respecte le solde disponible', () => {
-    const progress = createInitialProgress(1);
+    const progress = createInitialProgress(2);
 
     assert.equal(allocateStat(progress, 'strength'), true);
     assert.equal(allocateStat(progress, 'vitality'), true);
+    assert.equal(allocateStat(progress, 'spirit'), true);
     assert.equal(allocateStat(progress, 'strength'), false);
     assert.equal(progress.statPoints, 0);
     assert.deepEqual(progress.allocatedStats, {
         strength: 1,
         intelligence: 0,
         vitality: 1,
-        spirit: 0,
+        spirit: 1,
     });
 
     assert.equal(upgradeSpell(progress, 'special'), true);
@@ -118,13 +120,13 @@ test('les caractéristiques naturelles, investies et les rangs de sorts augmente
 
     const progressed = createInitialProgress(1);
     progressed.level = 2;
-    progressed.statPoints = 5;
-    progressed.spellPoints = 2;
+    progressed.statPoints = 3;
+    progressed.spellPoints = 1;
     allocateStat(progressed, 'strength');
     allocateStat(progressed, 'vitality');
     allocateStat(progressed, 'spirit');
     upgradeSpell(progressed, 'basic');
-    upgradeSpell(progressed, 'special');
+    assert.equal(upgradeSpell(progressed, 'special'), false);
 
     const level2Stats = computeCharacterStats(warriorRules, progressed, 4);
     assert.equal(level2Stats.attributes.strength.natural, 2);
@@ -155,8 +157,7 @@ test('la régénération automatique accumule progressivement les fractions sans
 });
 
 test('l’arbre de talents respecte les prérequis, débloque les sorts actifs et permet la réinitialisation', () => {
-    const progress = createInitialProgress(1);
-    progress.spellPoints = 3;
+    const progress = createInitialProgress(4);
 
     // Impossible de prendre Taillade sans 2 points dans Armes / Lame affûtée
     assert.equal(investTalent(progress, 'warrior', 'w_cleave'), false);
@@ -172,10 +173,60 @@ test('l’arbre de talents respecte les prérequis, débloque les sorts actifs e
     assert.equal(unlocked[0].slot, 'cleave');
 
     const stats = computeCharacterStats(warriorRules, progress, 4);
-    assert.equal(stats.basicDamage, 18); // +4 grâce aux 2 rangs de Lame affûtée
+    const baseline = computeCharacterStats(warriorRules, createInitialProgress(4), 4);
+    assert.equal(stats.basicDamage, baseline.basicDamage + 4);
 
     const refunded = resetTalents(progress);
     assert.equal(refunded, 3);
     assert.equal(progress.spellPoints, 3);
     assert.equal(getUnlockedActiveSpells(progress, 'warrior').length, 0);
+});
+
+test('au niveau 1 aucun point, talent ou rang de sort ne peut être dépensé', () => {
+    const progress = createInitialProgress();
+    assert.equal(progress.level, 1);
+    assert.equal(progress.statPoints, 0);
+    assert.equal(progress.spellPoints, 0);
+    progress.statPoints = 2;
+    progress.spellPoints = 1;
+    assert.equal(allocateStat(progress, 'strength'), false);
+    assert.equal(upgradeSpell(progress, 'basic'), false);
+    assert.equal(investTalent(progress, 'warrior', 'w_sharp_blade'), false);
+});
+
+test('le niveau de la base est restauré sans cache et ses bonus restent ceux d’un personnage de ce niveau', t => {
+    const previous = globalThis.localStorage;
+    globalThis.localStorage = { getItem: () => null };
+    t.after(() => { if (previous === undefined) delete globalThis.localStorage; else globalThis.localStorage = previous; });
+    const progress = loadProgress('character', 4, { level: 4, xp: 27 });
+    assert.equal(progress.level, 4);
+    assert.equal(progress.xp, 27);
+    assert.equal(progress.statPoints, 9);
+    assert.equal(progress.spellPoints, 3);
+    const stats = computeCharacterStats({ ...warriorRules, level: 4 }, progress, 4);
+    assert.equal(stats.attributes.strength.natural, 6);
+});
+
+test('les anciens points gratuits sont retirés sans perdre le niveau, l’XP ou les objets', t => {
+    const previous = globalThis.localStorage;
+    const old = createInitialProgress();
+    old.xp = 50;
+    old.items.health = 7;
+    old.allocatedStats.strength = 2;
+    old.talents.w_sharp_blade = 1;
+    globalThis.localStorage = { getItem: () => JSON.stringify(old) };
+    t.after(() => { if (previous === undefined) delete globalThis.localStorage; else globalThis.localStorage = previous; });
+    const progress = loadProgress('character', 1, { level: 1, xp: 0 });
+    assert.equal(progress.xp, 50);
+    assert.equal(progress.items.health, 7);
+    assert.equal(progress.allocatedStats.strength, 0);
+    assert.deepEqual(progress.talents, {});
+    assert.equal(progress.statPoints, 0);
+    assert.equal(progress.spellPoints, 0);
+    const advanced = loadProgress('character', 4, { level: 4, xp: 27 });
+    assert.equal(advanced.level, 4);
+    assert.equal(advanced.xp, 27);
+    assert.equal(advanced.items.health, 7);
+    assert.equal(advanced.statPoints, 7);
+    assert.equal(advanced.spellPoints, 2);
 });

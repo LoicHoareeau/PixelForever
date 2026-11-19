@@ -1,3 +1,5 @@
+import { cliffTile, graves, inZone, rocks, zones } from './exploration.js';
+
 const frameSize = 48;
 const canopy = [
     '..........44444..........',
@@ -166,15 +168,91 @@ function drawCabin(context) {
     context.fillRect(23, 45, 12, 2);
 }
 
+function drawGrave(context) {
+    context.fillStyle = '#252a30';
+    context.fillRect(2, 5, 14, 16);
+    context.fillRect(5, 2, 8, 3);
+    context.fillStyle = '#777e7c';
+    context.fillRect(4, 6, 10, 13);
+    context.fillRect(6, 4, 6, 3);
+    context.fillStyle = '#a2a69a';
+    context.fillRect(5, 6, 1, 11);
+    context.fillRect(7, 5, 5, 1);
+    context.fillStyle = '#454c51';
+    context.fillRect(8, 8, 2, 8);
+    context.fillRect(6, 10, 6, 2);
+    context.fillStyle = '#53644d';
+    context.fillRect(1, 20, 16, 3);
+    context.fillRect(3, 18, 3, 3);
+}
+
+function drawRock(context) {
+    context.fillStyle = '#29323b';
+    for (let y = 0; y < 40; y += 4) {
+        const inset = Math.max(0, 18 - y / 2);
+        context.fillRect(inset, y, 48 - inset * 2, 4);
+    }
+    context.fillStyle = '#69737b';
+    for (let y = 4; y < 36; y += 4) {
+        const inset = Math.max(3, 20 - y / 2);
+        context.fillRect(inset, y, 25 - inset, 4);
+    }
+    context.fillStyle = '#454e5d';
+    context.fillRect(26, 20, 11, 12);
+    context.fillRect(32, 28, 12, 8);
+    context.fillStyle = '#bdc9c3';
+    context.fillRect(18, 4, 10, 4);
+    context.fillRect(16, 8, 7, 4);
+    context.fillRect(23, 8, 8, 2);
+    context.fillStyle = '#202a32';
+    context.fillRect(4, 37, 40, 3);
+}
+
+export function treePositions(terrain) {
+    const positions = [...trees];
+    for (let row = 3; row < terrain.length - 2; row += 4) {
+        for (let column = 3; column < terrain[0].length - 2; column += 4) {
+            if (row < 20 && column < 28) continue;
+            const seed = (column * 37 + row * 53 + column * row * 7) % 101;
+            if (seed % 5 === 0) continue;
+            const x = column * 16 + seed % 25 - 12;
+            const y = row * 16 + (seed * 7) % 25 - 12;
+            if (terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== 33 || inZone(zones.skeleton, x, y)
+                || inZone(zones.dragon, x, y)) continue;
+            if (terrain[row].slice(column - 1, column + 2).some(tile => tile !== 33)) continue;
+            positions.push([x, y]);
+        }
+    }
+    return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile);
+}
+
 export function buildClearing(scene, terrain, tileSize, width, height, baseTiles) {
     const floor = scene.textures.createCanvas('clearing-floor', width, height);
     const context = floor.getContext();
     terrain.forEach((row, y) => row.forEach((tile, x) => {
-        const key = tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
+        const key = tile === cliffTile ? 'herbe' : tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
         const frame = scene.textures.getFrame(key, tile < 32 ? tile % 16 : undefined);
         drawFrame(context, frame, x * tileSize, y * tileSize);
     }));
     toneGround(context, width, height);
+
+    terrain.forEach((row, y) => row.forEach((tile, x) => {
+        const px = x * tileSize;
+        const py = y * tileSize;
+        if (inZone(zones.dragon, px, py)) {
+            context.fillStyle = tile === 32 ? '#7b7971' : '#505f61';
+            context.globalAlpha = .82;
+            context.fillRect(px, py, tileSize, tileSize);
+            context.globalAlpha = 1;
+            context.fillStyle = '#89918a';
+            context.fillRect(px + (x * 7 + y) % 11, py + (x + y * 3) % 13, 3, 1);
+        } else if (inZone(zones.skeleton, px, py) && tile === 33) {
+            context.fillStyle = '#444947';
+            context.globalAlpha = .55;
+            context.fillRect(px, py, tileSize, tileSize);
+            context.globalAlpha = 1;
+        }
+    }));
 
     const ripples = [];
     terrain.forEach((row, y) => row.forEach((tile, x) => {
@@ -204,6 +282,36 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         context.fillRect(px + 2, py - 1, 1, 2);
         context.fillRect(px + 3, py, 1, 1);
     }));
+    terrain.forEach((row, y) => row.forEach((tile, x) => {
+        if (tile !== cliffTile) return;
+        const px = x * tileSize;
+        const py = y * tileSize;
+        const seam = (x * 7 + y * 3) % 11 + 2;
+        context.fillStyle = '#343c43';
+        context.fillRect(px, py, tileSize, tileSize);
+        context.fillStyle = '#535c62';
+        context.fillRect(px + seam - 2, py, 4, tileSize);
+        context.fillStyle = '#424c55';
+        context.fillRect(px + 1, py + seam, 8, 4);
+        context.fillStyle = '#222c34';
+        context.fillRect(px + seam + 2, py + 2, 2, 9);
+        context.fillRect(px + 1, py + seam + 3, 6, 2);
+        context.fillStyle = '#778078';
+        context.fillRect(px + seam - 2, py + 3, 1, 6);
+        context.fillStyle = '#4e6549';
+        for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+            const neighbor = terrain[y + dy]?.[x + dx];
+            if (neighbor === undefined || neighbor === cliffTile) continue;
+            if (dy) context.fillRect(px, py + (dy > 0 ? tileSize - 3 : 0), tileSize, 3);
+            else context.fillRect(px + (dx > 0 ? tileSize - 3 : 0), py, 3, tileSize);
+        }
+        if (terrain[y + 1]?.[x] !== undefined && terrain[y + 1][x] !== cliffTile) {
+            context.fillStyle = '#172421';
+            context.globalAlpha = .35;
+            context.fillRect(px, py + tileSize, tileSize, 5);
+            context.globalAlpha = 1;
+        }
+    }));
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
 
@@ -223,7 +331,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     shadows.fillRect(114, 43, 53, 6);
     scene.add.image(140, 48, cabin.key).setOrigin(.5, 1).setDepth(48);
     scene.obstacles.push(new Phaser.Geom.Rectangle(116, 31, 48, 16));
-    trees.forEach(([x, y], index) => {
+    treePositions(terrain).forEach(([x, y], index) => {
         shadows.fillRect(x - 7, y - 3, 16, 5);
         scene.add.image(x, y, 'willow-' + index % 2).setOrigin(.5, 1).setDepth(y);
         scene.obstacles.push(new Phaser.Geom.Rectangle(x - 2, y - 4, 4, 5));
@@ -233,6 +341,51 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         scene.add.image(x, y, lantern.key).setOrigin(.3125, 1).setDepth(y);
         scene.obstacles.push(new Phaser.Geom.Rectangle(x - 1, y - 3, 3, 4));
     });
+
+    for (const [key, positions, textureWidth, textureHeight, draw, collisionWidth] of [
+        ['grave', graves, 18, 24, drawGrave, 14],
+        ['mountain-rock', rocks, 48, 40, drawRock, 40],
+    ]) {
+        const texture = scene.textures.createCanvas(key, textureWidth, textureHeight);
+        draw(texture.getContext());
+        texture.refresh();
+        positions.forEach(([column, row]) => {
+            const x = (column + .5) * tileSize;
+            const y = (row + .5) * tileSize;
+            shadows.fillRect(x - collisionWidth / 2, y - 3, collisionWidth, 6);
+            scene.add.image(x, y, key).setOrigin(.5, 1).setDepth(y);
+            scene.obstacles.push(new Phaser.Geom.Rectangle(x - collisionWidth / 2, y - 7, collisionWidth, 8));
+        });
+    }
+
+    for (const [text, column, row] of [
+        ['Cimetière →', 30, 13],
+        ['Cimetière des Saules · N.5–10', 75, 54],
+        ['Montagnes ↓', 129, 79],
+        ['Hauts de Saphyr · N.10–20', 124, 82],
+    ]) {
+        const x = column * tileSize;
+        const y = row * tileSize;
+        const wooden = text.startsWith('Cimetière');
+        const label = scene.add.text(x, y, text, {
+            fontFamily: 'system-ui, sans-serif', fontSize: '9px', color: '#f0d5a2',
+            backgroundColor: wooden ? undefined : '#202b30', padding: { x: 4, y: 3 },
+        }).setDepth(y + 30);
+        if (wooden) {
+            const width = Math.ceil(label.width);
+            const height = Math.ceil(label.height);
+            const center = Math.round(x + width / 2);
+            const sign = scene.add.graphics().setDepth(y + 29);
+            sign.fillStyle(0x39291e).fillRect(center - 3, y + height, 6, 12);
+            sign.fillStyle(0x9b6b3e).fillRect(center - 1, y + height, 2, 10);
+            sign.fillStyle(0x39291e).fillRect(x - 2, y - 2, width + 4, height + 4);
+            sign.fillStyle(0x805332).fillRect(x, y, width, height);
+            sign.fillStyle(0xb4854f).fillRect(x, y, width, 2);
+            sign.fillStyle(0x634027).fillRect(x, y + height - 3, width, 3);
+            sign.fillStyle(0x4b3223).fillRect(x, y + Math.floor(height / 2), width, 1);
+            sign.fillStyle(0xc4a575).fillRect(x + 2, y + 4, 1, 1).fillRect(x + width - 3, y + 4, 1, 1);
+        }
+    }
 
     const ambience = scene.add.graphics().setDepth(2);
     let previousFrame = -1;

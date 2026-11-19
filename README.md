@@ -30,7 +30,7 @@ Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi p
 
 ```sh
 composer test:accounts
-node --test tests/progression.test.mjs
+node --test tests/progression.test.mjs tests/exploration.test.mjs tests/trail-quest.test.mjs tests/progress-sync.test.mjs
 ```
 
 Le test de comptes utilise une base SQLite temporaire et requiert les extensions PHP `pdo_sqlite` et `dom`.
