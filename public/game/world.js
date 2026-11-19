@@ -33,9 +33,9 @@ import { Saphyr } from './dragon.js';
     const directions = [
         'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east',
     ];
-    const villagers = {
-        lina: { x: 184, y: 190, facing: 'south-east', bounds: [176, 178, 17, 12] },
-        noe: { x: 248, y: 207, facing: 'east', bounds: [235, 195, 19, 12] },
+    const spawns = {
+        lina: { x: 184, y: 190, facing: 'south-east' },
+        noe: { x: 248, y: 207, facing: 'east' },
     };
     // IDs 0–15 and 16–31 are frames of the two PixelLab terrain transition sheets.
     const baseTiles = ['chemin', 'herbe', 'eau'];
@@ -53,9 +53,7 @@ import { Saphyr } from './dragon.js';
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             baseTiles.forEach((tile, index) => this.load.image(tile, 'terrain-' + (index + 1) + '.png'));
-            for (const name of ['lina', 'noe']) {
-                directions.forEach(direction => this.load.image(name + '-' + direction, name + '/' + direction + '.png'));
-            }
+            directions.forEach(direction => this.load.image(this.skin + '-' + direction, this.skin + '/' + direction + '.png'));
             this.load.spritesheet(this.walkSheet, this.skin + '/walk.png', { frameWidth: 48, frameHeight: 48 });
             const attackSize = this.skin === 'lina' ? 64 : 68;
             this.load.spritesheet(this.attackSheet, this.skin + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
@@ -75,19 +73,11 @@ import { Saphyr } from './dragon.js';
             this.poseSheet = createPoseSheet(this, this.skin, directions);
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
-            const shadows = this.add.graphics().setDepth(3).fillStyle(0x172622, .48);
-            for (const [name, { x, y, facing, bounds }] of Object.entries(villagers)) {
-                const sprite = this.add.image(x, y, name + '-' + facing).setOrigin(.5, 1).setDepth(y);
-                if (name === this.skin) {
-                    this.avatar = sprite;
-                    this.position = new Phaser.Math.Vector2(x, y);
-                    this.facing = facing;
-                    this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, .48).setDepth(3);
-                } else {
-                    this.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
-                    shadows.fillEllipse(x, y - 1, 21, 7);
-                }
-            }
+            const { x, y, facing } = spawns[this.skin];
+            this.avatar = this.add.image(x, y, this.skin + '-' + facing).setOrigin(.5, 1).setDepth(y);
+            this.position = new Phaser.Math.Vector2(x, y);
+            this.facing = facing;
+            this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, .48).setDepth(3);
             this.dragon = new Saphyr(this, directions, tileSize);
             this.combat = new TrainingCombat(this, this.dragon, JSON.parse(world.dataset.combat), tileSize);
             this.renderAvatar(this.time.now);
@@ -171,7 +161,7 @@ import { Saphyr } from './dragon.js';
             });
             this.combat.resetButton.addEventListener('click', () => {
                 releaseKeys();
-                const spawn = villagers[this.skin];
+                const spawn = spawns[this.skin];
                 this.position.set(spawn.x, spawn.y);
                 this.facing = spawn.facing;
                 this.walkDistance = 0;
