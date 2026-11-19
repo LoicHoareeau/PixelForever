@@ -28,18 +28,9 @@ La garde du hameau propose **Sécuriser le sentier**. Après avoir accepté la q
 
 ## Commandes
 
-Les **flèches directionnelles** (`↑`, `↓`, `←`, `→`) déplacent le personnage. La barre d’actions utilise les six premières touches de la rangée supérieure. L’interface peut les afficher sous les noms `1` à `6`, et les mêmes positions fonctionnent sur un clavier AZERTY ou QWERTY.
+Les déplacements utilisent **ZQSD en AZERTY** ou **WASD en QWERTY**. Les touches `1` à `6` de la rangée supérieure servent à l’attaque de base, aux sorts et aux potions. Le joueur peut modifier ses raccourcis dans les options du jeu, y compris choisir les flèches pour se déplacer. L’attaque de base ne consomme ni mana ni énergie.
 
-| QWERTY | AZERTY français | Action |
-| --- | --- | --- |
-| `1` | `&` | Attaque de base |
-| `2` | `é` | Compétence de classe |
-| `3` | `"` | Potion de vie |
-| `4` | `'` | Potion de mana |
-| `5` | `(` | Emplacement libre dans le prototype |
-| `6` | `-` | Emplacement libre dans le prototype |
-
-Le client repère ces touches par leur position physique (`Digit1` à `Digit6`) afin que les raccourcis fonctionnent sans appuyer sur Maj sur un clavier AZERTY.
+Le [document front-end](docs/FRONTEND.md#commandes-par-défaut) détaille les raccourcis. Le [game design](docs/GAME_DESIGN.md#animations-à-produire) décrit les animations d’attaque et de sort prévues.
 
 ## Architecture prévue
 
