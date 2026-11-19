@@ -77,14 +77,19 @@
             canvas.tabIndex = 0;
             canvas.setAttribute('aria-label', 'Carte de Val-des-Saules');
             canvas.setAttribute('aria-describedby', 'game-controls');
+
+            const keyboard = new AbortController();
             const releaseKeys = () => this.heldKeys.clear();
-            canvas.addEventListener('keydown', event => {
-                if (!Object.hasOwn(bindings, event.code) || event.altKey || event.ctrlKey || event.metaKey) return;
+            window.addEventListener('keydown', event => {
+                if (event.defaultPrevented || !Object.hasOwn(bindings, event.code) || event.altKey || event.ctrlKey || event.metaKey) return;
+                const target = event.target;
+                if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, select, textarea'))) {
+                    return;
+                }
                 event.preventDefault();
                 this.heldKeys.add(event.code);
-            });
-            canvas.addEventListener('keyup', event => this.heldKeys.delete(event.code));
-            canvas.addEventListener('blur', releaseKeys);
+            }, { signal: keyboard.signal });
+            window.addEventListener('keyup', event => this.heldKeys.delete(event.code), { signal: keyboard.signal });
             this.game.events.on(Phaser.Core.Events.BLUR, releaseKeys);
 
             const moveFromButton = event => {
@@ -94,13 +99,14 @@
             const buttons = Array.from(controls.querySelectorAll('button'));
             buttons.forEach(button => button.addEventListener('click', moveFromButton));
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+                keyboard.abort();
+                releaseKeys();
                 this.game.events.off(Phaser.Core.Events.BLUR, releaseKeys);
                 buttons.forEach(button => button.removeEventListener('click', moveFromButton));
             });
 
             status.hidden = true;
             controls.hidden = false;
-            if (document.activeElement === document.body) canvas.focus({ preventScroll: true });
         }
 
         update(_time, delta) {
