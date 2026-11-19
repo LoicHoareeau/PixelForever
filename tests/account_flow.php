@@ -120,6 +120,12 @@ try {
     $aliceList = visit($alice, 'GET', '/personnages', 200);
     check(str_contains($aliceList->getContent(), 'Roland'), 'Roland doit être visible sur son compte.');
     check($alice->get('selected_character') === $rolandId, 'La sélection de Roland doit rester active.');
+    $warriorPage = visit($alice, 'GET', '/personnages/jeu', 200);
+    $warriorRules = json_decode(htmlValue($warriorPage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    check(htmlValue($warriorPage, '//div[@id="world"]/@data-skin') === 'lina', 'La guerrière doit utiliser les animations d’épée de Lina.');
+    check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/lina/south.png'), 'Le portrait de la guerrière doit correspondre à son sprite.');
+    check($warriorRules['classKey'] === 'warrior' && !$warriorRules['ranged'] && $warriorRules['range'] === 1.5, 'La guerrière doit combattre au corps à corps.');
+    check($warriorRules['resourceName'] === 'Énergie' && $warriorRules['specialName'] === 'Attaque chargée', 'La guerrière doit conserver son énergie et ses compétences de mêlée.');
     $bobList = visit($bob, 'GET', '/personnages', 200);
     check(str_contains($bobList->getContent(), 'Merlin'), 'Merlin doit être visible sur son compte.');
     check(!str_contains($bobList->getContent(), 'Roland'), 'Roland doit rester invisible sur le compte de Bob.');
@@ -129,6 +135,12 @@ try {
     visit($bob, 'POST', $selectionPath, 303, ['_token' => $selectionToken]);
     $bobSelection = $bob->get('selected_character');
     check(is_int($bobSelection) && $bobSelection !== $previousSelection, 'Bob doit pouvoir changer de personnage.');
+    $magePage = visit($bob, 'GET', '/personnages/jeu', 200);
+    $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
+    check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
+    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5, 'Le mage doit combattre à distance.');
+    check($mageRules['resourceName'] === 'Mana' && $mageRules['specialName'] === 'Boule de feu', 'Le mage doit conserver son mana et ses sorts.');
     visit($bob, 'POST', "/personnages/$rolandId/selection", 404, ['_token' => $selectionToken]);
     check($bob->get('selected_character') === $bobSelection, 'Le refus doit préserver la sélection de Bob.');
 

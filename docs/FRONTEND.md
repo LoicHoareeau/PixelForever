@@ -8,6 +8,8 @@ Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab depuis `publ
 
 Des falaises rocheuses irrégulières de deux à trois cases bordent le monde. Elles bloquent les déplacements ; les chemins entre les trois zones restent ouverts.
 
+La guerrière utilise Lina et ses animations d’épée, le mage utilise Noé et ses animations d’incantation. La classe fournit la même apparence au portrait et à Phaser. Les compétences, les talents et les ressources suivent la classe : mêlée et énergie pour la guerrière, sorts à distance et mana pour le mage. Des pancartes en bois dans le décor indiquent le cimetière.
+
 Les sangliers de niveau 1–2 patrouillent au plus près du départ. Leurs congénères de niveau 2–4 puis 4–5 ont des patrouilles plus éloignées. Les squelettes de niveau 5–10 occupent le cimetière et Saphyr de niveau 10–20 reste dans les montagnes. Patrouilles, poursuites et réapparitions sont limitées à la zone de chaque espèce. Quitter la zone met fin à la poursuite.
 
 Les monstres proches engagent le joueur et répètent une auto-attaque ciblée à leur propre cadence : coup au contact pour sangliers et squelettes, projectile pour le dragon. Une courte préparation précède l’impact. Portée, obstacles, étourdissement, mort et sortie de zone empêchent un impact invalide. Les attaques des monstres ne dessinent plus de cercle de dégâts.

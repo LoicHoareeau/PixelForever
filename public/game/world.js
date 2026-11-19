@@ -54,7 +54,7 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
         motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 
         preload() {
-            this.skin = world.dataset.class === 'warrior' ? 'noe' : 'lina';
+            this.skin = world.dataset.skin;
             this.walkSheet = this.skin + '-walk';
             this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);

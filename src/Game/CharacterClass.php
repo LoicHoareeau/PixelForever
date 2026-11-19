@@ -25,6 +25,14 @@ enum CharacterClass: string
         };
     }
 
+    public function skin(): string
+    {
+        return match ($this) {
+            self::Warrior => 'lina',
+            self::Mage => 'noe',
+        };
+    }
+
     public function maxMana(): int
     {
         return match ($this) {

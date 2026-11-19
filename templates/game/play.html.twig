@@ -61,6 +61,7 @@
                 id="world"
                 class="game-map"
                 data-class="{{ character.class.value }}"
+                data-skin="{{ character.class.skin }}"
                 data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"
                 data-combat="{{ combat|json_encode|e('html_attr') }}"
             ></div>
@@ -70,7 +71,7 @@
                 <section class="player-hud" aria-label="État du personnage">
                     <img
                         class="hud-portrait"
-                        src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'noe' : 'lina' }}/south.png"
+                        src="{{ app.request.basePath }}/game/val-des-saules/{{ character.class.skin }}/south.png"
                         width="48"
                         height="48"
                         alt=""

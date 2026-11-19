@@ -357,15 +357,32 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     }
 
     for (const [text, column, row] of [
-        ['Cimetière →', 30, 14],
+        ['Cimetière →', 30, 13],
         ['Cimetière des Saules · N.5–10', 35, 24],
         ['Montagnes ↓', 65, 35],
         ['Hauts de Saphyr · N.10–20', 60, 38],
     ]) {
-        scene.add.text(column * tileSize, row * tileSize, text, {
+        const x = column * tileSize;
+        const y = row * tileSize;
+        const wooden = text.startsWith('Cimetière');
+        const label = scene.add.text(x, y, text, {
             fontFamily: 'system-ui, sans-serif', fontSize: '9px', color: '#f0d5a2',
-            backgroundColor: '#202b30', padding: { x: 4, y: 3 },
-        }).setDepth(row * tileSize);
+            backgroundColor: wooden ? undefined : '#202b30', padding: { x: 4, y: 3 },
+        }).setDepth(y + 30);
+        if (wooden) {
+            const width = Math.ceil(label.width);
+            const height = Math.ceil(label.height);
+            const center = Math.round(x + width / 2);
+            const sign = scene.add.graphics().setDepth(y + 29);
+            sign.fillStyle(0x39291e).fillRect(center - 3, y + height, 6, 12);
+            sign.fillStyle(0x9b6b3e).fillRect(center - 1, y + height, 2, 10);
+            sign.fillStyle(0x39291e).fillRect(x - 2, y - 2, width + 4, height + 4);
+            sign.fillStyle(0x805332).fillRect(x, y, width, height);
+            sign.fillStyle(0xb4854f).fillRect(x, y, width, 2);
+            sign.fillStyle(0x634027).fillRect(x, y + height - 3, width, 3);
+            sign.fillStyle(0x4b3223).fillRect(x, y + Math.floor(height / 2), width, 1);
+            sign.fillStyle(0xc4a575).fillRect(x + 2, y + 4, 1, 1).fillRect(x + width - 3, y + 4, 1, 1);
+        }
     }
 
     const ambience = scene.add.graphics().setDepth(2);
