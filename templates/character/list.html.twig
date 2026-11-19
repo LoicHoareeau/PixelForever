@@ -1,22 +1,33 @@
 {% extends 'base.html.twig' %}
 
 {% block title %}Mes personnages{% endblock %}
+
 {% block body %}
     <section class="panel" aria-labelledby="heading">
         <div class="panel-heading">
             <h1 id="heading">Mes personnages</h1>
             <a class="button" href="{{ path('character_create') }}">Nouveau personnage</a>
         </div>
+
         {% if characters is empty %}
             <p class="empty">Crée ton premier Guerrier ou Mage pour commencer.</p>
         {% else %}
             <ul class="roster">
                 {% for character in characters %}
-                    <li class="roster-item {{ character.class.value }}{% if character.id == selectedId %} selected{% endif %}">
-                        <span class="class-icon" aria-hidden="true">{{ character.class.value == 'warrior' ? '⚔' : '✦' }}</span>
+                    {% set class = character.class %}
+                    {% set stats = class.baseStats %}
+                    {% set resourceLabel = class.value == 'warrior' ? 'Énergie' : 'Mana' %}
+
+                    <li class="roster-item {{ class.value }}{% if character.id == selectedId %} selected{% endif %}">
+                        <span class="class-icon" aria-hidden="true">{{ class.value == 'warrior' ? '⚔' : '✦' }}</span>
                         <div class="character-name">
                             <strong>{{ character.name }}</strong>
-                            <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
+                            <small>{{ class.label }} · Niveau {{ character.level }}</small>
+                            <small class="character-stats-preview">
+                                {{ class.maxHealth }} PV · {{ class.maxMana }} {{ resourceLabel }} ·
+                                FOR {{ stats.strength }} · INT {{ stats.intelligence }} ·
+                                VIT {{ stats.vitality }} · ESP {{ stats.spirit }}
+                            </small>
                         </div>
                         <form method="post" action="{{ path('character_select', {id: character.id}) }}">
                             <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">

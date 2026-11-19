@@ -4,29 +4,456 @@
 {% block layout %}game-layout{% endblock %}
 
 {% block body %}
+    {% set warrior = character.class.value == 'warrior' %}
+    {% set weapon = warrior ? 'Épée de fer' : 'Bâton de braise' %}
+    {% set basic = combat.basicName %}
+    {% set resource = combat.resourceName|lower %}
+    {% set resourcePhrase = warrior ? 'd’énergie' : 'de mana' %}
+    {% set initialBasicDamage = combat.basicDamage + combat.weaponBonus %}
+    {% set baseStats = combat.baseStats %}
+    {% set growthStats = combat.growthStats %}
+    {% set potions = {
+        health: {
+            name: 'Potion de vie',
+            icon: 'icon-health',
+            restore: combat.healthRestore
+        },
+        mana: {
+            name: 'Potion ' ~ resourcePhrase,
+            icon: 'icon-mana',
+            restore: combat.manaRestore
+        }
+    } %}
+    {% set statDefinitions = [
+        {
+            key: 'strength',
+            label: 'Force',
+            effect: warrior ? 'Augmente fortement les dégâts de mêlée' : 'Renforce légèrement les attaques physiques'
+        },
+        {
+            key: 'intelligence',
+            label: 'Intelligence',
+            effect: warrior ? 'Renforce légèrement la compétence et la régénération' : 'Augmente les dégâts des sorts et la régénération'
+        },
+        {
+            key: 'vitality',
+            label: 'Vitalité',
+            effect: '+4 PV maximum par point'
+        },
+        {
+            key: 'spirit',
+            label: 'Esprit',
+            effect: '+3 ' ~ resource ~ ' max et +0,4/s de régénération'
+        }
+    ] %}
+
     <section class="panel" aria-labelledby="zone-title">
+        {# En-tête de la scène et accès rapide à la fiche #}
         <div class="panel-heading">
             <h1 id="zone-title">Val-des-Saules</h1>
-            <a href="{{ path('character_list') }}">Mes personnages</a>
-        </div>
-        <div class="game-character {{ character.class.value }}">
-            <span class="class-icon" aria-hidden="true">{{ character.class.value == 'warrior' ? '⚔' : '✦' }}</span>
-            <div class="character-name">
-                <strong>{{ character.name }}</strong>
-                <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
+            <div class="panel-actions">
+                <button
+                    id="hud-sheet-open"
+                    class="quiet"
+                    type="button"
+                    aria-haspopup="dialog"
+                >
+                    Fiche &amp; Stats
+                </button>
+                <a href="{{ path('character_list') }}">Mes personnages</a>
             </div>
         </div>
-        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD.</p>
+
         <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
-        <div id="world" class="game-map" data-class="{{ character.class.value }}" data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"></div>
+
+        {# Scène de jeu, ATH et barre d'actions #}
+        <div class="game-stage">
+            <div id="combat-vitals" class="combat-vitals" hidden>
+                <section class="player-hud" aria-label="État du personnage">
+                    <img
+                        class="hud-portrait"
+                        src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'noe' : 'lina' }}/south.png"
+                        width="48"
+                        height="48"
+                        alt=""
+                    >
+                    <div class="hud-stats">
+                        <div class="hud-name">
+                            <strong>{{ character.name }}</strong>
+                            <small>
+                                {{ character.class.label }} · Niv. <span id="combat-level">{{ character.level }}</span>
+                            </small>
+                        </div>
+                        <label>
+                            <span>Vie</span>
+                            <meter
+                                id="combat-health"
+                                max="{{ combat.health }}"
+                                value="{{ combat.health }}"
+                            ></meter>
+                            <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
+                        </label>
+                        <label>
+                            <span>{{ combat.resourceName }}</span>
+                            <meter
+                                id="combat-mana"
+                                class="{{ warrior ? 'energy-meter' : 'mana-meter' }}"
+                                max="{{ combat.mana }}"
+                                value="{{ combat.mana }}"
+                            ></meter>
+                            <span class="hud-resource-values">
+                                <span id="combat-mana-value">{{ combat.mana }} / {{ combat.mana }}</span>
+                                <small class="hud-regen">
+                                    (+<span id="combat-mana-regen">{{ combat.baseManaRegen }}</span>/s)
+                                </small>
+                            </span>
+                        </label>
+                        <label>
+                            <span>XP</span>
+                            <meter
+                                id="combat-xp"
+                                class="xp-meter"
+                                max="100"
+                                value="0"
+                            ></meter>
+                            <span id="combat-xp-value">0 / 100</span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="target-hud" id="combat-target" aria-label="État de Saphyr" hidden>
+                    <label>
+                        <span>Saphyr</span>
+                        <meter
+                            id="combat-target-health"
+                            max="96"
+                            value="96"
+                        ></meter>
+                        <span id="combat-target-health-value">96 / 96</span>
+                    </label>
+                </section>
+            </div>
+
+            <div
+                id="world"
+                class="game-map"
+                data-class="{{ character.class.value }}"
+                data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"
+                data-combat="{{ combat|json_encode|e('html_attr') }}"
+            ></div>
+
+            <div id="combat-actions" class="combat-actions" hidden>
+                <div class="action-slots" role="group" aria-label="Barre de sorts et d’objets">
+                    <button
+                        class="action-slot"
+                        type="button"
+                        data-attack="basic"
+                        aria-keyshortcuts="1"
+                        title="{{ basic }}"
+                    >
+                        <kbd>1</kbd>
+                        <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span>
+                        <span id="combat-basic-name">{{ basic }}</span>
+                        <small id="combat-basic-meta">Rang 1 · {{ initialBasicDamage }} dég.</small>
+                    </button>
+
+                    <button
+                        class="action-slot"
+                        type="button"
+                        data-attack="special"
+                        aria-keyshortcuts="2"
+                        title="{{ combat.specialName }} · {{ combat.specialManaCost }} {{ resource }}"
+                    >
+                        <kbd>2</kbd>
+                        <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span>
+                        <span>{{ combat.specialName }}</span>
+                        <small id="combat-special-meta">{{ combat.specialManaCost }} {{ resource }} · {{ combat.specialDamage }} dég.</small>
+                    </button>
+
+                    {% for type, potion in potions %}
+                        <button
+                            class="action-slot"
+                            type="button"
+                            data-potion="{{ type }}"
+                            aria-keyshortcuts="{{ loop.index + 2 }}"
+                            title="{{ potion.name }}"
+                        >
+                            <kbd>{{ loop.index + 2 }}</kbd>
+                            <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
+                            <span>{{ potion.name }}</span>
+                            <small data-quantity="{{ type }}">2</small>
+                        </button>
+                    {% endfor %}
+
+                    <button
+                        id="character-open"
+                        class="action-slot character-slot"
+                        type="button"
+                        aria-keyshortcuts="C"
+                        aria-haspopup="dialog"
+                        title="Fiche de personnage, caractéristiques et sorts"
+                    >
+                        <kbd>C</kbd>
+                        <span class="action-icon icon-sheet" aria-hidden="true"></span>
+                        <span>Personnage</span>
+                        <small id="character-points-badge" data-has-points="true">+3 pts</small>
+                    </button>
+
+                    <button
+                        id="inventory-open"
+                        class="action-slot inventory-slot"
+                        type="button"
+                        aria-keyshortcuts="I"
+                        aria-haspopup="dialog"
+                        title="Inventaire"
+                    >
+                        <kbd>I</kbd>
+                        <span class="action-icon icon-bag" aria-hidden="true"></span>
+                        <span>Inventaire</span>
+                    </button>
+                </div>
+
+                <p id="combat-status" role="status"></p>
+                <button
+                    type="button"
+                    id="combat-reset"
+                    class="quiet"
+                    hidden
+                >
+                    Se relever au camp
+                </button>
+            </div>
+        </div>
+
+        {# Contrôles tactiles / souris #}
         <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
             <button class="quiet" type="button" data-direction="north" aria-label="Monter">↑</button>
             <button class="quiet" type="button" data-direction="west" aria-label="Aller à gauche">←</button>
             <button class="quiet" type="button" data-direction="south" aria-label="Descendre">↓</button>
             <button class="quiet" type="button" data-direction="east" aria-label="Aller à droite">→</button>
         </div>
-        <noscript><p>Active JavaScript pour déplacer ton personnage.</p></noscript>
+
+        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD · Fiche (C) · Sac (I).</p>
+
+        {# Fenêtre modale : Inventaire #}
+        <dialog id="inventory" aria-labelledby="inventory-title" aria-describedby="inventory-description">
+            <div class="inventory-heading">
+                <h2 id="inventory-title">Inventaire</h2>
+                <form method="dialog">
+                    <button type="submit" class="quiet" autofocus>Fermer</button>
+                </form>
+            </div>
+            <p id="inventory-description">Saphyr laisse un objet à chaque victoire.</p>
+            <ul class="inventory-items">
+                <li>
+                    <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-staff' }}" aria-hidden="true"></span>
+                    <div>
+                        <strong>{{ weapon }}</strong>
+                        <small data-weapon-state="starter">Équipé · +{{ combat.weaponBonus }} dégâts de base</small>
+                    </div>
+                    <button
+                        type="button"
+                        id="inventory-equip"
+                        class="quiet"
+                        data-weapon="starter"
+                    >
+                        Retirer
+                    </button>
+                </li>
+                {% for type, potion in potions %}
+                    <li>
+                        <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
+                        <div>
+                            <strong>{{ potion.name }} ×<span data-quantity="{{ type }}">2</span></strong>
+                            <small>+{{ potion.restore }} {{ type == 'health' ? 'PV' : 'points ' ~ resourcePhrase }} · Commun · {{ combat.loot[type].chance }} %</small>
+                        </div>
+                        <button
+                            type="button"
+                            class="quiet"
+                            data-potion="{{ type }}"
+                            aria-label="Boire · {{ potion.name }}"
+                        >
+                            Boire
+                        </button>
+                    </li>
+                {% endfor %}
+                {% for type in ['rare', 'epic'] %}
+                    {% set item = combat.loot[type] %}
+                    <li>
+                        <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-staff' }}" aria-hidden="true"></span>
+                        <div>
+                            <strong>{{ item.name }} ×<span data-quantity="{{ type }}">0</span></strong>
+                            <small>
+                                <span class="loot-{{ type }}">{{ item.rarity }} · {{ item.chance }} %</span>
+                                · +{{ item.bonus }} dégâts de base
+                                <span data-weapon-state="{{ type }}"></span>
+                            </small>
+                        </div>
+                        <button
+                            type="button"
+                            class="quiet"
+                            data-weapon="{{ type }}"
+                            disabled
+                        >
+                            Équiper
+                        </button>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p id="inventory-status" role="status"></p>
+        </dialog>
+
+        {# Fenêtre modale : Fiche de personnage, caractéristiques et sorts #}
+        <dialog id="character-sheet" aria-labelledby="character-sheet-title" aria-describedby="character-sheet-description">
+            <div class="inventory-heading">
+                <h2 id="character-sheet-title">Fiche de {{ character.name }}</h2>
+                <form method="dialog">
+                    <button type="submit" class="quiet" autofocus>Fermer</button>
+                </form>
+            </div>
+            <p id="character-sheet-description">
+                Chaque niveau augmente naturellement tes caractéristiques et octroie +{{ combat.statPointsPerLevel }} points de stats et +{{ combat.spellPointsPerLevel }} point de sort.
+            </p>
+
+            <div class="sheet-sections">
+                {# Section 1 : Fiche de personnage #}
+                <section class="sheet-card sheet-summary" aria-labelledby="sheet-summary-title">
+                    <h3 id="sheet-summary-title">Fiche de personnage</h3>
+                    <dl class="sheet-grid">
+                        <div>
+                            <dt>Identité</dt>
+                            <dd>{{ character.name }} · {{ character.class.label }}</dd>
+                        </div>
+                        <div>
+                            <dt>Niveau</dt>
+                            <dd><strong data-sheet-level>{{ character.level }}</strong></dd>
+                        </div>
+                        <div>
+                            <dt>Expérience</dt>
+                            <dd><strong data-sheet-xp>0 / 100</strong></dd>
+                        </div>
+                        <div>
+                            <dt>Arme équipée</dt>
+                            <dd><strong data-sheet-weapon>{{ weapon }}</strong></dd>
+                        </div>
+                        <div>
+                            <dt>PV max.</dt>
+                            <dd><strong data-sheet-max-health>{{ combat.health }}</strong></dd>
+                        </div>
+                        <div>
+                            <dt>{{ combat.resourceName }} max.</dt>
+                            <dd><strong data-sheet-max-mana>{{ combat.mana }}</strong></dd>
+                        </div>
+                        <div>
+                            <dt>Régénération auto</dt>
+                            <dd><strong data-sheet-mana-regen>+{{ combat.baseManaRegen }}/s</strong></dd>
+                        </div>
+                        <div>
+                            <dt>{{ basic }}</dt>
+                            <dd><strong data-sheet-basic-damage>{{ initialBasicDamage }} dégâts</strong></dd>
+                        </div>
+                        <div>
+                            <dt>{{ combat.specialName }}</dt>
+                            <dd><strong data-sheet-special-damage>{{ combat.specialDamage }} dégâts</strong></dd>
+                        </div>
+                        <div>
+                            <dt>Portée</dt>
+                            <dd><strong data-sheet-range>{{ combat.range }} {{ combat.range < 2 ? 'case' : 'cases' }}</strong></dd>
+                        </div>
+                    </dl>
+                </section>
+
+                {# Section 2 : Fiche de statistiques #}
+                <section class="sheet-card sheet-stats" aria-labelledby="sheet-stats-title">
+                    <div class="sheet-card-heading">
+                        <h3 id="sheet-stats-title">Fiche de caractéristiques</h3>
+                        <span id="stat-points-count" class="points-pill">{{ combat.initialStatPoints }} points disponibles</span>
+                    </div>
+                    <p class="sheet-note">
+                        Croissance naturelle par niveau :
+                        +{{ growthStats.strength }} Force ·
+                        +{{ growthStats.intelligence }} Intelligence ·
+                        +{{ growthStats.vitality }} Vitalité ·
+                        +{{ growthStats.spirit }} Esprit.
+                    </p>
+                    <ul class="stat-list">
+                        {% for stat in statDefinitions %}
+                            <li class="stat-row">
+                                <div class="stat-info">
+                                    <strong>{{ stat.label }} : <span data-stat-total="{{ stat.key }}">{{ baseStats[stat.key] }}</span></strong>
+                                    <small data-stat-detail="{{ stat.key }}">Base {{ baseStats[stat.key] }} · Naturel +0 · Investi +0</small>
+                                    <small class="stat-effect">{{ stat.effect }}</small>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="quiet"
+                                    data-allocate-stat="{{ stat.key }}"
+                                    aria-label="Augmenter {{ stat.label }}"
+                                >
+                                    +1
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+
+                {# Section 3 : Sorts et points de sort #}
+                <section class="sheet-card sheet-spells" aria-labelledby="sheet-spells-title">
+                    <div class="sheet-card-heading">
+                        <h3 id="sheet-spells-title">Sorts &amp; Points de sort</h3>
+                        <span id="spell-points-count" class="points-pill">{{ combat.initialSpellPoints }} point disponible</span>
+                    </div>
+                    <ul class="spell-list">
+                        <li class="spell-row">
+                            <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span>
+                            <div class="spell-info">
+                                <div class="spell-title">
+                                    <strong>{{ basic }}</strong>
+                                    <span class="spell-rank-badge" data-spell-rank="basic">Rang 1</span>
+                                </div>
+                                <small data-spell-damage="basic">
+                                    {{ initialBasicDamage }} dégâts actuels (+{{ combat.basicSpellRankBonus }} par rang)
+                                </small>
+                            </div>
+                            <button
+                                type="button"
+                                class="quiet"
+                                data-upgrade-spell="basic"
+                            >
+                                Améliorer (+1 rang)
+                            </button>
+                        </li>
+                        <li class="spell-row">
+                            <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span>
+                            <div class="spell-info">
+                                <div class="spell-title">
+                                    <strong>{{ combat.specialName }}</strong>
+                                    <span class="spell-rank-badge" data-spell-rank="special">Rang 1</span>
+                                </div>
+                                <small data-spell-damage="special">
+                                    {{ combat.specialDamage }} dégâts actuels (+{{ combat.specialSpellRankBonus }} par rang · Coût : {{ combat.specialManaCost }} {{ resource }})
+                                </small>
+                            </div>
+                            <button
+                                type="button"
+                                class="quiet"
+                                data-upgrade-spell="special"
+                            >
+                                Améliorer (+1 rang)
+                            </button>
+                        </li>
+                    </ul>
+                </section>
+            </div>
+
+            <p id="character-sheet-status" role="status"></p>
+        </dialog>
+
+        <noscript>
+            <p>Active JavaScript pour déplacer ton personnage.</p>
+        </noscript>
     </section>
+
     <script src="{{ app.request.basePath }}/game/phaser-3.90.0.min.js" defer></script>
-    <script src="{{ app.request.basePath }}/game/world.js" defer></script>
+    <script src="{{ app.request.basePath }}/game/world.js" type="module"></script>
 {% endblock %}

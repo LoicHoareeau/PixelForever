@@ -4,7 +4,13 @@ PixelForever se joue dans un navigateur. Le premier parcours va de l’inscripti
 
 Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. Symfony vérifie que le personnage appartient au compte connecté, puis ouvre **Val-des-Saules**. Le joueur se déplace avec les flèches, ZQSD, WASD ou les boutons de direction. L’eau et les bords de la carte bloquent le déplacement.
 
-Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab du dossier `PIxel/`. Les fichiers utilisés par le navigateur sont dans `public/game/val-des-saules/`. La grille de tuiles 28 × 20 a été reconstituée depuis `val-des-saules-apercu.png`, avec les bords hors cadre complétés. Le Mage utilise les huit vues de Lina et le Guerrier celles de Noé. Les exports de personnages contiennent des vues au repos qui changent selon la direction du mouvement. Saphyr reste dans la clairière.
+Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab depuis `public/game/val-des-saules/`. La carte de 28 × 20 tuiles est composée dans une seule texture. La cabane, les saules et les lanternes sont dessinés sur la même grille de pixels que le terrain. Les planches `lina/walk.png` et `noe/walk.png` reprennent les cycles `Marche` des exports PixelLab, avec huit images par direction. La distance parcourue cadence les images. L’affichage privilégie un agrandissement entier lorsque l’écran le permet.
+
+Saphyr patrouille dans la clairière et poursuit le personnage dès qu’il est touché. Le cercle bleu signale la zone dangereuse de son souffle. À sa défaite, Saphyr disparaît puis revient ailleurs après cinq secondes.
+
+L’ATH affiche la vie, l’XP et l’énergie du Guerrier ou le mana du Mage, avec leur régénération automatique par seconde. Le Guerrier frappe en mêlée jusqu’à 1,5 case. Les attaques du Mage portent jusqu’à 5 cases. La barre du bas donne accès aux attaques (`1` et `2`), aux potions (`3` et `4`), à la fiche de personnage et de caractéristiques (`C`) et au sac (`I`).
+
+Une victoire donne 50 XP et un objet tiré au sort. Les chances sont de 50 % pour une potion de vie, 30 % pour une potion de ressource, 15 % pour l’arme rare et 5 % pour l’arme épique. Le niveau 2 demande 100 XP, puis chaque niveau suivant demande 50 XP de plus. À chaque montée de niveau, les caractéristiques (Force, Intelligence, Vitalité, Esprit) augmentent naturellement selon la classe, et le joueur reçoit `+3` points de caractéristiques ainsi que `+1` point de sort à répartir dans sa fiche (`C`) pour renforcer ses attaques, ses PV, son mana/énergie et sa régénération automatique. Le niveau, les caractéristiques, les rangs de sorts et le sac sont sauvegardés par personnage dans le navigateur.
 
 ## Écrans
 

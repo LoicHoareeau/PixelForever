@@ -14,7 +14,8 @@ twig:
 
 doctrine:
     dbal:
-        url: '%env(resolve:DATABASE_URL)%'
+        url: '%env(default:app.sqlite_url:DATABASE_URL)%'
+        charset: utf8
     orm:
         mappings:
             App:
@@ -27,3 +28,9 @@ doctrine_migrations:
     migrations_paths:
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+
+when@prod:
+    framework:
+        secret: '%env(APP_SECRET)%'
+        session:
+            cookie_secure: true

@@ -4,7 +4,17 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Les premières règles métier sont implémentées en PHP dans `src/Game/`. Ce README présente aussi le périmètre prévu pour la première version jouable.
 
-## Lancer le parcours de compte en local
+## Lancer PixelForever avec PostgreSQL
+
+```sh
+docker compose -p pixelforever-postgres up -d --build
+```
+
+Ouvre [PixelForever](http://127.0.0.1:8080). PostgreSQL conserve les comptes et les personnages dans le volume Docker `pixelforever-postgres_accounts`, y compris quand les conteneurs sont recréés. Les identifiants de Compose sont réservés à cette installation locale.
+
+Le [guide de déploiement](docs/DEPLOIEMENT.md) décrit la configuration de Render et les vérifications après mise en ligne.
+
+## Lancer le parcours de compte en local avec SQLite
 
 Le parcours local requiert PHP 8.2 ou ultérieur, Composer et l’extension PHP `pdo_sqlite`. Sous Windows, active `extension=pdo_sqlite` dans le fichier indiqué par `php --ini`.
 
@@ -14,7 +24,16 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour créer et sélectionner un Guerrier ou un Mage. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. Le monde partagé et le combat dans le navigateur restent à intégrer.
+Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour jouer un Guerrier ou un Mage dans Val-des-Saules. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
+
+## Vérifications locales
+
+```sh
+composer test:accounts
+node --test tests/progression.test.mjs
+```
+
+Le test de comptes utilise une base SQLite temporaire et requiert les extensions PHP `pdo_sqlite` et `dom`.
 
 ## Règles métier du prototype
 

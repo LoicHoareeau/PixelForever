@@ -9,8 +9,19 @@ use InvalidArgumentException;
 
 final class Character
 {
-    private const SPECIAL_MANA_COST = 10;
-    private const ATTACK_COOLDOWN_MS = 500;
+    public const SPECIAL_MANA_COST = 10;
+    public const ATTACK_COOLDOWN_MS = 500;
+    public const HEALTH_POTION_RESTORE = 20;
+    public const MANA_POTION_RESTORE = 15;
+    public const EQUIPPED_ATTACK_BONUS = 4;
+
+    // Barème de progression : points de caractéristiques et de sorts par niveau
+    public const INITIAL_STAT_POINTS = 2;
+    public const INITIAL_SPELL_POINTS = 1;
+    public const STAT_POINTS_PER_LEVEL = 3;
+    public const SPELL_POINTS_PER_LEVEL = 1;
+    public const BASIC_SPELL_RANK_BONUS = 3;
+    public const SPECIAL_SPELL_RANK_BONUS = 5;
 
     private int $health;
     private int $mana;
@@ -100,13 +111,13 @@ final class Character
                 if ($this->health === $this->class->maxHealth()) {
                     throw new DomainException('Les points de vie sont déjà au maximum.');
                 }
-                $this->health = min($this->class->maxHealth(), $this->health + 20);
+                $this->health = min($this->class->maxHealth(), $this->health + self::HEALTH_POTION_RESTORE);
                 break;
             case Item::ManaPotion:
                 if ($this->mana === $this->class->maxMana()) {
                     throw new DomainException('Le mana est déjà au maximum.');
                 }
-                $this->mana = min($this->class->maxMana(), $this->mana + 15);
+                $this->mana = min($this->class->maxMana(), $this->mana + self::MANA_POTION_RESTORE);
                 break;
             default:
                 throw new DomainException('Cet objet n’est pas une potion.');
@@ -143,7 +154,7 @@ final class Character
         if ($special) {
             $this->mana -= self::SPECIAL_MANA_COST;
         } elseif ($this->weapon !== null) {
-            $damage += 4;
+            $damage += self::EQUIPPED_ATTACK_BONUS;
         }
 
         $this->nextAttackAtMs = $nowMs + self::ATTACK_COOLDOWN_MS;
