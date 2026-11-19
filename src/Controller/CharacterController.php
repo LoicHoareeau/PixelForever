@@ -32,9 +32,22 @@ final class CharacterController extends AbstractController
             ['id' => 'ASC'],
         );
 
+        $session = $request->getSession();
+        $selectedId = $session->get(self::SELECTED_CHARACTER);
+        if ($selectedId !== null) {
+            $ownedIds = array_map(
+                static fn (PlayerCharacter $character): ?int => $character->getId(),
+                $characters,
+            );
+            if (!in_array($selectedId, $ownedIds, true)) {
+                $session->remove(self::SELECTED_CHARACTER);
+                $selectedId = null;
+            }
+        }
+
         return $this->render('character/list.html.twig', [
             'characters' => $characters,
-            'selectedId' => $request->getSession()->get(self::SELECTED_CHARACTER),
+            'selectedId' => $selectedId,
         ]);
     }
 
@@ -119,6 +132,7 @@ final class CharacterController extends AbstractController
         return $this->render('game/play.html.twig', [
             'character' => $character,
             'combat' => [
+                'classKey' => $class->value,
                 'health' => $class->maxHealth(),
                 'mana' => $class->maxMana(),
                 'resourceName' => $class === CharacterClass::Warrior ? 'Énergie' : 'Mana',
@@ -134,12 +148,39 @@ final class CharacterController extends AbstractController
                 'manaRestore' => Character::MANA_POTION_RESTORE,
                 'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
                 'level' => $character->getLevel(),
+                'baseStats' => $class->baseStats(),
+                'growthStats' => $class->levelGrowthStats(),
+                'baseManaRegen' => $class->baseManaRegen(),
+                'initialStatPoints' => Character::INITIAL_STAT_POINTS,
+                'initialSpellPoints' => Character::INITIAL_SPELL_POINTS,
+                'statPointsPerLevel' => Character::STAT_POINTS_PER_LEVEL,
+                'spellPointsPerLevel' => Character::SPELL_POINTS_PER_LEVEL,
+                'basicSpellRankBonus' => Character::BASIC_SPELL_RANK_BONUS,
+                'specialSpellRankBonus' => Character::SPECIAL_SPELL_RANK_BONUS,
                 'progressKey' => hash('sha256', implode("\0", [$owner->getUserIdentifier(), $character->getId(), $character->getName(), $class->value])),
                 'loot' => [
-                    'health' => ['name' => 'Potion de vie', 'chance' => 50, 'rarity' => 'Commun'],
-                    'mana' => ['name' => $warrior ? 'Potion d’énergie' : 'Potion de mana', 'chance' => 30, 'rarity' => 'Commun'],
-                    'rare' => ['name' => $warrior ? 'Lame des saules' : 'Bâton des saules', 'chance' => 15, 'rarity' => 'Rare', 'bonus' => 7],
-                    'epic' => ['name' => $warrior ? 'Croc de Saphyr' : 'Sceptre de Saphyr', 'chance' => 5, 'rarity' => 'Épique', 'bonus' => 11],
+                    'health' => [
+                        'name' => 'Potion de vie',
+                        'chance' => 50,
+                        'rarity' => 'Commun',
+                    ],
+                    'mana' => [
+                        'name' => $warrior ? 'Potion d’énergie' : 'Potion de mana',
+                        'chance' => 30,
+                        'rarity' => 'Commun',
+                    ],
+                    'rare' => [
+                        'name' => $warrior ? 'Lame des saules' : 'Bâton des saules',
+                        'chance' => 15,
+                        'rarity' => 'Rare',
+                        'bonus' => 7,
+                    ],
+                    'epic' => [
+                        'name' => $warrior ? 'Croc de Saphyr' : 'Sceptre de Saphyr',
+                        'chance' => 5,
+                        'rarity' => 'Épique',
+                        'bonus' => 11,
+                    ],
                 ],
             ],
         ]);

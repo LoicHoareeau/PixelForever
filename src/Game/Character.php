@@ -15,6 +15,14 @@ final class Character
     public const MANA_POTION_RESTORE = 15;
     public const EQUIPPED_ATTACK_BONUS = 4;
 
+    // Barème de progression : points de caractéristiques et de sorts par niveau
+    public const INITIAL_STAT_POINTS = 2;
+    public const INITIAL_SPELL_POINTS = 1;
+    public const STAT_POINTS_PER_LEVEL = 3;
+    public const SPELL_POINTS_PER_LEVEL = 1;
+    public const BASIC_SPELL_RANK_BONUS = 3;
+    public const SPECIAL_SPELL_RANK_BONUS = 5;
+
     private int $health;
     private int $mana;
     private int $gold = 0;

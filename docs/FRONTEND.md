@@ -8,9 +8,9 @@ Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab depuis `publ
 
 Saphyr patrouille dans la clairière et poursuit le personnage dès qu’il est touché. Le cercle bleu signale la zone dangereuse de son souffle. À sa défaite, Saphyr disparaît puis revient ailleurs après cinq secondes.
 
-L’ATH affiche la vie, l’XP et l’énergie du Guerrier ou le mana du Mage. Le Guerrier frappe en mêlée jusqu’à 1,5 case. Les attaques du Mage portent jusqu’à 5 cases. La barre du bas donne accès aux attaques (`1` et `2`) et aux potions (`3` et `4`). Le sac (`I`) permet de boire les potions et d’équiper les armes du personnage.
+L’ATH affiche la vie, l’XP et l’énergie du Guerrier ou le mana du Mage, avec leur régénération automatique par seconde. Le Guerrier frappe en mêlée jusqu’à 1,5 case. Les attaques du Mage portent jusqu’à 5 cases. La barre du bas donne accès aux attaques (`1` et `2`), aux potions (`3` et `4`), à la fiche de personnage et de caractéristiques (`C`) et au sac (`I`).
 
-Une victoire donne 50 XP et un objet tiré au sort. Les chances sont de 50 % pour une potion de vie, 30 % pour une potion de ressource, 15 % pour l’arme rare et 5 % pour l’arme épique. Le niveau 2 demande 100 XP, puis chaque niveau suivant demande 50 XP de plus. Le niveau et le sac sont sauvegardés par personnage dans le navigateur.
+Une victoire donne 50 XP et un objet tiré au sort. Les chances sont de 50 % pour une potion de vie, 30 % pour une potion de ressource, 15 % pour l’arme rare et 5 % pour l’arme épique. Le niveau 2 demande 100 XP, puis chaque niveau suivant demande 50 XP de plus. À chaque montée de niveau, les caractéristiques (Force, Intelligence, Vitalité, Esprit) augmentent naturellement selon la classe, et le joueur reçoit `+3` points de caractéristiques ainsi que `+1` point de sort à répartir dans sa fiche (`C`) pour renforcer ses attaques, ses PV, son mana/énergie et sa régénération automatique. Le niveau, les caractéristiques, les rangs de sorts et le sac sont sauvegardés par personnage dans le navigateur.
 
 ## Écrans
 

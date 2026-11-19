@@ -93,36 +93,115 @@ import { Saphyr } from './dragon.js';
             const inventory = document.getElementById('inventory');
             const inventoryButton = document.getElementById('inventory-open');
             const inventoryStatus = document.getElementById('inventory-status');
+            const characterSheet = document.getElementById('character-sheet');
+            const characterButton = document.getElementById('character-open');
+            const hudSheetButton = document.getElementById('hud-sheet-open');
+            const characterSheetStatus = document.getElementById('character-sheet-status');
+            let switchingDialog = false;
+
             const releaseKeys = () => {
                 this.heldKeys.clear();
                 this.buttonMove = null;
             };
+
             const toggleInventory = () => {
                 if (inventory.open) {
                     inventory.close();
                     return;
                 }
+                if (characterSheet && characterSheet.open) {
+                    switchingDialog = true;
+                    characterSheet.close();
+                    switchingDialog = false;
+                }
                 releaseKeys();
                 inventoryStatus.textContent = '';
                 inventory.showModal();
             };
-            const drinkPotion = type => {
-                const message = this.combat.drinkPotion(type);
-                if (inventory.open) inventoryStatus.textContent = message;
-                else this.combat.tell(message);
+
+            const toggleCharacterSheet = () => {
+                if (!characterSheet) {
+                    return;
+                }
+                if (characterSheet.open) {
+                    characterSheet.close();
+                    return;
+                }
+                if (inventory.open) {
+                    switchingDialog = true;
+                    inventory.close();
+                    switchingDialog = false;
+                }
+                releaseKeys();
+                this.combat.refreshCharacterSheet();
+                if (characterSheetStatus) {
+                    characterSheetStatus.textContent = '';
+                }
+                characterSheet.showModal();
             };
+
+            const drinkPotion = (type) => {
+                const message = this.combat.drinkPotion(type);
+                if (inventory.open) {
+                    inventoryStatus.textContent = message;
+                } else {
+                    this.combat.tell(message);
+                }
+            };
+
             inventoryButton.addEventListener('click', toggleInventory, { signal: keyboard.signal });
-            inventory.addEventListener('close', () => inventoryButton.focus({ preventScroll: true }), { signal: keyboard.signal });
-            this.combat.potionButtons.forEach(button => {
+            inventory.addEventListener('close', () => {
+                if (!switchingDialog) {
+                    inventoryButton.focus({ preventScroll: true });
+                }
+            }, { signal: keyboard.signal });
+
+            if (characterButton) {
+                characterButton.addEventListener('click', toggleCharacterSheet, { signal: keyboard.signal });
+            }
+            if (hudSheetButton) {
+                hudSheetButton.addEventListener('click', toggleCharacterSheet, { signal: keyboard.signal });
+            }
+            if (characterSheet) {
+                characterSheet.addEventListener('close', () => {
+                    if (!switchingDialog && characterButton) {
+                        characterButton.focus({ preventScroll: true });
+                    }
+                }, { signal: keyboard.signal });
+            }
+
+            this.combat.statButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const message = this.combat.spendStatPoint(button.dataset.allocateStat);
+                    if (characterSheetStatus) {
+                        characterSheetStatus.textContent = message;
+                    }
+                }, { signal: keyboard.signal });
+            });
+
+            this.combat.spellButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const message = this.combat.spendSpellPoint(button.dataset.upgradeSpell);
+                    if (characterSheetStatus) {
+                        characterSheetStatus.textContent = message;
+                    }
+                }, { signal: keyboard.signal });
+            });
+
+            this.combat.potionButtons.forEach((button) => {
                 button.addEventListener('click', () => drinkPotion(button.dataset.potion), { signal: keyboard.signal });
             });
-            this.combat.weaponButtons.forEach(button => {
+
+            this.combat.weaponButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     inventoryStatus.textContent = this.combat.toggleWeapon(button.dataset.weapon);
                 }, { signal: keyboard.signal });
             });
-            window.addEventListener('keydown', event => {
-                if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+
+            window.addEventListener('keydown', (event) => {
+                if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+                    return;
+                }
                 const target = event.target;
                 if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, select, textarea'))) {
                     return;
@@ -132,18 +211,30 @@ import { Saphyr } from './dragon.js';
                     toggleInventory();
                     return;
                 }
-                if (inventory.open) return;
+                if (event.code === 'KeyC' && !event.repeat) {
+                    event.preventDefault();
+                    toggleCharacterSheet();
+                    return;
+                }
+                if (inventory.open || (characterSheet && characterSheet.open)) {
+                    return;
+                }
                 const movement = Object.hasOwn(bindings, event.code);
                 const attack = attacks[event.code];
                 const potion = potions[event.code];
-                if (!movement && !attack && !potion) return;
+                if (!movement && !attack && !potion) {
+                    return;
+                }
                 event.preventDefault();
                 if (movement) {
                     this.heldKeys.add(event.code);
                     this.buttonMove = null;
                 } else if (!event.repeat) {
-                    if (potion) drinkPotion(potion);
-                    else this.combat.attack(attack, this.time.now);
+                    if (potion) {
+                        drinkPotion(potion);
+                    } else {
+                        this.combat.attack(attack, this.time.now);
+                    }
                 }
             }, { signal: keyboard.signal });
             window.addEventListener('keyup', event => this.heldKeys.delete(event.code), { signal: keyboard.signal });
