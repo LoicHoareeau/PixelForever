@@ -6,9 +6,15 @@ Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. S
 
 Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab depuis `public/game/val-des-saules/`. La carte de 84 × 60 tuiles conserve la clairière originale et prolonge son chemin jusqu’au cimetière, puis aux montagnes. La caméra suit le personnage et reste dans les limites du monde. Le zoom entier vaut normalement ×2 sur ordinateur et ×1 sur un petit écran ; il augmente seulement si nécessaire pour couvrir un très grand écran. L’ATH reste fixe. La cabane, les saules, les tombes et les rochers sont dessinés sur la même grille de pixels que le terrain. Les planches `lina/walk.png` et `noe/walk.png` reprennent les cycles `Marche` des exports PixelLab, avec huit images par direction. La distance parcourue cadence les images.
 
-Les sangliers de niveau 1–5 patrouillent près du départ. Les squelettes de niveau 5–10 occupent le cimetière et Saphyr de niveau 10–20 reste dans les montagnes, loin du départ. Patrouilles, poursuites et réapparitions sont limitées à la zone de chaque espèce. Quitter la zone met fin à la poursuite. Le cercle bleu signale la zone dangereuse du souffle du dragon.
+Des falaises rocheuses irrégulières de deux à trois cases bordent le monde. Elles bloquent les déplacements ; les chemins entre les trois zones restent ouverts.
 
-Les tests `node --test tests/exploration.test.mjs tests/progression.test.mjs` vérifient les chemins entre zones avec leurs obstacles, les limites du terrain, le zoom et les patrouilles/réapparitions/poursuites, ainsi que la progression et les talents.
+Les sangliers de niveau 1–2 patrouillent au plus près du départ. Leurs congénères de niveau 2–4 puis 4–5 ont des patrouilles plus éloignées. Les squelettes de niveau 5–10 occupent le cimetière et Saphyr de niveau 10–20 reste dans les montagnes. Patrouilles, poursuites et réapparitions sont limitées à la zone de chaque espèce. Quitter la zone met fin à la poursuite.
+
+Les monstres proches engagent le joueur et répètent une auto-attaque ciblée à leur propre cadence : coup au contact pour sangliers et squelettes, projectile pour le dragon. Une courte préparation précède l’impact. Portée, obstacles, étourdissement, mort et sortie de zone empêchent un impact invalide. Les attaques des monstres ne dessinent plus de cercle de dégâts.
+
+La difficulté augmente avec les PV, les dégâts et la cadence. Pour les sangliers, les niveaux 1 et 2 donnent respectivement 52 PV / 6 dégâts et 74 PV / 8 dégâts ; le niveau 5 atteint 236 PV / 26 dégâts. Les squelettes passent de 260 PV / 26 dégâts au niveau 5 à 610 PV / 56 dégâts au niveau 10. Les dragons passent de 800 PV / 60 dégâts au niveau 10 à 2 500 PV / 160 dégâts au niveau 20. La réduction de dégâts du personnage continue de s’appliquer.
+
+Les tests `node --test tests/exploration.test.mjs tests/progression.test.mjs` vérifient les chemins entre zones avec leurs obstacles, les falaises infranchissables, le zoom, les patrouilles/réapparitions/poursuites, la cadence des auto-attaques, leurs interruptions et la progression de difficulté, ainsi que la progression du personnage et les talents.
 
 L’ATH affiche la vie, l’XP et l’énergie du Guerrier ou le mana du Mage, avec leur régénération automatique par seconde. Le Guerrier frappe en mêlée jusqu’à 1,5 case. Les attaques du Mage portent jusqu’à 5 cases. La barre du bas donne accès aux attaques (`1` et `2`), aux potions (`3` et `4`), à la fiche de personnage et de caractéristiques (`C`) et au sac (`I`).
 

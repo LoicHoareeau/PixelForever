@@ -17,6 +17,7 @@ import {
     upgradeSpell,
     xpRequired,
 } from './progression.js';
+import { inZone } from './exploration.js';
 
 const impactMs = 210;
 const recoveryMs = 140;
@@ -129,7 +130,6 @@ export class TrainingCombat {
             value: document.getElementById('combat-' + name + '-value'),
         }));
 
-        this.warning = scene.add.graphics().setDepth(2);
         this.effect = scene.add.graphics().setDepth(scene.terrain.length * tileSize + 1);
 
         // Cooldowns individuels par compétence + buff Berserk
@@ -205,7 +205,6 @@ export class TrainingCombat {
         this.pending = null;
         this.recovery = null;
         this.attackVisual = null;
-        this.warning.clear();
         this.effect.clear();
         this.scene.avatar.clearTint();
 
@@ -412,8 +411,7 @@ export class TrainingCombat {
             this.mana -= manaCost;
             this.setSlotCooldown(talent.slot, now, cdMs);
             target.stunUntil = now + 2000;
-            target.warningEndsAt = 0;
-            target.breath = null;
+            target.cancelAttack();
             const dmg = Math.round(this.stats.basicDamage * 1.1 * berserkMult);
             this.applyDamageToMonster(target, dmg, talent.name, 0x9be0de, now);
             this.refreshVitals();
@@ -495,8 +493,7 @@ export class TrainingCombat {
             }
         }
 
-        // Mise à jour de tous les monstres + zones d'avertissement
-        this.warning.clear();
+        // Chaque monstre poursuit sa cible et attaque à sa propre cadence.
         for (const monster of this.monsters) {
             if (!monster.isAlive) continue;
             if (this.health > 0) {
@@ -1037,9 +1034,6 @@ export class TrainingCombat {
         }
 
         monster.pursue();
-        if (monster.counterAt === Infinity) {
-            monster.counterAt = now + (monster.species === 'boar' ? 220 : 450);
-        }
         this.tell(`${attackName} · ${damage} dégâts sur ${monster.name} (N.${monster.level}).`);
     }
 
@@ -1075,28 +1069,22 @@ export class TrainingCombat {
     }
 
     /**
-     * Gère la riposte spécifique de chaque espèce (Sanglier rapide, Squelette, Dragon AoE).
+     * Résout une auto-attaque ciblée, puis respecte le temps de recharge du monstre.
      */
     updateMonsterCounter(monster, now) {
-        if (now < monster.stunUntil) {
+        if (!monster.isAlive || this.health <= 0) return;
+        if (now < monster.stunUntil || !monster.alert
+            || !inZone(monster.template.zone, this.scene.position.x, this.scene.position.y)) {
+            monster.cancelAttack();
             return;
         }
 
-        const dist = this.distanceTo(monster);
-        const radius = monster.stats.attackRadius;
-
-        if (monster.warningEndsAt) {
-            if (now < monster.warningEndsAt) {
-                const warnColor = monster.species === 'dragon' ? 0x32cadd : (monster.species === 'boar' ? 0xff7043 : 0xd0d8ff);
-                this.warning.fillStyle(warnColor, 0.24).fillCircle(monster.sprite.x, monster.sprite.y, radius);
-                this.warning.lineStyle(1.5, warnColor, 0.9).strokeCircle(monster.sprite.x, monster.sprite.y, radius);
-                return;
-            }
-            monster.warningEndsAt = 0;
-            monster.counterAt = now + monster.stats.counterIntervalMs;
+        if (monster.attackEndsAt) {
+            if (now < monster.attackEndsAt) return;
+            monster.attackEndsAt = 0;
             monster.sprite.clearTint();
 
-            if (dist > radius) {
+            if (!monster.canAttack(this.scene.position)) {
                 this.tell(`Tu as esquivé l’attaque de ${monster.name}.`);
                 return;
             }
@@ -1122,12 +1110,9 @@ export class TrainingCombat {
             return;
         }
 
-        if (monster.alert && now >= monster.counterAt && dist <= radius) {
-            monster.warningEndsAt = now + monster.stats.warningMs;
+        if (now >= monster.counterAt && monster.canAttack(this.scene.position)) {
             monster.startAttack(this.scene.position, now);
-            if (monster.species === 'dragon') {
-                this.tell(`${monster.name} prépare son souffle de zone ! Sors du cercle !`);
-            }
+            monster.counterAt = now + monster.stats.attackIntervalMs;
         }
     }
 
@@ -1135,12 +1120,14 @@ export class TrainingCombat {
      * Dessine les animations d'attaques et d'impacts en pixel art sur la scène.
      */
     drawEffects(now) {
-        if (!this.pending && !this.recovery && this.impacts.length === 0) {
+        const enemyAttacking = this.monsters.some(monster => monster.attackVisual && now < monster.attackVisual.end + recoveryMs);
+        if (!this.pending && !this.recovery && this.impacts.length === 0 && !enemyAttacking) {
             this.effect.clear();
             return;
         }
 
         this.effect.clear();
+        this.drawMonsterAttacks(now);
         this.impacts = this.impacts.filter((hit) => now - hit.start < impactMs);
         const still = this.scene.motionPreference.matches;
 
@@ -1206,6 +1193,27 @@ export class TrainingCombat {
             }
         } else {
             this.drawMelee(attack, progress, true);
+        }
+    }
+
+    drawMonsterAttacks(now) {
+        for (const monster of this.monsters) {
+            const attack = monster.attackVisual;
+            if (!monster.isAlive || !attack || now >= attack.end + recoveryMs) continue;
+            const elapsed = now - attack.start;
+            const color = monster.species === 'dragon' ? 0x7bdef2 : 0xffba87;
+            this.effect.fillStyle(color, .9);
+            if (monster.species === 'dragon') {
+                const progress = Math.max(0, Math.min(1, (now - attack.castEnd) / (attack.end - attack.castEnd)));
+                const x = attack.x + (this.scene.position.x - attack.x) * progress;
+                const y = attack.y + (this.scene.position.y - 17 - attack.y) * progress;
+                this.effect.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
+                this.effect.fillStyle(0xe3ffff, 1).fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+            } else {
+                const progress = Math.min(1, elapsed / (attack.end - attack.start));
+                const angle = attack.angle + (this.scene.motionPreference.matches ? 0 : -.65 + progress * 1.3);
+                this.strokePixels(attack.x, attack.y, angle, 8 + progress * 12, 2);
+            }
         }
     }
 
@@ -1292,12 +1300,10 @@ export class TrainingCombat {
     finish(message) {
         this.pending = null;
         this.attackVisual = null;
-        this.warning.clear();
         this.monsters.forEach((m) => {
             m.alert = false;
             m.path = [];
-            m.warningEndsAt = 0;
-            m.sprite.clearTint();
+            m.cancelAttack();
         });
         this.buttons.forEach((button) => {
             button.disabled = true;

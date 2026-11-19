@@ -1,6 +1,7 @@
 export const tileSize = 16;
 export const columns = 84;
 export const rows = 60;
+export const cliffTile = 35;
 
 export const zones = {
     boar: { name: 'Clairière · N.1–5', left: 2, top: 2, right: 29, bottom: 23 },
@@ -32,7 +33,9 @@ export function buildTerrain(clearing) {
     road(68, 32, 70, 50);
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < columns; x++) {
-            if (x === 0 || y === 0 || x === columns - 1 || y === rows - 1) terrain[y][x] = 34;
+            const side = 2 + Number(Math.floor(y / 5) % 3 === 1);
+            const cap = 2 + Number(Math.floor(x / 7) % 3 === 1);
+            if (x < side || y < cap || x >= columns - side || y >= rows - cap) terrain[y][x] = cliffTile;
         }
     }
     return terrain;
@@ -41,7 +44,7 @@ export function buildTerrain(clearing) {
 export function groundWalkable(terrain, x, y) {
     return [x - 3, x, x + 3].every(foot => {
         const tile = terrain[Math.floor(y / tileSize)]?.[Math.floor(foot / tileSize)];
-        return tile !== undefined && tile >= 16 && tile !== 34;
+        return tile !== undefined && tile >= 16 && tile !== 34 && tile !== cliffTile;
     });
 }
 

@@ -1,4 +1,4 @@
-import { graves, inZone, rocks, zones } from './exploration.js';
+import { cliffTile, graves, inZone, rocks, zones } from './exploration.js';
 
 const frameSize = 48;
 const canopy = [
@@ -221,14 +221,14 @@ export function treePositions(terrain) {
             positions.push([x, y]);
         }
     }
-    return positions;
+    return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile);
 }
 
 export function buildClearing(scene, terrain, tileSize, width, height, baseTiles) {
     const floor = scene.textures.createCanvas('clearing-floor', width, height);
     const context = floor.getContext();
     terrain.forEach((row, y) => row.forEach((tile, x) => {
-        const key = tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
+        const key = tile === cliffTile ? 'herbe' : tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
         const frame = scene.textures.getFrame(key, tile < 32 ? tile % 16 : undefined);
         drawFrame(context, frame, x * tileSize, y * tileSize);
     }));
@@ -279,6 +279,36 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         context.fillRect(px, py, 1, 1);
         context.fillRect(px + 2, py - 1, 1, 2);
         context.fillRect(px + 3, py, 1, 1);
+    }));
+    terrain.forEach((row, y) => row.forEach((tile, x) => {
+        if (tile !== cliffTile) return;
+        const px = x * tileSize;
+        const py = y * tileSize;
+        const seam = (x * 7 + y * 3) % 11 + 2;
+        context.fillStyle = '#343c43';
+        context.fillRect(px, py, tileSize, tileSize);
+        context.fillStyle = '#535c62';
+        context.fillRect(px + seam - 2, py, 4, tileSize);
+        context.fillStyle = '#424c55';
+        context.fillRect(px + 1, py + seam, 8, 4);
+        context.fillStyle = '#222c34';
+        context.fillRect(px + seam + 2, py + 2, 2, 9);
+        context.fillRect(px + 1, py + seam + 3, 6, 2);
+        context.fillStyle = '#778078';
+        context.fillRect(px + seam - 2, py + 3, 1, 6);
+        context.fillStyle = '#4e6549';
+        for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+            const neighbor = terrain[y + dy]?.[x + dx];
+            if (neighbor === undefined || neighbor === cliffTile) continue;
+            if (dy) context.fillRect(px, py + (dy > 0 ? tileSize - 3 : 0), tileSize, 3);
+            else context.fillRect(px + (dx > 0 ? tileSize - 3 : 0), py, 3, tileSize);
+        }
+        if (terrain[y + 1]?.[x] !== undefined && terrain[y + 1][x] !== cliffTile) {
+            context.fillStyle = '#172421';
+            context.globalAlpha = .35;
+            context.fillRect(px, py + tileSize, tileSize, 5);
+            context.globalAlpha = 1;
+        }
     }));
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
