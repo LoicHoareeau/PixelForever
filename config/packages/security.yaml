@@ -1,0 +1,24 @@
+security:
+    password_hashers:
+        App\Entity\User: auto
+    providers:
+        accounts:
+            entity:
+                class: App\Entity\User
+    firewalls:
+        main:
+            lazy: true
+            provider: accounts
+            form_login:
+                login_path: account_login
+                check_path: account_login
+                enable_csrf: true
+                default_target_path: character_list
+            login_throttling:
+                max_attempts: 5
+            logout:
+                path: account_logout
+                target: account_login
+                enable_csrf: true
+    access_control:
+        - { path: '^/personnages(?:/|$)', roles: ROLE_USER }

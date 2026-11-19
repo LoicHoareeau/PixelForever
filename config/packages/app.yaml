@@ -1,0 +1,29 @@
+framework:
+    default_locale: fr
+    session:
+        cookie_secure: auto
+        cookie_httponly: true
+        cookie_samesite: lax
+    csrf_protection: true
+    form: true
+    validation: true
+
+twig:
+    default_path: '%kernel.project_dir%/templates'
+    form_themes: ['form/theme.html.twig']
+
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+    orm:
+        mappings:
+            App:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Entity'
+                prefix: 'App\Entity'
+
+doctrine_migrations:
+    migrations_paths:
+        'DoctrineMigrations': '%kernel.project_dir%/migrations'
+    enable_profiler: false

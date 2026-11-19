@@ -2,7 +2,32 @@
 
 PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué dans un navigateur. Inspiré par l’exploration et les quêtes de *World of Warcraft*, il vise à créer un monde partagé où les joueurs peuvent se croiser, explorer et combattre ensemble en temps réel. Le serveur est prévu en **PHP avec Symfony**.
 
-Le projet est au stade de la conception. Ce README présente le périmètre prévu pour la première version jouable.
+Les premières règles métier sont implémentées en PHP dans `src/Game/`. Ce README présente aussi le périmètre prévu pour la première version jouable.
+
+## Lancer le parcours de compte en local
+
+Le parcours local requiert PHP 8.2 ou ultérieur, Composer et l’extension PHP `pdo_sqlite`. Sous Windows, active `extension=pdo_sqlite` dans le fichier indiqué par `php --ini`.
+
+```sh
+composer install
+php bin/console doctrine:migrations:migrate --no-interaction
+php -S 127.0.0.1:8000 -t public
+```
+
+Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour créer et sélectionner un Guerrier ou un Mage. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. Le monde partagé et le combat dans le navigateur restent à intégrer.
+
+## Règles métier du prototype
+
+| Classe | PV max. | Mana max. | Attaque de base | Compétence | Portée |
+| --- | --- | --- | --- | --- | --- |
+| Guerrier | 60 | 20 | 10 dégâts | 18 dégâts | 1,5 tuile |
+| Mage | 40 | 40 | 8 dégâts | 22 dégâts | 5 tuiles |
+
+Les attaques du joueur sont espacées d’au moins 500 ms et chaque compétence coûte 10 points de mana. Le Blob a 36 PV et inflige 8 dégâts à une tuile de distance. Une arme équipée ajoute 4 dégâts à l’attaque de base.
+
+Chaque personnage commence avec 0 or. Un coup réussi contre un Blob donne droit à un tirage au moment de sa défaite. Le tirage donne une potion de vie (45 %), une potion de mana (30 %) ou l’arme de la classe du personnage (25 %). Le prototype crédite directement le butin dans l’inventaire. Les potions restaurent 20 PV ou 15 points de mana, dans la limite du maximum du personnage.
+
+Chaque arme se revend 10 pièces d’or après avoir été déséquipée. Une copie supplémentaire peut être vendue pendant que le personnage garde son arme équipée. Le jeu compte les Blobs vaincus à partir de l’acceptation de la quête, et sa récompense est attribuée une seule fois.
 
 ## Première version jouable
 
@@ -28,18 +53,9 @@ La garde du hameau propose **Sécuriser le sentier**. Après avoir accepté la q
 
 ## Commandes
 
-Les **flèches directionnelles** (`↑`, `↓`, `←`, `→`) déplacent le personnage. La barre d’actions utilise les six premières touches de la rangée supérieure. L’interface peut les afficher sous les noms `1` à `6`, et les mêmes positions fonctionnent sur un clavier AZERTY ou QWERTY.
+Les déplacements utilisent **ZQSD en AZERTY** ou **WASD en QWERTY**. Les touches `1` à `6` de la rangée supérieure servent à l’attaque de base, aux sorts et aux potions. Le joueur peut modifier ses raccourcis dans les options du jeu, y compris choisir les flèches pour se déplacer. L’attaque de base ne consomme ni mana ni énergie.
 
-| QWERTY | AZERTY français | Action |
-| --- | --- | --- |
-| `1` | `&` | Attaque de base |
-| `2` | `é` | Compétence de classe |
-| `3` | `"` | Potion de vie |
-| `4` | `'` | Potion de mana |
-| `5` | `(` | Emplacement libre dans le prototype |
-| `6` | `-` | Emplacement libre dans le prototype |
-
-Le client repère ces touches par leur position physique (`Digit1` à `Digit6`) afin que les raccourcis fonctionnent sans appuyer sur Maj sur un clavier AZERTY.
+Le [document front-end](docs/FRONTEND.md#commandes-par-défaut) détaille les raccourcis. Le [game design](docs/GAME_DESIGN.md#animations-à-produire) décrit les animations d’attaque et de sort prévues.
 
 ## Architecture prévue
 

@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Val-des-Saules{% endblock %}
+{% block layout %}game-layout{% endblock %}
+
+{% block body %}
+    <section class="panel" aria-labelledby="zone-title">
+        <div class="panel-heading">
+            <h1 id="zone-title">Val-des-Saules</h1>
+            <a href="{{ path('character_list') }}">Mes personnages</a>
+        </div>
+        <div class="game-character {{ character.class.value }}">
+            <span class="class-icon" aria-hidden="true">{{ character.class.value == 'warrior' ? '⚔' : '✦' }}</span>
+            <div class="character-name">
+                <strong>{{ character.name }}</strong>
+                <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
+            </div>
+        </div>
+        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD.</p>
+        <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
+        <div id="world" class="game-map" data-class="{{ character.class.value }}" data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"></div>
+        <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
+            <button class="quiet" type="button" data-direction="north" aria-label="Monter">↑</button>
+            <button class="quiet" type="button" data-direction="west" aria-label="Aller à gauche">←</button>
+            <button class="quiet" type="button" data-direction="south" aria-label="Descendre">↓</button>
+            <button class="quiet" type="button" data-direction="east" aria-label="Aller à droite">→</button>
+        </div>
+        <noscript><p>Active JavaScript pour déplacer ton personnage.</p></noscript>
+    </section>
+    <script src="{{ app.request.basePath }}/game/phaser-3.90.0.min.js" defer></script>
+    <script src="{{ app.request.basePath }}/game/world.js" defer></script>
+{% endblock %}
