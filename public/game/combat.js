@@ -12,6 +12,7 @@ import {
     regenerateResource,
     resetTalents,
     saveProgress,
+    setProgressSync,
     statKeys,
     talentTrees,
     upgradeSpell,
@@ -19,6 +20,7 @@ import {
 } from './progression.js';
 import { inZone } from './exploration.js';
 import { recordTrailQuestDefeat } from './trail-quest.js';
+import { createProgressSync } from './progress-sync.js';
 
 const impactMs = 210;
 const recoveryMs = 140;
@@ -59,7 +61,14 @@ export class TrainingCombat {
         this.rules = rules;
         this.classKey = rules.classKey ?? (rules.ranged ? 'mage' : 'warrior');
         this.progressKey = 'pixelforever:progress:' + rules.progressKey;
-        this.progress = loadProgress(this.progressKey, rules.level);
+        this.progress = loadProgress(this.progressKey, rules.level, rules.progress);
+        this.progressSync = createProgressSync(rules.progressUrl, rules.progressToken, state => {
+            const status = document.getElementById('progress-save-status');
+            status.dataset.state = state;
+            status.textContent = state === 'saved' ? 'Niveau enregistré' : state === 'saving' ? 'Sauvegarde en cours…'
+                : 'Sauvegarde impossible · nouvelle tentative en cours';
+        });
+        setProgressSync(this.progressSync);
         this.manaCarry = 0;
         this.ranged = rules.ranged;
         this.selectedMonster = monsters.find((m) => m.species === 'boar') ?? monsters[0];
@@ -149,6 +158,7 @@ export class TrainingCombat {
         this.reset();
         document.getElementById('combat-vitals').hidden = false;
         this.combatActions.hidden = false;
+        saveProgress(this.progressKey, this.progress);
     }
 
     get range() {

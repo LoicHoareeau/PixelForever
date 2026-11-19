@@ -11,9 +11,15 @@ export const statKeys = ['strength', 'intelligence', 'vitality', 'spirit'];
 
 export const spellKeys = ['basic', 'special'];
 
-export const initialStatPoints = 2;
+export const initialStatPoints = 0;
 
-export const initialSpellPoints = 1;
+export const initialSpellPoints = 0;
+
+let progressSync = null;
+
+export function setProgressSync(sync) {
+    progressSync = sync;
+}
 
 export const statPointsPerLevel = 3;
 
@@ -390,8 +396,8 @@ export function createInitialProgress(startingLevel = 1) {
             epic: 0,
         },
         weapon: 'starter',
-        statPoints: initialStatPoints,
-        spellPoints: initialSpellPoints,
+        statPoints: Math.max(0, startingLevel - 1) * statPointsPerLevel,
+        spellPoints: Math.max(0, startingLevel - 1) * spellPointsPerLevel,
         allocatedStats: {
             strength: 0,
             intelligence: 0,
@@ -410,9 +416,9 @@ export function createInitialProgress(startingLevel = 1) {
 /**
  * Normalise une sauvegarde existante pour y intégrer les champs de stats, sorts et talents.
  */
-function normalizeProgress(saved, startingLevel) {
-    const fallback = createInitialProgress(startingLevel);
-    const levelsGained = Math.max(0, saved.level - startingLevel);
+function normalizeProgress(saved) {
+    const fallback = createInitialProgress();
+    const levelsGained = Math.max(0, saved.level - 1);
 
     const allocatedStats = {};
     for (const key of statKeys) {
@@ -435,19 +441,26 @@ function normalizeProgress(saved, startingLevel) {
         }
     }
 
-    const statPoints = Number.isSafeInteger(saved.statPoints) && saved.statPoints >= 0
-        ? saved.statPoints
-        : initialStatPoints + levelsGained * statPointsPerLevel;
-
-    const spellPoints = Number.isSafeInteger(saved.spellPoints) && saved.spellPoints >= 0
-        ? saved.spellPoints
-        : initialSpellPoints + levelsGained * spellPointsPerLevel;
+    const statBudget = levelsGained * statPointsPerLevel;
+    let spentStats = Object.values(allocatedStats).reduce((total, value) => total + value, 0);
+    if (spentStats > statBudget) {
+        for (const key of statKeys) allocatedStats[key] = 0;
+        spentStats = 0;
+    }
+    const spellBudget = levelsGained * spellPointsPerLevel;
+    let spentSpells = Object.values(talents).reduce((total, value) => total + value, 0)
+        + Object.values(spells).reduce((total, value) => total + value - 1, 0);
+    if (spentSpells > spellBudget) {
+        for (const key of Object.keys(talents)) delete talents[key];
+        for (const key of spellKeys) spells[key] = 1;
+        spentSpells = 0;
+    }
 
     return {
         ...fallback,
         ...saved,
-        statPoints,
-        spellPoints,
+        statPoints: statBudget - spentStats,
+        spellPoints: spellBudget - spentSpells,
         allocatedStats,
         spells,
         talents,
@@ -458,14 +471,14 @@ function normalizeProgress(saved, startingLevel) {
 /**
  * Charge et valide la progression sauvegardée d'un personnage dans le navigateur.
  */
-export function loadProgress(key, startingLevel) {
-    const initial = createInitialProgress(startingLevel);
+export function loadProgress(key, startingLevel = 1, serverProgress = null) {
+    let progress = createInitialProgress(Math.max(1, startingLevel));
 
     try {
         const saved = JSON.parse(localStorage.getItem(key));
         const hasValidBase = saved
             && Number.isSafeInteger(saved.level)
-            && saved.level >= startingLevel
+            && saved.level >= 1
             && saved.level <= 9999
             && Number.isSafeInteger(saved.xp)
             && saved.xp >= 0
@@ -480,17 +493,23 @@ export function loadProgress(key, startingLevel) {
             );
 
         if (hasValidBase) {
-            return normalizeProgress(saved, startingLevel);
+            progress = saved;
         }
     } catch {
         // Conserve la partie jouable si le stockage du navigateur est indisponible.
     }
 
-    return initial;
+    if (serverProgress && Number.isSafeInteger(serverProgress.level) && serverProgress.level >= 1
+        && serverProgress.level <= 9999 && Number.isSafeInteger(serverProgress.xp) && serverProgress.xp >= 0
+        && serverProgress.xp < xpRequired(serverProgress.level)
+        && (serverProgress.level > progress.level || (serverProgress.level === progress.level && serverProgress.xp > progress.xp))) {
+        progress = { ...progress, level: serverProgress.level, xp: serverProgress.xp };
+    }
+    return normalizeProgress(progress);
 }
 
 /**
- * Enregistre la progression du personnage dans localStorage.
+ * Garde le cache local et déclenche l’enregistrement du niveau et de l’XP en base.
  */
 export function saveProgress(key, progress) {
     try {
@@ -498,6 +517,7 @@ export function saveProgress(key, progress) {
     } catch {
         // Le personnage actif garde sa progression en mémoire jusqu'à la fermeture.
     }
+    progressSync?.save(progress);
 }
 
 /**
@@ -545,7 +565,7 @@ export function awardVictory(progress, loot, random = Math.random, xpGain = vict
  * Investit un point de caractéristique disponible dans la statistique choisie.
  */
 export function allocateStat(progress, stat) {
-    if (!statKeys.includes(stat)) {
+    if (progress.level <= 1 || !statKeys.includes(stat)) {
         return false;
     }
 
@@ -572,7 +592,7 @@ export function allocateStat(progress, stat) {
  * Dépense un point de sort pour augmenter le rang de l'attaque ou du sort choisi.
  */
 export function upgradeSpell(progress, spell) {
-    if (!spellKeys.includes(spell)) {
+    if (progress.level <= 1 || !spellKeys.includes(spell)) {
         return false;
     }
 
@@ -626,7 +646,7 @@ export function findTalent(classKey, talentId) {
  * Vérifie si un point peut être investi dans le talent demandé.
  */
 export function canInvestTalent(progress, classKey, talentId) {
-    if (!Number.isSafeInteger(progress.spellPoints) || progress.spellPoints <= 0) {
+    if (progress.level <= 1 || !Number.isSafeInteger(progress.spellPoints) || progress.spellPoints <= 0) {
         return false;
     }
     const found = findTalent(classKey, talentId);
@@ -709,7 +729,7 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const baseStats = rules.baseStats ?? fallbackProfile.baseStats;
     const growthStats = rules.growthStats ?? fallbackProfile.growthStats;
 
-    const startingLevel = rules.level ?? 1;
+    const startingLevel = 1;
     const level = progress.level ?? startingLevel;
     const levelsGained = Math.max(0, level - startingLevel);
 

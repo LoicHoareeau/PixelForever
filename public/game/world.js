@@ -134,6 +134,10 @@ import { saveProgress } from './progression.js';
             canvas.setAttribute('aria-describedby', 'game-controls');
 
             const keyboard = new AbortController();
+            const flushProgress = () => { void this.combat.progressSync.flush(); };
+            window.addEventListener('pagehide', flushProgress, { signal: keyboard.signal });
+            window.addEventListener('online', flushProgress, { signal: keyboard.signal });
+            this.time.addEvent({ delay: 5000, loop: true, callback: flushProgress });
             const inventory = document.getElementById('inventory');
             const inventoryButton = document.getElementById('inventory-open');
             const inventoryStatus = document.getElementById('inventory-status');

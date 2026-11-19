@@ -566,6 +566,16 @@ body.game-fullscreen .masthead {
     border-right: 1px solid #58485f;
 }
 
+#progress-save-status {
+    display: block;
+    font-size: .65rem;
+    color: var(--muted);
+}
+
+#progress-save-status[data-state="error"] {
+    color: #ffb3a7;
+}
+
 .hud-quick-btn,
 .hud-quick-link {
     min-height: 1.9rem;

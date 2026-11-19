@@ -25,10 +25,11 @@ function check(bool $condition, string $message): void
     }
 }
 
-function visit(Session $session, string $method, string $path, int $status, array $data = []): Response
+function visit(Session $session, string $method, string $path, int $status, array $data = [], ?string $json = null): Response
 {
     $kernel = new Kernel('test', false);
-    $request = Request::create($path, $method, $data, [$session->getName() => $session->getId()]);
+    $request = Request::create($path, $method, $data, [$session->getName() => $session->getId()], [],
+        $json === null ? [] : ['CONTENT_TYPE' => 'application/json'], $json);
     $request->setSession($session);
     try {
         $response = $kernel->handle($request);
@@ -126,6 +127,9 @@ try {
     check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/lina/south.png'), 'Le portrait de la guerrière doit correspondre à son sprite.');
     check($warriorRules['classKey'] === 'warrior' && !$warriorRules['ranged'] && $warriorRules['range'] === 1.5, 'La guerrière doit combattre au corps à corps.');
     check($warriorRules['resourceName'] === 'Énergie' && $warriorRules['specialName'] === 'Attaque chargée', 'La guerrière doit conserver son énergie et ses compétences de mêlée.');
+    check($warriorRules['initialStatPoints'] === 0 && $warriorRules['initialSpellPoints'] === 0, 'Aucun point gratuit au niveau 1.');
+    check($warriorRules['progress'] === ['level' => 1, 'xp' => 0], 'La base doit initialiser le personnage au niveau 1.');
+    check(str_contains($warriorPage->getContent(), 'id="progress-save-status"'), 'L’état de sauvegarde doit être visible dans le jeu.');
     $bobList = visit($bob, 'GET', '/personnages', 200);
     check(str_contains($bobList->getContent(), 'Merlin'), 'Merlin doit être visible sur son compte.');
     check(!str_contains($bobList->getContent(), 'Roland'), 'Roland doit rester invisible sur le compte de Bob.');
@@ -143,6 +147,33 @@ try {
     check($mageRules['resourceName'] === 'Mana' && $mageRules['specialName'] === 'Boule de feu', 'Le mage doit conserver son mana et ses sorts.');
     visit($bob, 'POST', "/personnages/$rolandId/selection", 404, ['_token' => $selectionToken]);
     check($bob->get('selected_character') === $bobSelection, 'Le refus doit préserver la sélection de Bob.');
+
+    $progressPath = $warriorRules['progressUrl'];
+    $progressData = ['_token' => $warriorRules['progressToken'], 'level' => 3, 'xp' => 77];
+    $saved = visit($alice, 'POST', $progressPath, 200, json: json_encode($progressData, JSON_THROW_ON_ERROR));
+    check(json_decode($saved->getContent(), true) === ['level' => 3, 'xp' => 77], 'Niveau et XP doivent être enregistrés.');
+    visit($bob, 'POST', $progressPath, 404, json: json_encode($progressData, JSON_THROW_ON_ERROR));
+    visit(new Session(new MockArraySessionStorage()), 'POST', $progressPath, 302, json: json_encode($progressData, JSON_THROW_ON_ERROR));
+    visit($alice, 'POST', $progressPath, 403, json: json_encode([...$progressData, '_token' => 'invalid'], JSON_THROW_ON_ERROR));
+    visit($alice, 'POST', $progressPath, 400, json: '{broken');
+    visit($alice, 'POST', $progressPath, 413, json: str_repeat(' ', 4097));
+    foreach ([['level' => 0], ['level' => 10000], ['level' => '3'], ['xp' => -1], ['xp' => 200]] as $invalid) {
+        visit($alice, 'POST', $progressPath, 400, json: json_encode([...$progressData, ...$invalid], JSON_THROW_ON_ERROR));
+    }
+    foreach ([['level' => 1, 'xp' => 99], ['level' => 3, 'xp' => 50]] as $stale) {
+        $result = visit($alice, 'POST', $progressPath, 200, json: json_encode([...$progressData, ...$stale], JSON_THROW_ON_ERROR));
+        check(json_decode($result->getContent(), true) === ['level' => 3, 'xp' => 77], 'Une ancienne sauvegarde ne doit pas faire régresser le personnage.');
+    }
+
+    $reconnected = new Session(new MockArraySessionStorage());
+    $loginPage = visit($reconnected, 'GET', '/connexion', 200);
+    login($reconnected, 'alice@example.test', htmlValue($loginPage, '//input[@name="_csrf_token"]/@value'));
+    $reconnectedList = visit($reconnected, 'GET', '/personnages', 200);
+    check(str_contains($reconnectedList->getContent(), 'Niveau 3'), 'La liste doit retrouver le niveau 3 après une nouvelle connexion.');
+    visit($reconnected, 'POST', "/personnages/$rolandId/selection", 303, ['_token' => htmlValue($reconnectedList, '//input[@name="_token"]/@value')]);
+    $restoredGame = visit($reconnected, 'GET', '/personnages/jeu', 200);
+    $restoredRules = json_decode(htmlValue($restoredGame, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    check($restoredRules['progress'] === ['level' => 3, 'xp' => 77], 'Le jeu doit restaurer le niveau et l’XP depuis la base.');
 
     // Le formulaire de connexion redirige les utilisateurs déjà authentifiés.
     $requestStack = new RequestStack();

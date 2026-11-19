@@ -54,4 +54,9 @@ class PlayerCharacter
     {
         return $this->level;
     }
+
+    public function getExperience(): int
+    {
+        return $this->experience;
+    }
 }
