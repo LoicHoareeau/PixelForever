@@ -6,7 +6,7 @@ Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. S
 
 Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab depuis `public/game/val-des-saules/`. La carte de 28 × 20 tuiles est composée dans une seule texture. La cabane, les saules et les lanternes sont dessinés sur la même grille de pixels que le terrain. La scène alterne quatre poses de marche par direction, dérivées des huit vues de Lina et de Noé. L’affichage privilégie un agrandissement entier lorsque l’écran le permet.
 
-Le duel d’entraînement solo contre Saphyr tourne en temps réel dans Phaser. La touche `1` lance l’attaque de base sans coût en mana et la touche `2` utilise l’Attaque chargée du Guerrier ou la Boule de feu du Mage. Le personnage peut bouger pendant la préparation de son attaque ou de la riposte de Saphyr. Le duel se réinitialise depuis l’écran de jeu et ses résultats restent locaux au navigateur.
+Le duel d’entraînement solo contre Saphyr tourne en temps réel dans Phaser. L’ATH affiche la vie et l’énergie du Guerrier ou le mana du Mage. La barre du bas affiche l’attaque de base (`1`), l’Attaque chargée ou la Boule de feu (`2`) et les deux potions (`3` et `4`). Le sac (`I`) permet de boire ces mêmes potions et d’équiper ou de ranger l’arme de classe. Le personnage peut bouger pendant la préparation de son attaque ou de la riposte de Saphyr. Un nouveau duel restaure le sac d’entraînement.
 
 ## Écrans
 

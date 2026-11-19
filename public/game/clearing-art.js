@@ -32,7 +32,7 @@ const trees = [
 ];
 
 export function createWalkSheet(scene, skin, directions) {
-    const sheet = scene.textures.createCanvas(skin + '-poses', frameSize * (walkFrames + 1), frameSize * directions.length);
+    const sheet = scene.textures.createCanvas(skin + '-poses', frameSize * (walkFrames + 3), frameSize * directions.length);
     const context = sheet.getContext();
     directions.forEach((direction, row) => {
         const source = scene.textures.get(skin + '-' + direction).getSourceImage();
@@ -70,6 +70,16 @@ export function createWalkSheet(scene, skin, directions) {
             }
             sheet.add(direction + '-' + frame, 0, x, y, frameSize, frameSize);
         });
+        const vertical = direction.includes('south') ? 1 : direction.includes('north') ? -1 : 0;
+        const torsoHeight = bottom - 11;
+        for (const [index, pose, lean] of [[0, 'windup', -1], [1, 'release', 1]]) {
+            const x = (walkFrames + 1 + index) * frameSize;
+            context.drawImage(source, 0, torsoHeight, frameSize, frameSize - torsoHeight,
+                x, anchor + torsoHeight, frameSize, frameSize - torsoHeight);
+            context.drawImage(source, 0, 0, frameSize, torsoHeight + 2,
+                x + horizontal * lean * 2, anchor + vertical * lean - 1, frameSize, torsoHeight + 2);
+            sheet.add(direction + '-' + pose, 0, x, y, frameSize, frameSize);
+        }
     });
     sheet.refresh();
     return sheet.key;

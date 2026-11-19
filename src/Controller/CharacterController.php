@@ -120,12 +120,17 @@ final class CharacterController extends AbstractController
             'combat' => [
                 'health' => $class->maxHealth(),
                 'mana' => $class->maxMana(),
+                'resourceName' => $class === CharacterClass::Warrior ? 'Énergie' : 'Mana',
                 'range' => $class->attackRange(),
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),
+                'basicName' => $class === CharacterClass::Warrior ? 'Coup d’épée' : 'Trait arcanique',
                 'specialName' => $class === CharacterClass::Warrior ? 'Attaque chargée' : 'Boule de feu',
                 'specialManaCost' => Character::SPECIAL_MANA_COST,
                 'cooldownMs' => Character::ATTACK_COOLDOWN_MS,
+                'healthRestore' => Character::HEALTH_POTION_RESTORE,
+                'manaRestore' => Character::MANA_POTION_RESTORE,
+                'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
             ],
         ]);
     }

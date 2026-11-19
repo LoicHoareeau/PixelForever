@@ -4,37 +4,62 @@
 {% block layout %}game-layout{% endblock %}
 
 {% block body %}
+    {% set warrior = character.class.value == 'warrior' %}
+    {% set weapon = warrior ? 'Épée de fer' : 'Bâton de braise' %}
+    {% set basic = combat.basicName %}
+    {% set resource = combat.resourceName|lower %}
+    {% set resourcePhrase = warrior ? 'd’énergie' : 'de mana' %}
+    {% set potions = {
+        health: {name: 'Potion de vie', icon: 'icon-health', restore: combat.healthRestore},
+        mana: {name: 'Potion ' ~ resourcePhrase, icon: 'icon-mana', restore: combat.manaRestore}
+    } %}
     <section class="panel" aria-labelledby="zone-title">
         <div class="panel-heading">
             <h1 id="zone-title">Val-des-Saules</h1>
             <a href="{{ path('character_list') }}">Mes personnages</a>
         </div>
-        <div class="game-character {{ character.class.value }}">
-            <span class="class-icon" aria-hidden="true">{{ character.class.value == 'warrior' ? '⚔' : '✦' }}</span>
-            <div class="character-name">
-                <strong>{{ character.name }}</strong>
-                <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
-            </div>
-        </div>
-        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD.</p>
         <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
-        <section id="combat-vitals" class="combat-vitals" aria-label="État du combat" hidden>
-            <label>Vie <meter id="combat-health" max="{{ combat.health }}" value="{{ combat.health }}"></meter>
-                <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
-            </label>
-            <label>Mana <meter id="combat-mana" max="{{ combat.mana }}" value="{{ combat.mana }}"></meter>
-                <span id="combat-mana-value">{{ combat.mana }} / {{ combat.mana }}</span>
-            </label>
-            <label>Saphyr <meter id="combat-target-health" max="96" value="96"></meter>
-                <span id="combat-target-health-value">96 / 96</span>
-            </label>
-        </section>
-        <div id="world" class="game-map" data-class="{{ character.class.value }}" data-asset-path="{{ app.request.basePath }}/game/val-des-saules/" data-combat="{{ combat|json_encode|e('html_attr') }}"></div>
-        <div id="combat-actions" class="combat-actions" role="group" aria-label="Actions de combat" hidden>
-            <button type="button" data-attack="basic" aria-keyshortcuts="1"><kbd>1</kbd> Attaque de base</button>
-            <button type="button" data-attack="special" aria-keyshortcuts="2"><kbd>2</kbd> {{ combat.specialName }} <small>{{ combat.specialManaCost }} mana</small></button>
-            <button type="button" id="combat-reset" class="quiet" hidden>Reprendre l’entraînement</button>
-            <p id="combat-status" role="status">Approche-toi de Saphyr pour t’entraîner.</p>
+        <div class="game-stage">
+            <div id="combat-vitals" class="combat-vitals" hidden>
+                <section class="player-hud" aria-label="État du personnage">
+                    <img class="hud-portrait" src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'noe' : 'lina' }}/south.png" width="48" height="48" alt="">
+                    <div class="hud-stats">
+                        <div class="hud-name"><strong>{{ character.name }}</strong><small>{{ character.class.label }} · Niv. {{ character.level }}</small></div>
+                        <label>Vie <meter id="combat-health" max="{{ combat.health }}" value="{{ combat.health }}"></meter>
+                            <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
+                        </label>
+                        <label>{{ combat.resourceName }} <meter id="combat-mana" class="{{ warrior ? 'energy-meter' : 'mana-meter' }}" max="{{ combat.mana }}" value="{{ combat.mana }}"></meter>
+                            <span id="combat-mana-value">{{ combat.mana }} / {{ combat.mana }}</span>
+                        </label>
+                    </div>
+                </section>
+                <section class="target-hud" id="combat-target" aria-label="État de Saphyr" hidden>
+                    <label>Saphyr <meter id="combat-target-health" max="96" value="96"></meter>
+                        <span id="combat-target-health-value">96 / 96</span>
+                    </label>
+                </section>
+            </div>
+            <div id="world" class="game-map" data-class="{{ character.class.value }}" data-asset-path="{{ app.request.basePath }}/game/val-des-saules/" data-combat="{{ combat|json_encode|e('html_attr') }}"></div>
+            <div id="combat-actions" class="combat-actions" hidden>
+                <div class="action-slots" role="group" aria-label="Barre de sorts et d’objets">
+                    <button class="action-slot" type="button" data-attack="basic" aria-keyshortcuts="1" title="{{ basic }}">
+                        <kbd>1</kbd><span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span><span id="combat-basic-name">{{ basic }}</span>
+                    </button>
+                    <button class="action-slot" type="button" data-attack="special" aria-keyshortcuts="2" title="{{ combat.specialName }} · {{ combat.specialManaCost }} {{ resource }}">
+                        <kbd>2</kbd><span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span><span>{{ combat.specialName }}</span><small>{{ combat.specialManaCost }} {{ resource }}</small>
+                    </button>
+                    {% for type, potion in potions %}
+                        <button class="action-slot" type="button" data-potion="{{ type }}" aria-keyshortcuts="{{ loop.index + 2 }}" title="{{ potion.name }}">
+                            <kbd>{{ loop.index + 2 }}</kbd><span class="action-icon {{ potion.icon }}" aria-hidden="true"></span><span>{{ potion.name }}</span><small data-quantity="{{ type }}">2</small>
+                        </button>
+                    {% endfor %}
+                    <button id="inventory-open" class="action-slot inventory-slot" type="button" aria-keyshortcuts="I" aria-haspopup="dialog" title="Inventaire">
+                        <kbd>I</kbd><span class="action-icon icon-bag" aria-hidden="true"></span><span>Inventaire</span>
+                    </button>
+                </div>
+                <p id="combat-status" role="status"></p>
+                <button type="button" id="combat-reset" class="quiet" hidden>Reprendre l’entraînement</button>
+            </div>
         </div>
         <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
             <button class="quiet" type="button" data-direction="north" aria-label="Monter">↑</button>
@@ -42,6 +67,29 @@
             <button class="quiet" type="button" data-direction="south" aria-label="Descendre">↓</button>
             <button class="quiet" type="button" data-direction="east" aria-label="Aller à droite">→</button>
         </div>
+        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD.</p>
+        <dialog id="inventory" aria-labelledby="inventory-title" aria-describedby="inventory-description">
+            <div class="inventory-heading">
+                <h2 id="inventory-title">Inventaire</h2>
+                <form method="dialog"><button type="submit" class="quiet" autofocus>Fermer</button></form>
+            </div>
+            <p id="inventory-description">Sac d’entraînement. Son contenu est réinitialisé à chaque nouveau duel.</p>
+            <ul class="inventory-items">
+                <li>
+                    <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-staff' }}" aria-hidden="true"></span>
+                    <div><strong>{{ weapon }}</strong><small id="inventory-weapon-state">Équipé · +{{ combat.weaponBonus }} dégâts de base</small></div>
+                    <button type="button" id="inventory-equip" class="quiet">Retirer</button>
+                </li>
+                {% for type, potion in potions %}
+                    <li>
+                        <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
+                        <div><strong>{{ potion.name }} ×<span data-quantity="{{ type }}">2</span></strong><small>Restaure jusqu’à {{ potion.restore }} {{ type == 'health' ? 'PV' : 'points ' ~ resourcePhrase }}</small></div>
+                        <button type="button" class="quiet" data-potion="{{ type }}" aria-label="Boire · {{ potion.name }}">Boire</button>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p id="inventory-status" role="status"></p>
+        </dialog>
         <noscript><p>Active JavaScript pour déplacer ton personnage.</p></noscript>
     </section>
     <script src="{{ app.request.basePath }}/game/phaser-3.90.0.min.js" defer></script>

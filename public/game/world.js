@@ -25,6 +25,7 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
         ArrowRight: 'east', KeyD: 'east',
     };
     const attacks = { Digit1: 'basic', Digit2: 'special' };
+    const potions = { Digit3: 'health', Digit4: 'mana' };
     const vectors = { north: [0, -1], west: [-1, 0], south: [0, 1], east: [1, 0] };
     const directions = [
         'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east',
@@ -90,25 +91,58 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
             canvas.setAttribute('aria-describedby', 'game-controls');
 
             const keyboard = new AbortController();
+            const inventory = document.getElementById('inventory');
+            const inventoryButton = document.getElementById('inventory-open');
+            const inventoryStatus = document.getElementById('inventory-status');
             const releaseKeys = () => {
                 this.heldKeys.clear();
                 this.buttonMove = null;
             };
+            const toggleInventory = () => {
+                if (inventory.open) {
+                    inventory.close();
+                    return;
+                }
+                releaseKeys();
+                inventoryStatus.textContent = '';
+                inventory.showModal();
+            };
+            const drinkPotion = type => {
+                const message = this.combat.drinkPotion(type);
+                if (inventory.open) inventoryStatus.textContent = message;
+                else this.combat.tell(message);
+            };
+            inventoryButton.addEventListener('click', toggleInventory, { signal: keyboard.signal });
+            inventory.addEventListener('close', () => inventoryButton.focus({ preventScroll: true }), { signal: keyboard.signal });
+            this.combat.potionButtons.forEach(button => {
+                button.addEventListener('click', () => drinkPotion(button.dataset.potion), { signal: keyboard.signal });
+            });
+            this.combat.equipButton.addEventListener('click', () => {
+                inventoryStatus.textContent = this.combat.toggleWeapon();
+            }, { signal: keyboard.signal });
             window.addEventListener('keydown', event => {
                 if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-                const movement = Object.hasOwn(bindings, event.code);
-                const attack = attacks[event.code];
-                if (!movement && !attack) return;
                 const target = event.target;
                 if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, select, textarea'))) {
                     return;
                 }
+                if (event.code === 'KeyI' && !event.repeat) {
+                    event.preventDefault();
+                    toggleInventory();
+                    return;
+                }
+                if (inventory.open) return;
+                const movement = Object.hasOwn(bindings, event.code);
+                const attack = attacks[event.code];
+                const potion = potions[event.code];
+                if (!movement && !attack && !potion) return;
                 event.preventDefault();
                 if (movement) {
                     this.heldKeys.add(event.code);
                     this.buttonMove = null;
                 } else if (!event.repeat) {
-                    this.combat.attack(attack, this.time.now);
+                    if (potion) drinkPotion(potion);
+                    else this.combat.attack(attack, this.time.now);
                 }
             }, { signal: keyboard.signal });
             window.addEventListener('keyup', event => this.heldKeys.delete(event.code), { signal: keyboard.signal });
@@ -211,13 +245,11 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
         renderAvatar(time) {
             const { x, y } = this.position;
             const walking = time - this.lastWalkAt < 90;
-            const pose = walking ? Math.floor(this.walkDistance / stride) % 4 : 'idle';
-            const frame = this.facing + '-' + pose;
+            const gesture = this.combat.attackPose(time);
+            const pose = gesture?.pose ?? (walking ? Math.floor(this.walkDistance / stride) % 4 : 'idle');
+            const frame = (gesture?.attack.facing ?? this.facing) + '-' + pose;
             if (this.avatar.frame.name !== frame) this.avatar.setTexture(this.poseSheet, frame);
-            const lean = this.motionPreference.matches ? 0 : this.combat.attackLean(time);
-            const target = this.combat.target;
-            const direction = Math.atan2(target.y - y, target.x - x);
-            this.avatar.setPosition(Math.round(x + Math.cos(direction) * lean), Math.round(y + Math.sin(direction) * lean)).setDepth(y);
+            this.avatar.setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
         }
     }
