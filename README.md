@@ -4,7 +4,17 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Les premières règles métier sont implémentées en PHP dans `src/Game/`. Ce README présente aussi le périmètre prévu pour la première version jouable.
 
-## Lancer le parcours de compte en local
+## Lancer PixelForever avec PostgreSQL
+
+```sh
+docker compose -p pixelforever-postgres up -d --build
+```
+
+Ouvre [PixelForever](http://127.0.0.1:8080). PostgreSQL conserve les comptes et les personnages dans le volume Docker `pixelforever-postgres_accounts`, y compris quand les conteneurs sont recréés. Les identifiants de Compose sont réservés à cette installation locale.
+
+Sur Render, définis `DATABASE_URL` dans les variables d’environnement du service avec l’URL d’une base PostgreSQL joignable depuis Render. Les migrations s’exécutent au démarrage. Le volume de Docker Desktop est accessible depuis l’installation locale.
+
+## Lancer le parcours de compte en local avec SQLite
 
 Le parcours local requiert PHP 8.2 ou ultérieur, Composer et l’extension PHP `pdo_sqlite`. Sous Windows, active `extension=pdo_sqlite` dans le fichier indiqué par `php --ini`.
 
