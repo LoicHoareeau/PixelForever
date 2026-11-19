@@ -1,4 +1,5 @@
 import { TrainingCombat } from './combat.js';
+import { buildClearing, createWalkSheet } from './clearing-art.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -14,8 +15,8 @@ import { TrainingCombat } from './combat.js';
     const tileSize = 16;
     const width = 28 * tileSize;
     const height = 20 * tileSize;
-    const renderScale = 2;
     const speed = 92;
+    const stride = 10;
     const assetPath = world.dataset.assetPath;
     const bindings = {
         ArrowUp: 'north', KeyW: 'north',
@@ -38,6 +39,7 @@ import { TrainingCombat } from './combat.js';
 
     class ValDesSaules extends Phaser.Scene {
         heldKeys = new Set();
+        motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 
         preload() {
             this.load.setPath(assetPath);
@@ -56,29 +58,31 @@ import { TrainingCombat } from './combat.js';
 
         create() {
             if (this.load.totalFailed > 0) return;
-            this.cameras.main.setZoom(renderScale).centerOn(width / 2, height / 2);
             this.terrain = this.cache.json.get('terrain');
-            this.terrain.forEach((row, y) => row.forEach((tile, x) => {
-                const texture = tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
-                const frame = tile < 32 ? tile % 16 : undefined;
-                this.add.image(x * tileSize, y * tileSize, texture, frame).setOrigin(0);
-            }));
-
             this.skin = world.dataset.class === 'warrior' ? 'noe' : 'lina';
             this.obstacles = [];
+            this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
+            this.poseSheet = createWalkSheet(this, this.skin, directions);
+            this.walkDistance = 0;
+            this.lastWalkAt = -Infinity;
+            const shadows = this.add.graphics().setDepth(3).fillStyle(0x172622, .48);
             for (const [name, { x, y, facing, bounds }] of Object.entries(villagers)) {
                 const sprite = this.add.image(x, y, name + '-' + facing).setOrigin(.5, 1).setDepth(y);
                 if (name === this.skin) {
                     this.avatar = sprite;
                     this.position = new Phaser.Math.Vector2(x, y);
+                    this.facing = facing;
+                    this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, .48).setDepth(3);
                 } else {
                     this.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
+                    shadows.fillEllipse(x, y - 1, 21, 7);
                 }
                 if (name === 'saphyr') {
                     this.saphyr = sprite;
                 }
             }
             this.combat = new TrainingCombat(this, this.saphyr, JSON.parse(world.dataset.combat), this.skin === 'lina', tileSize);
+            this.renderAvatar(this.time.now);
 
             const canvas = this.game.canvas;
             canvas.tabIndex = 0;
@@ -86,7 +90,10 @@ import { TrainingCombat } from './combat.js';
             canvas.setAttribute('aria-describedby', 'game-controls');
 
             const keyboard = new AbortController();
-            const releaseKeys = () => this.heldKeys.clear();
+            const releaseKeys = () => {
+                this.heldKeys.clear();
+                this.buttonMove = null;
+            };
             window.addEventListener('keydown', event => {
                 if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
                 const movement = Object.hasOwn(bindings, event.code);
@@ -99,6 +106,7 @@ import { TrainingCombat } from './combat.js';
                 event.preventDefault();
                 if (movement) {
                     this.heldKeys.add(event.code);
+                    this.buttonMove = null;
                 } else if (!event.repeat) {
                     this.combat.attack(attack, this.time.now);
                 }
@@ -107,8 +115,10 @@ import { TrainingCombat } from './combat.js';
             this.game.events.on(Phaser.Core.Events.BLUR, releaseKeys);
 
             const moveFromButton = event => {
-                const [x, y] = vectors[event.currentTarget.dataset.direction];
-                this.move(x * 10, y * 10);
+                if (this.combat.health === 0) return;
+                const direction = event.currentTarget.dataset.direction;
+                const remaining = this.buttonMove?.direction === direction ? this.buttonMove.remaining : 0;
+                this.buttonMove = { direction, remaining: remaining + 10 };
             };
             controls.querySelectorAll('button').forEach(button => {
                 button.addEventListener('click', moveFromButton, { signal: keyboard.signal });
@@ -120,8 +130,11 @@ import { TrainingCombat } from './combat.js';
                 releaseKeys();
                 const spawn = villagers[this.skin];
                 this.position.set(spawn.x, spawn.y);
-                this.avatar.setPosition(spawn.x, spawn.y).setDepth(spawn.y).setTexture(this.skin + '-' + spawn.facing);
+                this.facing = spawn.facing;
+                this.walkDistance = 0;
+                this.lastWalkAt = -Infinity;
                 this.combat.reset();
+                this.renderAvatar(this.time.now);
                 this.combat.buttons[0].focus({ preventScroll: true });
             }, { signal: keyboard.signal });
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -135,23 +148,34 @@ import { TrainingCombat } from './combat.js';
         }
 
         update(time, delta) {
-            this.moveFromKeys(delta);
-            this.combat?.update(time);
+            if (!this.combat) return;
+            this.moveFromKeys(time, delta);
+            this.combat.update(time);
+            this.renderAvatar(time);
+            this.animateClearing(time, this.motionPreference.matches);
         }
 
-        moveFromKeys(delta) {
+        moveFromKeys(time, delta) {
+            const distance = speed * Math.min(delta, 40) / 1000;
+            if (this.buttonMove && this.heldKeys.size === 0) {
+                const [x, y] = vectors[this.buttonMove.direction];
+                const step = Math.min(distance, this.buttonMove.remaining);
+                this.move(x * step, y * step, time);
+                this.buttonMove.remaining -= step;
+                if (this.buttonMove.remaining === 0) this.buttonMove = null;
+                return;
+            }
             if (this.heldKeys.size === 0) return;
             const active = new Set(Array.from(this.heldKeys, code => bindings[code]));
             const x = Number(active.has('east')) - Number(active.has('west'));
             const y = Number(active.has('south')) - Number(active.has('north'));
             const length = Math.hypot(x, y);
             if (length === 0) return;
-            const distance = speed * Math.min(delta, 40) / 1000;
-            this.move(x * distance / length, y * distance / length);
+            this.move(x * distance / length, y * distance / length, time);
         }
 
         canStand(x, y) {
-            for (const foot of [x - 3, x + 3]) {
+            for (const foot of [x - 3, x, x + 3]) {
                 const tile = this.terrain[Math.floor(y / tileSize)]?.[Math.floor(foot / tileSize)];
                 if (tile === undefined || tile < 16 || tile === 34) return false;
                 if (this.obstacles.some(bounds => bounds.contains(foot, y))) return false;
@@ -160,14 +184,13 @@ import { TrainingCombat } from './combat.js';
         }
 
         face(x, y) {
-            const direction = directions[(Math.round(Math.atan2(y, x) / (Math.PI / 4)) + 8) % 8];
-            const texture = this.skin + '-' + direction;
-            if (this.avatar.texture.key !== texture) this.avatar.setTexture(texture);
+            this.facing = directions[(Math.round(Math.atan2(y, x) / (Math.PI / 4)) + 8) % 8];
         }
 
-        move(x, y) {
-            if (this.combat.health === 0) return;
+        move(x, y, time) {
+            if (this.combat.health === 0 || (x === 0 && y === 0)) return;
             this.face(x, y);
+            const { x: previousX, y: previousY } = this.position;
 
             // Limit each step so keyboard and touch use the same collision checks.
             const steps = Math.ceil(Math.max(Math.abs(x), Math.abs(y)) / 2);
@@ -177,18 +200,35 @@ import { TrainingCombat } from './combat.js';
                 if (this.canStand(nextX, this.position.y)) this.position.x = nextX;
                 if (this.canStand(this.position.x, nextY)) this.position.y = nextY;
             }
-            this.avatar.setPosition(this.position.x, this.position.y).setDepth(this.position.y);
+            const traveled = Math.hypot(this.position.x - previousX, this.position.y - previousY);
+            if (traveled > 0) {
+                if (time - this.lastWalkAt >= 90) this.walkDistance = 0;
+                this.walkDistance += traveled;
+                this.lastWalkAt = time;
+            }
+        }
+
+        renderAvatar(time) {
+            const { x, y } = this.position;
+            const walking = time - this.lastWalkAt < 90;
+            const pose = walking ? Math.floor(this.walkDistance / stride) % 4 : 'idle';
+            const frame = this.facing + '-' + pose;
+            if (this.avatar.frame.name !== frame) this.avatar.setTexture(this.poseSheet, frame);
+            const lean = this.motionPreference.matches ? 0 : this.combat.attackLean(time);
+            const target = this.combat.target;
+            const direction = Math.atan2(target.y - y, target.x - x);
+            this.avatar.setPosition(Math.round(x + Math.cos(direction) * lean), Math.round(y + Math.sin(direction) * lean)).setDepth(y);
+            this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
         }
     }
 
     new Phaser.Game({
         type: Phaser.AUTO,
         parent: world,
-        width: width * renderScale,
-        height: height * renderScale,
-        antialias: false,
-        roundPixels: false,
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        width,
+        height,
+        pixelArt: true,
+        scale: { mode: Phaser.Scale.NONE },
         input: { keyboard: false },
         audio: { noAudio: true },
         scene: ValDesSaules,

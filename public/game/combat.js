@@ -2,6 +2,8 @@ const counterRadius = 58;
 const warningMs = 1000;
 const counterIntervalMs = 2100;
 const counterDamage = 9;
+const impactMs = 190;
+const sparks = [[-10, -3], [-7, 6], [-3, -9], [3, 9], [7, -7], [11, 2], [0, -11], [9, 6]];
 
 export class TrainingCombat {
     constructor(scene, target, rules, ranged, tileSize) {
@@ -31,8 +33,9 @@ export class TrainingCombat {
         this.readyAt = 0;
         this.counterAt = Infinity;
         this.warningEndsAt = 0;
-        this.impact = null;
+        this.impacts = [];
         this.pending = null;
+        this.strikeAt = -Infinity;
         this.warning.clear();
         this.effect.clear();
         this.scene.avatar.clearTint();
@@ -101,7 +104,8 @@ export class TrainingCombat {
         const damage = Math.min(attack.damage, this.targetHealth);
         this.targetHealth -= damage;
         this.refreshVitals();
-        this.impact = { color: attack.color, end: now + 180 };
+        this.impacts.push({ x: this.target.x, y: this.target.y - 20, color: attack.color, start: now });
+        if (!this.ranged) this.strikeAt = now;
         if (this.targetHealth === 0) {
             this.target.setAlpha(.55);
             this.finish('Saphyr s’incline. Entraînement réussi !');
@@ -122,6 +126,9 @@ export class TrainingCombat {
                 return;
             }
             this.health = Math.max(0, this.health - counterDamage);
+            this.impacts.push({
+                x: this.scene.position.x, y: this.scene.position.y - 17, color: 0xf78863, start: now,
+            });
             this.refreshVitals();
             if (this.health === 0) {
                 this.scene.avatar.setTint(0xbb6666);
@@ -141,27 +148,54 @@ export class TrainingCombat {
     }
 
     drawEffects(now) {
-        if (!this.pending && !this.impact) return;
+        if (!this.pending && this.impacts.length === 0) return;
         this.effect.clear();
-        if (this.impact) {
-            if (now < this.impact.end) {
-                this.effect.lineStyle(2, this.impact.color, .9).strokeCircle(this.target.x, this.target.y - 20, 11);
-            } else {
-                this.impact = null;
+        this.impacts = this.impacts.filter(hit => now - hit.start < impactMs);
+        const still = this.scene.motionPreference.matches;
+        for (const hit of this.impacts) {
+            const progress = Math.max(0, (now - hit.start) / impactMs);
+            const spread = still ? .65 : .45 + .9 * (1 - (1 - progress) ** 2);
+            this.effect.fillStyle(hit.color, 1 - progress);
+            for (const [dx, dy] of sparks) {
+                this.effect.fillRect(Math.round(hit.x + dx * spread), Math.round(hit.y + dy * spread), 2, 2);
+            }
+            if (progress < .35) {
+                this.effect.fillStyle(0xffe3a6, .78 - progress);
+                this.effect.fillRect(Math.round(hit.x) - 2, Math.round(hit.y) - 2, 4, 4);
             }
         }
         if (!this.pending) return;
 
         const attack = this.pending;
+        const progress = Math.max(0, (now - attack.start) / (attack.end - attack.start));
         if (this.ranged) {
-            const progress = (now - attack.start) / (attack.end - attack.start);
-            const x = attack.x + (this.target.x - attack.x) * progress;
-            const y = attack.y + (this.target.y - 20 - attack.y) * progress;
-            this.effect.fillStyle(attack.color, 1).fillRect(x - 3, y - 3, 6, 6);
+            const travel = Math.max(0, (progress - .17) / .83);
+            const dx = this.target.x - attack.x;
+            const dy = this.target.y - 20 - attack.y;
+            for (let index = 3; index > 0; index--) {
+                const tail = Math.max(0, travel - index * .055);
+                this.effect.fillStyle(attack.color, .6 - index * .12).fillRect(
+                    Math.round(attack.x + dx * tail) - 1, Math.round(attack.y + dy * tail) - 1, 3, 3);
+            }
+            const x = Math.round(attack.x + dx * travel);
+            const y = Math.round(attack.y + dy * travel);
+            this.effect.fillStyle(attack.color, 1).fillRect(x - 2, y - 3, 4, 6).fillRect(x - 3, y - 2, 6, 4);
             this.effect.fillStyle(0xfff3ca, 1).fillRect(x - 1, y - 1, 2, 2);
         } else {
-            this.effect.lineStyle(2, attack.color, .85).strokeCircle(this.scene.position.x, this.scene.position.y, 9);
+            const { x, y } = this.scene.position;
+            const size = 2 + Math.floor(progress * 3);
+            this.effect.fillStyle(attack.color, .5 + progress * .35)
+                .fillRect(Math.round(x) - size - 6, Math.round(y) + 1, size, 1)
+                .fillRect(Math.round(x) + 7, Math.round(y) + 1, size, 1);
         }
+    }
+
+    attackLean(now) {
+        if (this.pending && !this.ranged) {
+            const progress = (now - this.pending.start) / (this.pending.end - this.pending.start);
+            return -3 * Math.max(0, progress);
+        }
+        return 5 * Math.max(0, 1 - (now - this.strikeAt) / 120);
     }
 
     targetDistance() {
@@ -171,7 +205,6 @@ export class TrainingCombat {
     finish(message) {
         this.pending = null;
         this.warning.clear();
-        this.effect.clear();
         this.buttons.forEach(button => { button.disabled = true; });
         this.resetButton.hidden = false;
         this.tell(message);

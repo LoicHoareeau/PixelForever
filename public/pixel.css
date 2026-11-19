@@ -168,8 +168,11 @@ small { display: block; }
 .game-layout .panel { padding: clamp(.85rem, 3vw, 1.8rem); }
 .game-character { display: flex; align-items: center; gap: .7rem; }
 #game-controls { color: var(--muted); margin: .8rem 0 .6rem; }
-.game-map { aspect-ratio: 7 / 5; overflow: hidden; background: var(--well); outline: 1px solid var(--border); }
-.game-map canvas { display: block; image-rendering: pixelated; }
+.game-map { aspect-ratio: 7 / 5; overflow: hidden; margin-inline: auto; background: #192a2a; outline: 1px solid var(--border); }
+.game-map canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+@supports (width: round(down, 100%, 448px)) {
+    .game-map { width: min(100%, max(448px, round(down, 100%, 448px))); }
+}
 .game-map canvas:focus-visible { outline-offset: -4px; }
 .combat-vitals:not([hidden]), .combat-actions:not([hidden]) { display: flex; flex-wrap: wrap; gap: .5rem; }
 .combat-vitals { margin-bottom: .65rem; }
