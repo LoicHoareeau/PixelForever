@@ -12,7 +12,7 @@ docker compose -p pixelforever-postgres up -d --build
 
 Ouvre [PixelForever](http://127.0.0.1:8080). PostgreSQL conserve les comptes et les personnages dans le volume Docker `pixelforever-postgres_accounts`, y compris quand les conteneurs sont recréés. Les identifiants de Compose sont réservés à cette installation locale.
 
-Sur Render, définis `DATABASE_URL` dans les variables d’environnement du service avec l’URL d’une base PostgreSQL joignable depuis Render. Les migrations s’exécutent au démarrage. Le volume de Docker Desktop est accessible depuis l’installation locale.
+Le [guide de déploiement](docs/DEPLOIEMENT.md) décrit la configuration de Render et les vérifications après mise en ligne.
 
 ## Lancer le parcours de compte en local avec SQLite
 
@@ -24,7 +24,16 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour créer et sélectionner un Guerrier ou un Mage. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. Le monde partagé et le combat dans le navigateur restent à intégrer.
+Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour jouer un Guerrier ou un Mage dans Val-des-Saules. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
+
+## Vérifications locales
+
+```sh
+composer test:accounts
+node --test tests/progression.test.mjs
+```
+
+Le test de comptes utilise une base SQLite temporaire et requiert les extensions PHP `pdo_sqlite` et `dom`.
 
 ## Règles métier du prototype
 

@@ -22,6 +22,9 @@
             "App\\": "src/"
         }
     },
+    "scripts": {
+        "test:accounts": "php tests/account_flow.php"
+    },
     "config": {
         "platform": {
             "php": "8.2.0"
