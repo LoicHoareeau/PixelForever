@@ -1,6 +1,6 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
-import { Saphyr } from './dragon.js';
+import { ensureMonsterTextures, Monster } from './monsters.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -26,8 +26,15 @@ import { Saphyr } from './dragon.js';
         ArrowDown: 'south', KeyS: 'south',
         ArrowRight: 'east', KeyD: 'east',
     };
-    const attacks = { Digit1: 'basic', Digit2: 'special' };
-    const potions = { Digit3: 'health', Digit4: 'mana' };
+    const attacks = {
+        Digit1: 'basic',
+        Digit2: 'special',
+        Digit3: 'talent-0',
+        Digit4: 'talent-1',
+        Digit5: 'talent-2',
+        Digit6: 'talent-3',
+    };
+    const potions = { KeyR: 'health', KeyF: 'mana' };
     const vectors = { north: [0, -1], west: [-1, 0], south: [0, 1], east: [1, 0] };
     // Each row of walk.png follows this order.
     const directions = [
@@ -67,22 +74,49 @@ import { Saphyr } from './dragon.js';
             });
         }
 
+        updateCameraZoom(viewWidth, viewHeight) {
+            const cam = this.cameras.main;
+            // Zoom pixel art entier qui remplit l'écran tout en gardant des pixels nets
+            const coverZoom = Math.max(viewWidth / width, viewHeight / height);
+            const zoom = Math.max(2, Math.min(5, Math.ceil(coverZoom)));
+            cam.setZoom(zoom);
+            cam.setBounds(0, 0, width, height);
+            cam.startFollow(this.avatar, true, 0.16, 0.16);
+        }
+
         create() {
             if (this.load.totalFailed > 0) return;
             this.terrain = this.cache.json.get('terrain');
             this.obstacles = [];
             this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
+            ensureMonsterTextures(this);
+
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
             const { x, y, facing } = spawns[this.skin];
-            this.avatar = this.add.image(x, y, this.skin + '-' + facing).setOrigin(.5, 1).setDepth(y);
+            this.avatar = this.add.image(x, y, this.skin + '-' + facing).setOrigin(0.5, 1).setDepth(y);
             this.position = new Phaser.Math.Vector2(x, y);
             this.facing = facing;
-            this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, .48).setDepth(3);
-            this.dragon = new Saphyr(this, directions, tileSize);
-            this.combat = new TrainingCombat(this, this.dragon, JSON.parse(world.dataset.combat), tileSize);
+            this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, 0.48).setDepth(3);
+
+            // Création des monstres : Sangliers (N.1-5), Squelettes (N.5-10) et Saphyr Dragon (N.10-20)
+            const monsters = [
+                new Monster(this, 'boar', directions, tileSize, 0),
+                new Monster(this, 'boar', directions, tileSize, 2),
+                new Monster(this, 'boar', directions, tileSize, 4),
+                new Monster(this, 'skeleton', directions, tileSize, 0),
+                new Monster(this, 'skeleton', directions, tileSize, 3),
+                new Monster(this, 'dragon', directions, tileSize, 0),
+            ];
+
+            this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);
             this.renderAvatar(this.time.now);
+
+            this.updateCameraZoom(this.scale.width, this.scale.height);
+            this.scale.on('resize', (gameSize) => {
+                this.updateCameraZoom(gameSize.width, gameSize.height);
+            });
 
             const canvas = this.game.canvas;
             canvas.tabIndex = 0;
@@ -97,7 +131,19 @@ import { Saphyr } from './dragon.js';
             const characterButton = document.getElementById('character-open');
             const hudSheetButton = document.getElementById('hud-sheet-open');
             const characterSheetStatus = document.getElementById('character-sheet-status');
+            const talentDialog = document.getElementById('talent-tree');
+            const talentButton = document.getElementById('talents-open');
             let switchingDialog = false;
+
+            const closeOthers = (except) => {
+                switchingDialog = true;
+                [inventory, characterSheet, talentDialog].forEach((dlg) => {
+                    if (dlg && dlg !== except && dlg.open) {
+                        dlg.close();
+                    }
+                });
+                switchingDialog = false;
+            };
 
             const releaseKeys = () => {
                 this.heldKeys.clear();
@@ -109,35 +155,36 @@ import { Saphyr } from './dragon.js';
                     inventory.close();
                     return;
                 }
-                if (characterSheet && characterSheet.open) {
-                    switchingDialog = true;
-                    characterSheet.close();
-                    switchingDialog = false;
-                }
+                closeOthers(inventory);
                 releaseKeys();
                 inventoryStatus.textContent = '';
                 inventory.showModal();
             };
 
             const toggleCharacterSheet = () => {
-                if (!characterSheet) {
-                    return;
-                }
+                if (!characterSheet) return;
                 if (characterSheet.open) {
                     characterSheet.close();
                     return;
                 }
-                if (inventory.open) {
-                    switchingDialog = true;
-                    inventory.close();
-                    switchingDialog = false;
-                }
+                closeOthers(characterSheet);
                 releaseKeys();
                 this.combat.refreshCharacterSheet();
-                if (characterSheetStatus) {
-                    characterSheetStatus.textContent = '';
-                }
+                if (characterSheetStatus) characterSheetStatus.textContent = '';
                 characterSheet.showModal();
+            };
+
+            const toggleTalentTree = () => {
+                if (!talentDialog) return;
+                if (talentDialog.open) {
+                    talentDialog.close();
+                    return;
+                }
+                closeOthers(talentDialog);
+                releaseKeys();
+                this.combat.renderTalentTree();
+                if (this.combat.talentStatusLabel) this.combat.talentStatusLabel.textContent = '';
+                talentDialog.showModal();
             };
 
             const drinkPotion = (type) => {
@@ -151,9 +198,7 @@ import { Saphyr } from './dragon.js';
 
             inventoryButton.addEventListener('click', toggleInventory, { signal: keyboard.signal });
             inventory.addEventListener('close', () => {
-                if (!switchingDialog) {
-                    inventoryButton.focus({ preventScroll: true });
-                }
+                if (!switchingDialog) inventoryButton.focus({ preventScroll: true });
             }, { signal: keyboard.signal });
 
             if (characterButton) {
@@ -164,27 +209,36 @@ import { Saphyr } from './dragon.js';
             }
             if (characterSheet) {
                 characterSheet.addEventListener('close', () => {
-                    if (!switchingDialog && characterButton) {
-                        characterButton.focus({ preventScroll: true });
-                    }
+                    if (!switchingDialog && characterButton) characterButton.focus({ preventScroll: true });
+                }, { signal: keyboard.signal });
+            }
+
+            if (talentButton) {
+                talentButton.addEventListener('click', toggleTalentTree, { signal: keyboard.signal });
+            }
+            if (talentDialog) {
+                talentDialog.addEventListener('close', () => {
+                    if (!switchingDialog && talentButton) talentButton.focus({ preventScroll: true });
+                }, { signal: keyboard.signal });
+            }
+            if (this.combat.talentResetButton) {
+                this.combat.talentResetButton.addEventListener('click', () => {
+                    const msg = this.combat.resetAllTalents();
+                    if (this.combat.talentStatusLabel) this.combat.talentStatusLabel.textContent = msg;
                 }, { signal: keyboard.signal });
             }
 
             this.combat.statButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     const message = this.combat.spendStatPoint(button.dataset.allocateStat);
-                    if (characterSheetStatus) {
-                        characterSheetStatus.textContent = message;
-                    }
+                    if (characterSheetStatus) characterSheetStatus.textContent = message;
                 }, { signal: keyboard.signal });
             });
 
             this.combat.spellButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     const message = this.combat.spendSpellPoint(button.dataset.upgradeSpell);
-                    if (characterSheetStatus) {
-                        characterSheetStatus.textContent = message;
-                    }
+                    if (characterSheetStatus) characterSheetStatus.textContent = message;
                 }, { signal: keyboard.signal });
             });
 
@@ -216,7 +270,12 @@ import { Saphyr } from './dragon.js';
                     toggleCharacterSheet();
                     return;
                 }
-                if (inventory.open || (characterSheet && characterSheet.open)) {
+                if (event.code === 'KeyT' && !event.repeat) {
+                    event.preventDefault();
+                    toggleTalentTree();
+                    return;
+                }
+                if (inventory.open || (characterSheet && characterSheet.open) || (talentDialog && talentDialog.open)) {
                     return;
                 }
                 const movement = Object.hasOwn(bindings, event.code);
@@ -246,9 +305,11 @@ import { Saphyr } from './dragon.js';
                 const remaining = this.buttonMove?.direction === direction ? this.buttonMove.remaining : 0;
                 this.buttonMove = { direction, remaining: remaining + 10 };
             };
-            controls.querySelectorAll('button').forEach(button => {
-                button.addEventListener('click', moveFromButton, { signal: keyboard.signal });
-            });
+            if (controls) {
+                controls.querySelectorAll('button').forEach(button => {
+                    button.addEventListener('click', moveFromButton, { signal: keyboard.signal });
+                });
+            }
             this.combat.buttons.forEach(button => {
                 button.addEventListener('click', () => this.combat.attack(button.dataset.attack, this.time.now), { signal: keyboard.signal });
             });
@@ -269,8 +330,8 @@ import { Saphyr } from './dragon.js';
                 this.game.events.off(Phaser.Core.Events.BLUR, releaseKeys);
             });
 
-            status.hidden = true;
-            controls.hidden = false;
+            if (status) status.hidden = true;
+            if (controls) controls.hidden = false;
         }
 
         update(time, delta) {
@@ -360,7 +421,7 @@ import { Saphyr } from './dragon.js';
                     : step % walkFrames;
                 frame = directions.indexOf(this.facing) * walkFrames + walkFrame;
             }
-            if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(.5, origin);
+            if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
         }
@@ -369,10 +430,14 @@ import { Saphyr } from './dragon.js';
     new Phaser.Game({
         type: Phaser.AUTO,
         parent: world,
-        width,
-        height,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        backgroundColor: '#152127',
         pixelArt: true,
-        scale: { mode: Phaser.Scale.NONE },
+        scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+        },
         input: { keyboard: false },
         audio: { noAudio: true },
         scene: ValDesSaules,

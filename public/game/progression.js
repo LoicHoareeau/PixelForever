@@ -22,6 +22,326 @@ export const basicSpellRankBonus = 3;
 
 export const specialSpellRankBonus = 5;
 
+/**
+ * Définition des arbres de talents (3 branches par classe, inspirés des RPG classiques).
+ * Chaque talent appartient à une branche, un palier (tier 0..2) et peut débloquer un sort actif.
+ */
+export const talentTrees = {
+    warrior: {
+        branches: [
+            {
+                id: 'arms',
+                name: 'Armes',
+                subtitle: 'Maîtrise & Frappes',
+                accent: '#e47a58',
+                talents: [
+                    {
+                        id: 'w_sharp_blade',
+                        name: 'Lame affûtée',
+                        tier: 0,
+                        col: 0,
+                        maxRank: 5,
+                        type: 'passive',
+                        icon: 'icon-sword',
+                        description: '+2 dégâts sur l’attaque de base par rang.',
+                    },
+                    {
+                        id: 'w_chain_strike',
+                        name: 'Enchaînement',
+                        tier: 0,
+                        col: 1,
+                        maxRank: 3,
+                        type: 'passive',
+                        icon: 'icon-charge',
+                        description: 'Réduit le temps de recharge global de 8 % par rang.',
+                    },
+                    {
+                        id: 'w_cleave',
+                        name: 'Taillade',
+                        tier: 1,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'w_sharp_blade',
+                        minBranchPoints: 2,
+                        type: 'active',
+                        slot: 'cleave',
+                        icon: 'icon-cleave',
+                        manaCost: 6,
+                        cooldownMs: 4200,
+                        description: 'Sort actif (Touche 3) : frappe tous les ennemis proches en arc de cercle.',
+                    },
+                    {
+                        id: 'w_sword_mastery',
+                        name: 'Maîtrise de l’épée',
+                        tier: 2,
+                        col: 0,
+                        maxRank: 3,
+                        requires: 'w_cleave',
+                        minBranchPoints: 4,
+                        type: 'passive',
+                        icon: 'icon-sword',
+                        description: '+4 dégâts sur toutes les compétences de mêlée par rang.',
+                    },
+                ],
+            },
+            {
+                id: 'fury',
+                name: 'Fureur',
+                subtitle: 'Rage & Assaut',
+                accent: '#f0a64b',
+                talents: [
+                    {
+                        id: 'w_bloodlust',
+                        name: 'Soif de combat',
+                        tier: 0,
+                        col: 0,
+                        maxRank: 5,
+                        type: 'passive',
+                        icon: 'icon-fury',
+                        description: '+0,5/s de régénération d’énergie par rang.',
+                    },
+                    {
+                        id: 'w_engage',
+                        name: 'Engagement',
+                        tier: 1,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'w_bloodlust',
+                        minBranchPoints: 2,
+                        type: 'active',
+                        slot: 'engage',
+                        icon: 'icon-charge',
+                        manaCost: 5,
+                        cooldownMs: 5000,
+                        description: 'Sort actif (Touche 4) : fonce sur la cible à distance et inflige de lourds dégâts.',
+                    },
+                    {
+                        id: 'w_frenzy',
+                        name: 'Frénésie',
+                        tier: 1,
+                        col: 1,
+                        maxRank: 3,
+                        minBranchPoints: 2,
+                        type: 'passive',
+                        icon: 'icon-fury',
+                        description: '+8 % de dégâts bonus sur les sorts spéciaux par rang.',
+                    },
+                    {
+                        id: 'w_berserk',
+                        name: 'Berserk',
+                        tier: 2,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'w_engage',
+                        minBranchPoints: 4,
+                        type: 'active',
+                        slot: 'berserk',
+                        icon: 'icon-berserk',
+                        manaCost: 8,
+                        cooldownMs: 12000,
+                        description: 'Sort actif (Touche 5) : augmente vos dégâts de 40 % pendant 6 secondes.',
+                    },
+                ],
+            },
+            {
+                id: 'protection',
+                name: 'Protection',
+                subtitle: 'Bouclier & Survie',
+                accent: '#6fb3e8',
+                talents: [
+                    {
+                        id: 'w_iron_skin',
+                        name: 'Peau de fer',
+                        tier: 0,
+                        col: 0,
+                        maxRank: 5,
+                        type: 'passive',
+                        icon: 'icon-shield',
+                        description: '+8 PV maximum par rang.',
+                    },
+                    {
+                        id: 'w_shield_bash',
+                        name: 'Coup de bouclier',
+                        tier: 1,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'w_iron_skin',
+                        minBranchPoints: 2,
+                        type: 'active',
+                        slot: 'shield_bash',
+                        icon: 'icon-shield',
+                        manaCost: 5,
+                        cooldownMs: 6500,
+                        description: 'Sort actif (Touche 6) : frappe et étourdit la cible pendant 2 secondes, interrompant son attaque.',
+                    },
+                    {
+                        id: 'w_defensive_stance',
+                        name: 'Posture défensive',
+                        tier: 2,
+                        col: 0,
+                        maxRank: 3,
+                        requires: 'w_shield_bash',
+                        minBranchPoints: 4,
+                        type: 'passive',
+                        icon: 'icon-shield',
+                        description: 'Réduit les dégâts subis de 8 % par rang.',
+                    },
+                ],
+            },
+        ],
+    },
+    mage: {
+        branches: [
+            {
+                id: 'fire',
+                name: 'Pyromancie',
+                subtitle: 'Feu & Zone',
+                accent: '#f07b4b',
+                talents: [
+                    {
+                        id: 'm_ember',
+                        name: 'Étincelle ardente',
+                        tier: 0,
+                        col: 0,
+                        maxRank: 5,
+                        type: 'passive',
+                        icon: 'icon-bolt',
+                        description: '+2 dégâts sur Trait de feu par rang.',
+                    },
+                    {
+                        id: 'm_pyroblast',
+                        name: 'Brasier',
+                        tier: 0,
+                        col: 1,
+                        maxRank: 3,
+                        type: 'passive',
+                        icon: 'icon-fire',
+                        description: '+4 dégâts sur Boule de feu par rang.',
+                    },
+                    {
+                        id: 'm_fire_wall',
+                        name: 'Mur de feu',
+                        tier: 1,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'm_ember',
+                        minBranchPoints: 2,
+                        type: 'active',
+                        slot: 'fire_wall',
+                        icon: 'icon-firewall',
+                        manaCost: 10,
+                        cooldownMs: 5500,
+                        description: 'Sort actif (Touche 3) : enflamme la zone autour de la cible et brûle les ennemis.',
+                    },
+                    {
+                        id: 'm_fire_whirl',
+                        name: 'Tourbillon de feu',
+                        tier: 2,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'm_fire_wall',
+                        minBranchPoints: 4,
+                        type: 'active',
+                        slot: 'fire_whirl',
+                        icon: 'icon-fire',
+                        manaCost: 14,
+                        cooldownMs: 8000,
+                        description: 'Sort actif (Touche 4) : libère un tourbillon ardent dévastateur autour du mage.',
+                    },
+                ],
+            },
+            {
+                id: 'arcane',
+                name: 'Arcanes',
+                subtitle: 'Mana & Puissance',
+                accent: '#b48bf0',
+                talents: [
+                    {
+                        id: 'm_clear_mind',
+                        name: 'Esprit clair',
+                        tier: 0,
+                        col: 0,
+                        maxRank: 5,
+                        type: 'passive',
+                        icon: 'icon-arcane',
+                        description: '+6 Mana max et +0,4/s de régénération par rang.',
+                    },
+                    {
+                        id: 'm_mana_efficiency',
+                        name: 'Économie arcanique',
+                        tier: 0,
+                        col: 1,
+                        maxRank: 3,
+                        type: 'passive',
+                        icon: 'icon-mana',
+                        description: 'Réduit le coût en mana des sorts de 10 % par rang.',
+                    },
+                    {
+                        id: 'm_arcane_blast',
+                        name: 'Déflagration',
+                        tier: 1,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'm_clear_mind',
+                        minBranchPoints: 2,
+                        type: 'active',
+                        slot: 'arcane_blast',
+                        icon: 'icon-arcane',
+                        manaCost: 7,
+                        cooldownMs: 3200,
+                        description: 'Sort actif (Touche 5) : projectile arcanique rapide à portée étendue.',
+                    },
+                ],
+            },
+            {
+                id: 'frost',
+                name: 'Givre',
+                subtitle: 'Contrôle & Glace',
+                accent: '#78ccf0',
+                talents: [
+                    {
+                        id: 'm_ice_armor',
+                        name: 'Armure de glace',
+                        tier: 0,
+                        col: 0,
+                        maxRank: 5,
+                        type: 'passive',
+                        icon: 'icon-frost',
+                        description: '+6 PV max et -5 % de dégâts subis par rang.',
+                    },
+                    {
+                        id: 'm_frost_nova',
+                        name: 'Nova de givre',
+                        tier: 1,
+                        col: 0,
+                        maxRank: 1,
+                        requires: 'm_ice_armor',
+                        minBranchPoints: 2,
+                        type: 'active',
+                        slot: 'frost_nova',
+                        icon: 'icon-frost',
+                        manaCost: 9,
+                        cooldownMs: 7000,
+                        description: 'Sort actif (Touche 6) : gèle les ennemis proches pendant 2,5 secondes et inflige des dégâts.',
+                    },
+                    {
+                        id: 'm_cold_blood',
+                        name: 'Sang-froid',
+                        tier: 2,
+                        col: 0,
+                        maxRank: 3,
+                        requires: 'm_frost_nova',
+                        minBranchPoints: 4,
+                        type: 'passive',
+                        icon: 'icon-frost',
+                        description: 'Réduit le temps de recharge de tous les sorts de 8 % par rang.',
+                    },
+                ],
+            },
+        ],
+    },
+};
+
 const itemKeys = ['health', 'mana', 'rare', 'epic'];
 
 const defaultClassProfiles = {
@@ -81,11 +401,12 @@ export function createInitialProgress(startingLevel = 1) {
             basic: 1,
             special: 1,
         },
+        talents: {},
     };
 }
 
 /**
- * Normalise une sauvegarde existante pour y intégrer les champs de stats et sorts.
+ * Normalise une sauvegarde existante pour y intégrer les champs de stats, sorts et talents.
  */
 function normalizeProgress(saved, startingLevel) {
     const fallback = createInitialProgress(startingLevel);
@@ -103,6 +424,15 @@ function normalizeProgress(saved, startingLevel) {
         spells[key] = Number.isSafeInteger(value) && value >= 1 ? value : 1;
     }
 
+    const talents = {};
+    if (saved.talents && typeof saved.talents === 'object') {
+        for (const [id, rank] of Object.entries(saved.talents)) {
+            if (Number.isSafeInteger(rank) && rank > 0) {
+                talents[id] = rank;
+            }
+        }
+    }
+
     const statPoints = Number.isSafeInteger(saved.statPoints) && saved.statPoints >= 0
         ? saved.statPoints
         : initialStatPoints + levelsGained * statPointsPerLevel;
@@ -118,6 +448,7 @@ function normalizeProgress(saved, startingLevel) {
         spellPoints,
         allocatedStats,
         spells,
+        talents,
     };
 }
 
@@ -181,23 +512,24 @@ export function rollLoot(table, random = Math.random) {
 /**
  * Attribue le butin, l'expérience et les points de montée de niveau après une victoire.
  */
-export function awardVictory(progress, loot, random = Math.random) {
+export function awardVictory(progress, loot, random = Math.random, xpGain = victoryXp) {
     const item = rollLoot(loot, random);
     progress.items[item]++;
-    progress.xp += victoryXp;
+    progress.xp += xpGain;
 
-    const threshold = xpRequired(progress.level);
-    const levelUp = progress.xp >= threshold && progress.level < 9999;
-
-    if (levelUp) {
-        progress.xp -= threshold;
+    let levelUp = false;
+    while (progress.level < 9999 && progress.xp >= xpRequired(progress.level)) {
+        progress.xp -= xpRequired(progress.level);
         progress.level++;
+        levelUp = true;
         const currentStatPoints = Number.isSafeInteger(progress.statPoints) ? progress.statPoints : 0;
         const currentSpellPoints = Number.isSafeInteger(progress.spellPoints) ? progress.spellPoints : 0;
         progress.statPoints = currentStatPoints + statPointsPerLevel;
         progress.spellPoints = currentSpellPoints + spellPointsPerLevel;
-    } else if (progress.level === 9999) {
-        progress.xp = Math.min(progress.xp, threshold - 1);
+    }
+
+    if (progress.level === 9999) {
+        progress.xp = Math.min(progress.xp, xpRequired(progress.level) - 1);
     }
 
     return {
@@ -259,8 +591,114 @@ export function upgradeSpell(progress, spell) {
 }
 
 /**
+ * Retourne le rang investi dans un talent donné.
+ */
+export function getTalentRank(progress, talentId) {
+    return progress.talents?.[talentId] ?? 0;
+}
+
+/**
+ * Retourne le total de points investis dans une branche de l'arbre de talents.
+ */
+export function getBranchPoints(progress, branch) {
+    return branch.talents.reduce((sum, talent) => sum + getTalentRank(progress, talent.id), 0);
+}
+
+/**
+ * Trouve la définition d'un talent et sa branche pour une classe donnée.
+ */
+export function findTalent(classKey, talentId) {
+    const tree = talentTrees[classKey];
+    if (!tree) return null;
+    for (const branch of tree.branches) {
+        const talent = branch.talents.find((t) => t.id === talentId);
+        if (talent) {
+            return { talent, branch };
+        }
+    }
+    return null;
+}
+
+/**
+ * Vérifie si un point peut être investi dans le talent demandé.
+ */
+export function canInvestTalent(progress, classKey, talentId) {
+    if (!Number.isSafeInteger(progress.spellPoints) || progress.spellPoints <= 0) {
+        return false;
+    }
+    const found = findTalent(classKey, talentId);
+    if (!found) {
+        return false;
+    }
+    const { talent, branch } = found;
+    const rank = getTalentRank(progress, talentId);
+    if (rank >= talent.maxRank) {
+        return false;
+    }
+    if (talent.minBranchPoints && getBranchPoints(progress, branch) < talent.minBranchPoints) {
+        return false;
+    }
+    if (talent.requires && getTalentRank(progress, talent.requires) <= 0) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Investit un point de sort/talent dans le talent choisi.
+ */
+export function investTalent(progress, classKey, talentId) {
+    if (!canInvestTalent(progress, classKey, talentId)) {
+        return false;
+    }
+    if (!progress.talents) {
+        progress.talents = {};
+    }
+    progress.spellPoints -= 1;
+    progress.talents[talentId] = (progress.talents[talentId] ?? 0) + 1;
+    return true;
+}
+
+/**
+ * Réinitialise tous les talents investis et restitue les points de sort/talent.
+ */
+export function resetTalents(progress) {
+    if (!progress.talents) {
+        return 0;
+    }
+    let refunded = 0;
+    for (const rank of Object.values(progress.talents)) {
+        if (Number.isSafeInteger(rank) && rank > 0) {
+            refunded += rank;
+        }
+    }
+    if (refunded > 0) {
+        progress.talents = {};
+        progress.spellPoints = (progress.spellPoints ?? 0) + refunded;
+    }
+    return refunded;
+}
+
+/**
+ * Retourne la liste des sorts actifs débloqués par les talents pour la barre de sorts.
+ */
+export function getUnlockedActiveSpells(progress, classKey) {
+    const tree = talentTrees[classKey];
+    if (!tree) return [];
+    const unlocked = [];
+    for (const branch of tree.branches) {
+        for (const talent of branch.talents) {
+            if (talent.type === 'active' && getTalentRank(progress, talent.id) > 0) {
+                unlocked.push(talent);
+            }
+        }
+    }
+    return unlocked;
+}
+
+/**
  * Calcule les caractéristiques totales, les maximums de ressources, la régénération
- * et les dégâts finaux à partir du niveau, des points investis, des sorts et de l'arme.
+ * et les dégâts finaux à partir du niveau, des points investis, des sorts, des talents et de l'arme.
  */
 export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const classKey = rules.classKey ?? (rules.ranged ? 'mage' : 'warrior');
@@ -296,8 +734,21 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         ? attributes.strength.bonus
         : attributes.intelligence.bonus;
 
-    const maxHealth = rules.health + levelsGained * 4 + attributes.vitality.bonus * 4;
-    const maxMana = rules.mana + levelsGained * 2 + attributes.spirit.bonus * 3;
+    // Bonus issus des talents
+    const t = progress.talents ?? {};
+    const talentHealthBonus = (t.w_iron_skin ?? 0) * 8 + (t.m_ice_armor ?? 0) * 6;
+    const talentManaBonus = (t.m_clear_mind ?? 0) * 6;
+    const talentBasicBonus = (t.w_sharp_blade ?? 0) * 2 + (t.m_ember ?? 0) * 2;
+    const talentSpecialBonus = (t.w_sword_mastery ?? 0) * 4 + (t.m_pyroblast ?? 0) * 4;
+    const talentSpecialMultiplier = 1 + (t.w_frenzy ?? 0) * 0.08;
+    const talentRegenBonus = (t.w_bloodlust ?? 0) * 0.5 + (t.m_clear_mind ?? 0) * 0.4;
+    const cooldownReduction = Math.min(0.45, ((t.w_chain_strike ?? 0) + (t.m_cold_blood ?? 0)) * 0.08);
+    const manaCostReduction = Math.min(0.45, (t.m_mana_efficiency ?? 0) * 0.1);
+    const damageReduction = Math.min(0.45, (t.w_defensive_stance ?? 0) * 0.08 + (t.m_ice_armor ?? 0) * 0.05);
+    const bonusRangeTiles = (t.m_arcane_blast ?? 0) > 0 ? 0.5 : 0;
+
+    const maxHealth = rules.health + levelsGained * 4 + attributes.vitality.bonus * 4 + talentHealthBonus;
+    const maxMana = rules.mana + levelsGained * 2 + attributes.spirit.bonus * 3 + talentManaBonus;
 
     const basicSpellRank = progress.spells?.basic ?? 1;
     const specialSpellRank = progress.spells?.special ?? 1;
@@ -311,19 +762,23 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         + primaryBonus * 2
         + secondaryBonus
         + basicRankBonus
+        + talentBasicBonus
         + weaponBonus;
 
-    const specialDamage = rules.specialDamage
+    const rawSpecialDamage = rules.specialDamage
         + levelsGained * 2
         + primaryBonus * 2
         + secondaryBonus
-        + specialRankBonus;
+        + specialRankBonus
+        + talentSpecialBonus;
+    const specialDamage = Math.round(rawSpecialDamage * talentSpecialMultiplier);
 
     const baseRegen = rules.baseManaRegen ?? 2;
     const rawRegen = baseRegen
         + levelsGained * 0.3
         + attributes.spirit.bonus * 0.4
-        + attributes.intelligence.bonus * 0.2;
+        + attributes.intelligence.bonus * 0.2
+        + talentRegenBonus;
     const manaRegenPerSec = Math.round(rawRegen * 10) / 10;
 
     return {
@@ -339,6 +794,10 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         basicDamage,
         specialDamage,
         manaRegenPerSec,
+        cooldownReduction,
+        manaCostReduction,
+        damageReduction,
+        bonusRangeTiles,
         statPoints: progress.statPoints ?? 0,
         spellPoints: progress.spellPoints ?? 0,
     };
