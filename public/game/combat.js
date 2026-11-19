@@ -18,6 +18,7 @@ import {
     xpRequired,
 } from './progression.js';
 import { inZone } from './exploration.js';
+import { recordTrailQuestDefeat } from './trail-quest.js';
 
 const impactMs = 210;
 const recoveryMs = 140;
@@ -1041,6 +1042,7 @@ export class TrainingCombat {
      * Crédite l'XP adaptée au niveau du monstre, le butin et la montée de niveau.
      */
     defeatMonster(monster, now) {
+        if (!monster.sprite.visible) return;
         monster.hide();
         monster.respawnAt = now + monster.template.respawnMs;
 
@@ -1050,6 +1052,7 @@ export class TrainingCombat {
         }
 
         const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
+        recordTrailQuestDefeat(this.progress.trailQuest, monster.species);
         saveProgress(this.progressKey, this.progress);
         this.refreshProgress();
         this.refreshInventory();

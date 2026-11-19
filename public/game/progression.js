@@ -1,4 +1,5 @@
 // Barèmes d'expérience, de caractéristiques, de sorts et de régénération
+import { normalizeTrailQuest } from './trail-quest.js';
 
 export const victoryXp = 50;
 
@@ -402,6 +403,7 @@ export function createInitialProgress(startingLevel = 1) {
             special: 1,
         },
         talents: {},
+        trailQuest: normalizeTrailQuest(),
     };
 }
 
@@ -449,6 +451,7 @@ function normalizeProgress(saved, startingLevel) {
         allocatedStats,
         spells,
         talents,
+        trailQuest: normalizeTrailQuest(saved.trailQuest),
     };
 }
 

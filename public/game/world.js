@@ -1,7 +1,9 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { ensureMonsterTextures, Monster } from './monsters.js';
-import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSize, zones } from './exploration.js';
+import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
+import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
+import { saveProgress } from './progression.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -59,6 +61,7 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
             this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);
             this.load.json('terrain', 'terrain.json');
+            this.load.image('quest-early', 'quest_early.png');
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             baseTiles.forEach((tile, index) => this.load.image(tile, 'terrain-' + (index + 1) + '.png'));
@@ -90,6 +93,14 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
             this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
             ensureMonsterTextures(this);
+            this.add.ellipse(questNpc.x, questNpc.y - 1, 18, 6, 0x172622, .48).setDepth(3);
+            this.npc = this.add.image(questNpc.x, questNpc.y, 'quest-early')
+                .setOrigin(.5, 1).setScale(.75).setDepth(questNpc.y).setInteractive({ useHandCursor: true });
+            this.questMarker = this.add.text(questNpc.x, questNpc.y - 48, '!', {
+                fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold',
+                color: '#f0c781', stroke: '#19272e', strokeThickness: 3,
+            }).setOrigin(.5, 1).setDepth(height + 10).setInteractive({ useHandCursor: true });
+            this.obstacles.push(new Phaser.Geom.Rectangle(questNpc.x - 4, questNpc.y - 5, 8, 6));
 
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
@@ -132,11 +143,14 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
             const characterSheetStatus = document.getElementById('character-sheet-status');
             const talentDialog = document.getElementById('talent-tree');
             const talentButton = document.getElementById('talents-open');
+            const questDialog = document.getElementById('quest-dialog');
+            const questButton = document.getElementById('quest-open');
+            const questAction = document.getElementById('quest-action');
             let switchingDialog = false;
 
             const closeOthers = (except) => {
                 switchingDialog = true;
-                [inventory, characterSheet, talentDialog].forEach((dlg) => {
+                [inventory, characterSheet, talentDialog, questDialog].forEach((dlg) => {
                     if (dlg && dlg !== except && dlg.open) {
                         dlg.close();
                     }
@@ -194,6 +208,37 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
                     this.combat.tell(message);
                 }
             };
+
+            const talkToNpc = () => {
+                if (questDialog.open) { questDialog.close(); return; }
+                if (!this.canTalkToNpc()) {
+                    this.combat.tell('Approche-toi de l’habitante pour lui parler (E).');
+                    return;
+                }
+                closeOthers(questDialog);
+                releaseKeys();
+                this.renderQuestDialog();
+                questDialog.showModal();
+                if (!questAction.disabled && !questAction.hidden) questAction.focus({ preventScroll: true });
+            };
+            questButton.addEventListener('click', talkToNpc, { signal: keyboard.signal });
+            this.npc.on('pointerdown', talkToNpc);
+            this.questMarker.on('pointerdown', talkToNpc);
+            questDialog.addEventListener('close', () => {
+                if (!switchingDialog) questButton.focus({ preventScroll: true });
+            }, { signal: keyboard.signal });
+            questAction.addEventListener('click', () => {
+                if (!this.canTalkToNpc()) { questDialog.close(); return; }
+                const progress = this.combat.progress;
+                const accepted = acceptTrailQuest(progress.trailQuest);
+                if (!accepted && !completeTrailQuest(progress)) return;
+                saveProgress(this.combat.progressKey, progress);
+                this.combat.refreshInventory();
+                this.refreshQuest();
+                questDialog.close();
+                this.combat.tell(accepted ? 'Quête acceptée : vaincs trois sangliers, puis reviens voir l’habitante.'
+                    : 'Quête terminée : tu reçois deux potions de vie.');
+            }, { signal: keyboard.signal });
 
             inventoryButton.addEventListener('click', toggleInventory, { signal: keyboard.signal });
             inventory.addEventListener('close', () => {
@@ -274,7 +319,12 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
                     toggleTalentTree();
                     return;
                 }
-                if (inventory.open || (characterSheet && characterSheet.open) || (talentDialog && talentDialog.open)) {
+                if (event.code === 'KeyE' && !event.repeat) {
+                    event.preventDefault();
+                    talkToNpc();
+                    return;
+                }
+                if (inventory.open || (characterSheet && characterSheet.open) || (talentDialog && talentDialog.open) || questDialog.open) {
                     return;
                 }
                 const movement = Object.hasOwn(bindings, event.code);
@@ -331,12 +381,54 @@ import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, rows, tileSi
 
             if (status) status.hidden = true;
             if (controls) controls.hidden = false;
+            this.refreshQuest();
+        }
+
+        canTalkToNpc() {
+            return this.combat.health > 0 && Math.hypot(this.position.x - questNpc.x, this.position.y - questNpc.y) <= questNpc.range;
+        }
+
+        refreshQuest() {
+            const quest = this.combat.progress.trailQuest;
+            const state = trailQuestStatus(quest);
+            const key = state + ':' + quest.defeated;
+            if (this.questViewKey === key) return;
+            this.questViewKey = key;
+            const marker = trailQuestMarker(quest);
+            this.questMarker.setText(marker.symbol).setColor(marker.color).setVisible(Boolean(marker.symbol));
+            const labels = {
+                available: 'Quête (E)', active: `Quête ${quest.defeated}/${requiredBoars} (E)`,
+                ready_to_turn_in: 'Rendre (E)', completed: 'Parler (E)',
+            };
+            const button = document.getElementById('quest-open');
+            button.textContent = labels[state];
+            button.setAttribute('aria-label', 'Habitante du hameau · ' + labels[state]);
+            if (document.getElementById('quest-dialog').open) this.renderQuestDialog();
+        }
+
+        renderQuestDialog() {
+            const quest = this.combat.progress.trailQuest;
+            const state = trailQuestStatus(quest);
+            const descriptions = {
+                available: 'Les sangliers menacent notre sentier. Peux-tu en vaincre trois, puis revenir me voir ?',
+                active: 'Tu as accepté la quête. Reviens me voir quand tu auras vaincu trois sangliers.',
+                ready_to_turn_in: 'Le sentier est plus sûr grâce à toi ! Voici deux potions de vie pour te remercier.',
+                completed: 'Merci encore pour ton aide. Bonne route dans Val-des-Saules !',
+            };
+            document.getElementById('quest-description').textContent = descriptions[state];
+            document.getElementById('quest-progress').textContent = state === 'available' ? 'Quête disponible'
+                : state === 'completed' ? 'Quête terminée' : `Sangliers vaincus : ${quest.defeated} / ${requiredBoars}`;
+            const action = document.getElementById('quest-action');
+            action.textContent = state === 'available' ? 'Accepter la quête' : state === 'ready_to_turn_in' ? 'Rendre la quête' : 'En cours';
+            action.disabled = state === 'active' || state === 'completed';
+            action.hidden = state === 'completed';
         }
 
         update(time, delta) {
             if (!this.combat) return;
             this.moveFromKeys(time, delta);
             this.combat.update(time, delta);
+            this.refreshQuest();
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
             const zone = Object.values(zones).find(zone => inZone(zone, this.position.x, this.position.y));

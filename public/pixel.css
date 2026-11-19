@@ -969,6 +969,7 @@ body.game-fullscreen .masthead {
 
 #inventory,
 #character-sheet,
+#quest-dialog,
 #talent-tree {
     padding: clamp(.75rem, 2.5vw, 1.3rem);
     background: #172025;
@@ -977,8 +978,13 @@ body.game-fullscreen .masthead {
     box-shadow: 0 12px 32px #000000c8;
 }
 
-#inventory {
+#inventory,
+#quest-dialog {
     width: min(calc(100% - 1.5rem), 29rem);
+}
+
+#quest-action[hidden] {
+    display: none;
 }
 
 #character-sheet {
@@ -991,6 +997,7 @@ body.game-fullscreen .masthead {
 
 #inventory::backdrop,
 #character-sheet::backdrop,
+#quest-dialog::backdrop,
 #talent-tree::backdrop {
     background: #0a0f13c8;
 }

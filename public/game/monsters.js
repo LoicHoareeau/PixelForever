@@ -36,7 +36,7 @@ export const monsterTemplates = {
         attackRange: 24,
         aggroRange: 64,
         zone: zones.skeleton,
-        patrolCells: [[35, 28], [46, 29], [41, 35], [49, 37], [46, 39], [35, 38]],
+        patrolCells: [[75, 58], [86, 59], [81, 65], [89, 67], [86, 69], [75, 68]],
         respawnMs: 5000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 5);
@@ -59,7 +59,7 @@ export const monsterTemplates = {
         attackRange: 88,
         aggroRange: 112,
         zone: zones.dragon,
-        patrolCells: [[62, 42], [72, 43], [77, 50], [68, 53], [60, 49], [73, 52]],
+        patrolCells: [[126, 86], [136, 87], [141, 94], [132, 97], [124, 93], [137, 96]],
         respawnMs: 6500,
         statsForLevel(level) {
             const offset = Math.max(0, level - 10);

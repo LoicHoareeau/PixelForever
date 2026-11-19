@@ -213,9 +213,11 @@ export function treePositions(terrain) {
     for (let row = 3; row < terrain.length - 2; row += 4) {
         for (let column = 3; column < terrain[0].length - 2; column += 4) {
             if (row < 20 && column < 28) continue;
-            const x = column * 16 + (row % 3) * 2;
-            const y = row * 16;
-            if (terrain[row][column] !== 33 || inZone(zones.skeleton, x, y)
+            const seed = (column * 37 + row * 53 + column * row * 7) % 101;
+            if (seed % 5 === 0) continue;
+            const x = column * 16 + seed % 25 - 12;
+            const y = row * 16 + (seed * 7) % 25 - 12;
+            if (terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== 33 || inZone(zones.skeleton, x, y)
                 || inZone(zones.dragon, x, y)) continue;
             if (terrain[row].slice(column - 1, column + 2).some(tile => tile !== 33)) continue;
             positions.push([x, y]);
@@ -358,9 +360,9 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
 
     for (const [text, column, row] of [
         ['Cimetière →', 30, 13],
-        ['Cimetière des Saules · N.5–10', 35, 24],
-        ['Montagnes ↓', 65, 35],
-        ['Hauts de Saphyr · N.10–20', 60, 38],
+        ['Cimetière des Saules · N.5–10', 75, 54],
+        ['Montagnes ↓', 129, 79],
+        ['Hauts de Saphyr · N.10–20', 124, 82],
     ]) {
         const x = column * tileSize;
         const y = row * tileSize;

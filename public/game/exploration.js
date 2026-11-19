@@ -1,12 +1,13 @@
 export const tileSize = 16;
-export const columns = 84;
-export const rows = 60;
+export const columns = 168;
+export const rows = 120;
 export const cliffTile = 35;
+export const questNpc = { x: 224, y: 190, range: 48 };
 
 export const zones = {
     boar: { name: 'Clairière · N.1–5', left: 2, top: 2, right: 29, bottom: 23 },
-    skeleton: { name: 'Cimetière · N.5–10', left: 33, top: 23, right: 53, bottom: 41 },
-    dragon: { name: 'Montagnes · N.10–20', left: 57, top: 38, right: 81, bottom: 57 },
+    skeleton: { name: 'Cimetière · N.5–10', left: 73, top: 53, right: 93, bottom: 71 },
+    dragon: { name: 'Montagnes · N.10–20', left: 121, top: 82, right: 145, bottom: 101 },
 };
 
 export function inZone(zone, x, y) {
@@ -15,7 +16,7 @@ export function inZone(zone, x, y) {
 }
 
 export function cameraZoom(viewWidth, viewHeight) {
-    return Math.max(viewWidth < 640 ? 1 : 2,
+    return Math.max(1,
         Math.ceil(viewWidth / (columns * tileSize)), Math.ceil(viewHeight / (rows * tileSize)));
 }
 
@@ -27,10 +28,10 @@ export function buildTerrain(clearing) {
             for (let x = left; x <= right; x++) terrain[y][x] = 32;
         }
     };
-    road(14, 15, 44, 17);
-    road(42, 15, 44, 32);
-    road(43, 31, 70, 33);
-    road(68, 32, 70, 50);
+    road(14, 15, 84, 17);
+    road(82, 15, 84, 62);
+    road(83, 61, 134, 63);
+    road(132, 62, 134, 94);
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < columns; x++) {
             const side = 2 + Number(Math.floor(y / 5) % 3 === 1);
@@ -49,14 +50,14 @@ export function groundWalkable(terrain, x, y) {
 }
 
 export const graves = [
-    [36, 26], [39, 26], [47, 26], [50, 26],
-    [36, 30], [39, 30], [47, 30], [50, 30],
-    [36, 36], [39, 36], [47, 36], [50, 36],
-    [36, 39], [39, 39], [47, 39], [50, 39],
+    [76, 56], [79, 56], [87, 56], [90, 56],
+    [76, 60], [79, 60], [87, 60], [90, 60],
+    [76, 66], [79, 66], [87, 66], [90, 66],
+    [76, 69], [79, 69], [87, 69], [90, 69],
 ];
 
 export const rocks = [
-    [58, 39], [61, 39], [64, 39], [75, 39], [79, 40],
-    [59, 44], [63, 45], [76, 44], [80, 47],
-    [58, 51], [62, 54], [65, 56], [74, 55], [79, 54],
+    [122, 83], [125, 83], [128, 83], [139, 83], [143, 84],
+    [123, 88], [127, 89], [140, 88], [144, 91],
+    [122, 95], [126, 98], [129, 100], [138, 99], [143, 98],
 ];

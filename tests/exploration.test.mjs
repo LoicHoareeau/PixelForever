@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { buildTerrain, cameraZoom, cliffTile, columns, graves, groundWalkable, inZone, rocks, rows, tileSize, zones } from '../public/game/exploration.js';
+import { buildTerrain, cameraZoom, cliffTile, columns, graves, groundWalkable, inZone, questNpc, rocks, rows, tileSize, zones } from '../public/game/exploration.js';
 import { treePositions } from '../public/game/clearing-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
 import { TrainingCombat } from '../public/game/combat.js';
@@ -10,6 +10,7 @@ const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/
 const terrain = buildTerrain(clearing);
 const obstacles = [
     [116, 31, 48, 16],
+    [questNpc.x - 4, questNpc.y - 5, 8, 6],
     ...treePositions(terrain).map(([x, y]) => [x - 2, y - 4, 4, 5]),
     ...[[160, 177], [271, 163], [286, 224], [148, 231], [306, 231]].map(([x, y]) => [x - 1, y - 3, 3, 4]),
     ...graves.map(([x, y]) => [(x + .5) * 16 - 7, (y + .5) * 16 - 7, 14, 8]),
@@ -57,7 +58,8 @@ test('la clairière reste accessible et les trois zones sont reliées malgré le
 });
 
 test('le zoom reste modéré et la carte couvre le viewport, même après redimensionnement', () => {
-    assert.equal(cameraZoom(1920, 1080), 2);
+    assert.equal(cameraZoom(1920, 1080), 1);
+    assert.equal(cameraZoom(2560, 1440), 1);
     assert.equal(cameraZoom(390, 844), 1);
     for (const [width, height] of [[1920, 1080], [390, 844], [2560, 1440], [3840, 2160]]) {
         const zoom = cameraZoom(width, height);
@@ -65,7 +67,7 @@ test('le zoom reste modéré et la carte couvre le viewport, même après redime
         assert.ok(columns * tileSize * zoom >= width);
         assert.ok(rows * tileSize * zoom >= height);
     }
-    const startView = { right: 1920 / 2, bottom: 1080 / 2 };
+    const startView = { right: 1920, bottom: 1080 };
     assert.ok(zones.dragon.left * tileSize > startView.right || zones.dragon.top * tileSize > startView.bottom);
 });
 
