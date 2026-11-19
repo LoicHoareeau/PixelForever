@@ -1,23 +1,24 @@
 import {
     allocateStat,
     awardVictory,
+    canInvestTalent,
     computeCharacterStats,
+    findTalent,
+    getBranchPoints,
+    getTalentRank,
+    getUnlockedActiveSpells,
+    investTalent,
     loadProgress,
     regenerateResource,
+    resetTalents,
     saveProgress,
     statKeys,
+    talentTrees,
     upgradeSpell,
-    victoryXp,
     xpRequired,
 } from './progression.js';
 
-// Paramètres de l'arène d'entraînement face à Saphyr
-const counterRadius = 36;
-const warningMs = 850;
-const counterIntervalMs = 2100;
-const counterDamage = 9;
-const respawnMs = 5000;
-const impactMs = 190;
+const impactMs = 210;
 const recoveryMs = 140;
 
 const sparks = [
@@ -45,29 +46,31 @@ const regenFormatter = new Intl.NumberFormat('fr-FR', {
 });
 
 /**
- * Gère le combat en temps réel, l'ATH, les potions, l'équipement,
- * la régénération automatique et la fiche de caractéristiques/sorts.
+ * Gère le combat temps réel multi-monstres, les 6 emplacements de sorts,
+ * les arbres de talents, les potions, l'équipement et l'ATH plein écran.
  */
 export class TrainingCombat {
-    constructor(scene, dragon, rules, tileSize) {
+    constructor(scene, monsters, rules, tileSize) {
         this.scene = scene;
-        this.dragon = dragon;
-        this.target = dragon.sprite;
+        this.monsters = monsters;
+        this.tileSize = tileSize;
         this.rules = rules;
+        this.classKey = rules.classKey ?? (rules.ranged ? 'mage' : 'warrior');
         this.progressKey = 'pixelforever:progress:' + rules.progressKey;
         this.progress = loadProgress(this.progressKey, rules.level);
-        this.respawnAt = Infinity;
         this.manaCarry = 0;
         this.ranged = rules.ranged;
-        this.range = rules.range * tileSize;
-        this.rangeLabel = numberFormatter.format(rules.range) + (rules.range < 2 ? ' case' : ' cases');
+        this.selectedMonster = monsters.find((m) => m.species === 'boar') ?? monsters[0];
 
         // Références de l'ATH principal et de la barre d'actions
         this.status = document.getElementById('combat-status');
         this.resetButton = document.getElementById('combat-reset');
         this.targetHud = document.getElementById('combat-target');
+        this.targetNameLabel = document.getElementById('combat-target-name');
+        this.targetLevelLabel = document.getElementById('combat-target-level');
         this.combatActions = document.getElementById('combat-actions');
         this.buttons = [...document.querySelectorAll('[data-attack]')];
+        this.talentSlotButtons = [...document.querySelectorAll('[data-talent-slot]')];
         this.potionButtons = [...document.querySelectorAll('[data-potion]')];
         this.amounts = [...document.querySelectorAll('[data-quantity]')];
         this.weaponButtons = [...document.querySelectorAll('[data-weapon]')];
@@ -80,8 +83,9 @@ export class TrainingCombat {
         this.basicMetaLabel = document.getElementById('combat-basic-meta');
         this.specialMetaLabel = document.getElementById('combat-special-meta');
         this.characterPointsBadge = document.getElementById('character-points-badge');
+        this.talentPointsBadge = document.getElementById('talent-points-badge');
 
-        // Références de la fiche de personnage, des stats et des sorts
+        // Références de la fiche de personnage et des stats
         this.sheetLevelLabel = document.querySelector('[data-sheet-level]');
         this.sheetXpLabel = document.querySelector('[data-sheet-xp]');
         this.sheetWeaponLabel = document.querySelector('[data-sheet-weapon]');
@@ -96,6 +100,13 @@ export class TrainingCombat {
         this.spellPointsLabel = document.getElementById('spell-points-count');
         this.statButtons = [...document.querySelectorAll('[data-allocate-stat]')];
         this.spellButtons = [...document.querySelectorAll('[data-upgrade-spell]')];
+
+        // Références de la fenêtre Arbre de Talents
+        this.talentTreeRoot = document.getElementById('talent-tree-branches');
+        this.talentPointsModalLabel = document.getElementById('talent-points-count');
+        this.talentTooltip = document.getElementById('talent-tooltip');
+        this.talentResetButton = document.getElementById('talent-reset-btn');
+        this.talentStatusLabel = document.getElementById('talent-tree-status');
 
         this.statTotals = {};
         this.statDetails = {};
@@ -118,28 +129,78 @@ export class TrainingCombat {
             value: document.getElementById('combat-' + name + '-value'),
         }));
 
-        this.warning = scene.add.graphics().setDepth(1);
+        this.warning = scene.add.graphics().setDepth(2);
         this.effect = scene.add.graphics().setDepth(321);
+
+        // Cooldowns individuels par compétence + buff Berserk
+        this.spellCooldowns = new Map();
+        this.berserkUntil = 0;
+
+        // Clic sur un monstre pour le cibler
+        this.monsters.forEach((monster) => {
+            monster.sprite.on('pointerdown', () => {
+                if (!monster.isAlive) return;
+                this.selectMonster(monster);
+                this.tell(`Cible : ${monster.name} (Niv. ${monster.level}).`);
+            });
+        });
 
         this.reset();
         document.getElementById('combat-vitals').hidden = false;
         this.combatActions.hidden = false;
     }
 
+    get range() {
+        return (this.rules.range + (this.stats?.bonusRangeTiles ?? 0)) * this.tileSize;
+    }
+
+    get rangeLabel() {
+        const tiles = this.rules.range + (this.stats?.bonusRangeTiles ?? 0);
+        return numberFormatter.format(tiles) + (tiles < 2 ? ' case' : ' cases');
+    }
+
+    selectMonster(monster) {
+        this.monsters.forEach((m) => m.setSelected(false));
+        this.selectedMonster = monster;
+        if (monster && monster.isAlive) {
+            monster.setSelected(true);
+            this.refreshTargetHud();
+        }
+    }
+
+    getActiveTarget() {
+        if (this.selectedMonster && this.selectedMonster.isAlive) {
+            return this.selectedMonster;
+        }
+        // Sinon cibler le monstre vivant le plus proche
+        let nearest = null;
+        let bestDist = Infinity;
+        for (const m of this.monsters) {
+            if (!m.isAlive) continue;
+            const d = Math.hypot(m.sprite.x - this.scene.position.x, m.sprite.y - this.scene.position.y);
+            if (d < bestDist) {
+                bestDist = d;
+                nearest = m;
+            }
+        }
+        if (nearest) {
+            this.selectMonster(nearest);
+        }
+        return nearest;
+    }
+
     /**
      * Réinitialise l'affrontement sans effacer la progression sauvegardée du personnage.
      */
     reset() {
-        this.respawnAt = Infinity;
         this.manaCarry = 0;
+        this.spellCooldowns.clear();
+        this.berserkUntil = 0;
         this.refreshProgress();
         this.health = this.meters[0].meter.max;
         this.mana = this.meters[1].meter.max;
-        this.targetHealth = this.meters[2].meter.max;
         this.readyAt = 0;
         this.cooldownStart = 0;
-        this.counterAt = Infinity;
-        this.warningEndsAt = 0;
         this.impacts = [];
         this.pending = null;
         this.recovery = null;
@@ -147,59 +208,98 @@ export class TrainingCombat {
         this.warning.clear();
         this.effect.clear();
         this.scene.avatar.clearTint();
-        this.dragon.place(this.dragon.home);
+
+        this.monsters.forEach((m, index) => {
+            m.respawnAt = Infinity;
+            m.place(m.patrol[index % m.patrol.length], m.level);
+        });
+        this.selectMonster(this.monsters.find((m) => m.species === 'boar') ?? this.monsters[0]);
         this.targetHud.hidden = true;
+
         this.buttons.forEach((button) => {
             button.disabled = false;
         });
         this.resetButton.hidden = true;
         this.refreshVitals();
         this.refreshInventory();
-        this.updateCooldown(0);
-        this.tell('Approche-toi de Saphyr pour l’affronter.');
+        this.refreshActionSlots();
+        this.updateCooldowns(0);
+        this.tell('Explore Val-des-Saules : Sangliers (N.1-5), Squelettes (N.5-10) et Saphyr (N.10-20).');
     }
 
     /**
-     * Déclenche une attaque de base ou une compétence si portée, recharge et ressource le permettent.
+     * Déclenche une attaque de base, le sort spécial ou un sort débloqué par talent.
      */
     attack(kind, now) {
         if (this.health === 0) {
             return;
         }
-        if (this.targetHealth === 0) {
-            this.tell('Saphyr va bientôt réapparaître.');
+
+        // Gestion des slots 3..6 liés aux talents
+        if (kind.startsWith('talent-')) {
+            const slotIndex = Number(kind.split('-')[1]);
+            const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
+            const talent = unlocked[slotIndex];
+            if (!talent) {
+                this.tell('Emplacement vide : débloque un sort dans l’arbre de talents (T).');
+                return;
+            }
+            this.castTalentSpell(talent, now);
             return;
         }
+
+        const target = this.getActiveTarget();
+        if (!target) {
+            this.tell('Aucun monstre disponible pour le moment.');
+            return;
+        }
+
         if (this.pending || now < this.readyAt) {
             this.tell('L’attaque est en cours ou en recharge.');
             return;
         }
-        if (this.targetDistance() > this.range) {
-            this.tell('Saphyr est hors de portée. Portée : ' + this.rangeLabel + '.');
+
+        const dist = this.distanceTo(target);
+        if (dist > this.range) {
+            this.tell(`${target.name} est hors de portée. Portée : ${this.rangeLabel}.`);
             return;
         }
 
         const special = kind === 'special';
-        if (special && this.mana < this.rules.specialManaCost) {
+        const manaCost = special
+            ? Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))))
+            : 0;
+
+        if (special && this.mana < manaCost) {
             this.tell(this.rules.resourceName + ' : réserve insuffisante. L’attaque de base est disponible.');
             return;
         }
 
         if (special) {
-            this.mana -= this.rules.specialManaCost;
+            this.mana -= manaCost;
             this.refreshVitals();
         }
 
         this.targetHud.hidden = false;
-        this.cooldownStart = now;
-        this.readyAt = now + this.rules.cooldownMs;
-        this.scene.face(this.target.x - this.scene.position.x, this.target.y - this.scene.position.y);
+        this.refreshTargetHud();
 
-        const duration = this.ranged ? (special ? 410 : 260) : (special ? 550 : 140);
-        const angle = Math.atan2(this.target.y - this.scene.position.y, this.target.x - this.scene.position.x);
+        const cdFactor = 1 - (this.stats.cooldownReduction ?? 0);
+        const cdMs = Math.round(this.rules.cooldownMs * cdFactor);
+        this.cooldownStart = now;
+        this.readyAt = now + cdMs;
+        this.setSlotCooldown(special ? 'special' : 'basic', now, cdMs);
+
+        this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
+
+        const berserkMult = now < this.berserkUntil ? 1.4 : 1;
+        const baseDmg = special ? this.stats.specialDamage : this.stats.basicDamage;
+        const duration = this.ranged ? (special ? 380 : 250) : (special ? 480 : 140);
+        const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
+
         const attack = {
-            color: special ? 0xff942f : this.ranged ? 0xb5b8ff : 0xffefd0,
-            damage: special ? this.stats.specialDamage : this.stats.basicDamage,
+            target,
+            color: special ? 0xff942f : (this.ranged ? 0xb5b8ff : 0xffefd0),
+            damage: Math.round(baseDmg * berserkMult),
             name: special ? this.rules.specialName : this.basicName,
             special,
             armed: this.equipped,
@@ -207,26 +307,171 @@ export class TrainingCombat {
             facing: this.scene.facing,
             start: now,
             end: now + duration,
-            castMs: special ? 110 : 55,
+            castMs: special ? 105 : 55,
             x: this.scene.position.x + Math.cos(angle) * 7,
             y: this.scene.position.y - 20 + Math.sin(angle) * 4,
         };
 
         this.pending = attack;
         this.attackVisual = attack;
-        this.tell(attack.name + ' en cours.');
+        this.tell(attack.name + ' sur ' + target.name + '...');
     }
 
     /**
-     * Met à jour le combat, la réapparition, la régénération automatique et les effets visuels.
+     * Exécute un sort actif débloqué via l'arbre de talents.
+     */
+    castTalentSpell(talent, now) {
+        const cdInfo = this.spellCooldowns.get(talent.slot);
+        if (cdInfo && now < cdInfo.end) {
+            const left = ((cdInfo.end - now) / 1000).toFixed(1);
+            this.tell(`${talent.name} en recharge (${left}s).`);
+            return;
+        }
+
+        const manaCost = Math.max(1, Math.round((talent.manaCost ?? 6) * (1 - (this.stats.manaCostReduction ?? 0))));
+        if (this.mana < manaCost) {
+            this.tell(`${this.rules.resourceName} insuffisant(e) pour ${talent.name} (${manaCost}).`);
+            return;
+        }
+
+        const cdFactor = 1 - (this.stats.cooldownReduction ?? 0);
+        const cdMs = Math.round((talent.cooldownMs ?? 4500) * cdFactor);
+        const berserkMult = now < this.berserkUntil ? 1.4 : 1;
+
+        // Sort d'amélioration personnelle : Berserk
+        if (talent.slot === 'berserk') {
+            this.mana -= manaCost;
+            this.berserkUntil = now + 6000;
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            this.impacts.push({ x: this.scene.position.x, y: this.scene.position.y - 16, color: 0xff5a36, start: now });
+            this.refreshVitals();
+            this.tell('Berserk activé ! +40 % de dégâts pendant 6s.');
+            return;
+        }
+
+        const target = this.getActiveTarget();
+
+        // Sorts de zone centrés sur le joueur : Taillade, Tourbillon de feu, Nova de givre
+        if (talent.slot === 'cleave' || talent.slot === 'fire_whirl' || talent.slot === 'frost_nova') {
+            const radius = talent.slot === 'cleave' ? 38 : 54;
+            const hits = this.monsters.filter((m) => m.isAlive && this.distanceTo(m) <= radius);
+            if (hits.length === 0) {
+                this.tell(`Aucun ennemi à portée pour ${talent.name}.`);
+                return;
+            }
+            this.mana -= manaCost;
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            const color = talent.slot === 'frost_nova' ? 0x78ccf0 : (talent.slot === 'fire_whirl' ? 0xff7b2f : 0xffe09e);
+            const mult = talent.slot === 'fire_whirl' ? 1.25 : (talent.slot === 'frost_nova' ? 0.75 : 0.95);
+            const dmg = Math.round(this.stats.specialDamage * mult * berserkMult);
+
+            this.impacts.push({ x: this.scene.position.x, y: this.scene.position.y - 10, color, start: now });
+            for (const m of hits) {
+                if (talent.slot === 'frost_nova') {
+                    m.slowUntil = now + 2500;
+                }
+                this.applyDamageToMonster(m, dmg, talent.name, color, now);
+            }
+            this.refreshVitals();
+            return;
+        }
+
+        if (!target) {
+            this.tell('Aucune cible à portée.');
+            return;
+        }
+
+        // Engagement : ruée vers la cible jusqu'à 4.5 cases
+        if (talent.slot === 'engage') {
+            const maxEngage = 4.5 * this.tileSize;
+            if (this.distanceTo(target) > maxEngage) {
+                this.tell(`${target.name} est trop loin pour Engagement.`);
+                return;
+            }
+            this.mana -= manaCost;
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
+            const destX = target.sprite.x - Math.cos(angle) * 14;
+            const destY = target.sprite.y - Math.sin(angle) * 14;
+            if (this.scene.canStand(destX, destY)) {
+                this.scene.position.set(destX, destY);
+            }
+            this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
+            const dmg = Math.round(this.stats.specialDamage * 1.15 * berserkMult);
+            this.applyDamageToMonster(target, dmg, talent.name, 0xf0a64b, now);
+            this.refreshVitals();
+            return;
+        }
+
+        // Coup de bouclier : étourdit et interrompt l'attaque du monstre
+        if (talent.slot === 'shield_bash') {
+            if (this.distanceTo(target) > this.range + 6) {
+                this.tell(`${target.name} est hors de portée pour Coup de bouclier.`);
+                return;
+            }
+            this.mana -= manaCost;
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            target.stunUntil = now + 2000;
+            target.warningEndsAt = 0;
+            target.breath = null;
+            const dmg = Math.round(this.stats.basicDamage * 1.1 * berserkMult);
+            this.applyDamageToMonster(target, dmg, talent.name, 0x9be0de, now);
+            this.refreshVitals();
+            return;
+        }
+
+        // Mur de feu : AoE centrée sur la cible
+        if (talent.slot === 'fire_wall') {
+            if (this.distanceTo(target) > this.range + 16) {
+                this.tell(`${target.name} est hors de portée pour Mur de feu.`);
+                return;
+            }
+            this.mana -= manaCost;
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            const dmg = Math.round(this.stats.specialDamage * 1.15 * berserkMult);
+            const cx = target.sprite.x;
+            const cy = target.sprite.y;
+            const hits = this.monsters.filter((m) => m.isAlive && Math.hypot(m.sprite.x - cx, m.sprite.y - cy) <= 38);
+            for (const m of hits) {
+                this.applyDamageToMonster(m, dmg, talent.name, 0xff6b2b, now);
+            }
+            this.refreshVitals();
+            return;
+        }
+
+        // Déflagration arcanique : portée étendue
+        if (talent.slot === 'arcane_blast') {
+            if (this.distanceTo(target) > this.range + 1.5 * this.tileSize) {
+                this.tell(`${target.name} est hors de portée pour Déflagration.`);
+                return;
+            }
+            this.mana -= manaCost;
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            const dmg = Math.round(this.stats.specialDamage * 1.05 * berserkMult);
+            this.applyDamageToMonster(target, dmg, talent.name, 0xc99eff, now);
+            this.refreshVitals();
+        }
+    }
+
+    setSlotCooldown(slotKey, now, durationMs) {
+        this.spellCooldowns.set(slotKey, {
+            start: now,
+            end: now + durationMs,
+        });
+    }
+
+    /**
+     * Met à jour le combat, la réapparition des monstres, la régénération et les effets visuels.
      */
     update(now, delta) {
-        if (now >= this.respawnAt) {
-            this.respawnAt = Infinity;
-            this.dragon.respawn(this.scene.position);
-            this.targetHealth = this.meters[2].meter.max;
-            this.refreshVitals();
-            this.tell('Saphyr est réapparu ailleurs dans Val-des-Saules.');
+        for (const monster of this.monsters) {
+            if (!monster.isAlive && now >= monster.respawnAt) {
+                monster.respawnAt = Infinity;
+                monster.respawn(this.scene.position);
+                if (this.selectedMonster === monster) {
+                    this.selectMonster(monster);
+                }
+            }
         }
 
         if (this.pending && now >= this.pending.end) {
@@ -250,31 +495,65 @@ export class TrainingCombat {
             }
         }
 
-        if (this.health > 0 && this.targetHealth > 0) {
-            this.updateCounter(now);
+        // Mise à jour de tous les monstres + zones d'avertissement
+        this.warning.clear();
+        for (const monster of this.monsters) {
+            if (!monster.isAlive) continue;
+            if (this.health > 0) {
+                this.updateMonsterCounter(monster, now);
+            }
+            monster.update(now, delta, this.scene.position);
         }
 
-        this.dragon.update(now, delta, this.scene.position);
+        // Teinte visuelle de Berserk sur l'avatar
+        if (this.health > 0) {
+            if (now < this.berserkUntil) {
+                this.scene.avatar.setTint(0xffb38a);
+            } else if (this.scene.avatar.tintTopLeft === 0xffb38a) {
+                this.scene.avatar.clearTint();
+            }
+        }
+
         this.drawEffects(now);
-        this.updateCooldown(now);
+        this.updateCooldowns(now);
     }
 
     /**
-     * Met à jour l'indicateur visuel de temps de recharge sur la barre d'actions.
+     * Met à jour les indicateurs visuels de recharge sur chaque slot de la barre d'action.
      */
-    updateCooldown(now) {
-        const end = Math.max(this.readyAt, this.pending?.end ?? 0);
-        const remaining = Math.max(0, end - now);
-        const percent = remaining ? Math.ceil((100 * remaining) / (end - this.cooldownStart)) : 0;
-        if (percent === this.cooldownPercent) {
-            return;
+    updateCooldowns(now) {
+        const slotMap = {
+            basic: this.buttons[0],
+            special: this.buttons[1],
+        };
+        const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
+        this.talentSlotButtons.forEach((btn, idx) => {
+            const talent = unlocked[idx];
+            if (talent) {
+                slotMap[talent.slot] = btn;
+            } else {
+                btn.style.setProperty('--cooldown', '0%');
+                const cdBadge = btn.querySelector('.slot-cd');
+                if (cdBadge) cdBadge.textContent = '';
+            }
+        });
+
+        for (const [key, btn] of Object.entries(slotMap)) {
+            if (!btn) continue;
+            const info = this.spellCooldowns.get(key);
+            const remaining = info ? Math.max(0, info.end - now) : 0;
+            const total = info ? Math.max(1, info.end - info.start) : 1;
+            const percent = remaining > 0 ? Math.ceil((100 * remaining) / total) : 0;
+            btn.style.setProperty('--cooldown', percent + '%');
+            const cdBadge = btn.querySelector('.slot-cd');
+            if (cdBadge) {
+                cdBadge.textContent = remaining > 0 ? (remaining / 1000).toFixed(1) + 's' : '';
+            }
         }
-        this.cooldownPercent = percent;
-        this.combatActions.style.setProperty('--cooldown', percent + '%');
     }
 
     /**
-     * Consomme une potion de vie ou de mana/énergie depuis l'inventaire ou la barre d'action.
+     * Consomme une potion de vie ou de mana/énergie.
      */
     drinkPotion(type) {
         if (this.health === 0) {
@@ -326,9 +605,6 @@ export class TrainingCombat {
         return this.equipped ? 'Arme équipée.' : 'Arme rangée.';
     }
 
-    /**
-     * Investit un point de caractéristique et augmente les PV/Mana courants si le maximum progresse.
-     */
     spendStatPoint(stat) {
         const previousMaxHealth = this.stats.maxHealth;
         const previousMaxMana = this.stats.maxMana;
@@ -354,9 +630,6 @@ export class TrainingCombat {
         return (statLabels[stat] ?? stat) + ' augmentée (+1).';
     }
 
-    /**
-     * Dépense un point de sort pour améliorer l'attaque de base ou le sort spécial.
-     */
     spendSpellPoint(spell) {
         if (!upgradeSpell(this.progress, spell)) {
             return 'Aucun point de sort disponible.';
@@ -371,9 +644,49 @@ export class TrainingCombat {
         return spellName + ' passe au rang ' + rank + '.';
     }
 
-    /**
-     * Met à jour les quantités et l'état équipé des objets dans la modale d'inventaire.
-     */
+    spendTalentPoint(talentId) {
+        const previousMaxHealth = this.stats.maxHealth;
+        const previousMaxMana = this.stats.maxMana;
+
+        if (!investTalent(this.progress, this.classKey, talentId)) {
+            return 'Impossible d’investir dans ce talent (prérequis ou points insuffisants).';
+        }
+
+        this.refreshProgress();
+
+        const healthGain = Math.max(0, this.stats.maxHealth - previousMaxHealth);
+        const manaGain = Math.max(0, this.stats.maxMana - previousMaxMana);
+        if (this.health > 0 && healthGain > 0) {
+            this.health = Math.min(this.stats.maxHealth, this.health + healthGain);
+        }
+        if (this.health > 0 && manaGain > 0) {
+            this.mana = Math.min(this.stats.maxMana, this.mana + manaGain);
+        }
+
+        saveProgress(this.progressKey, this.progress);
+        this.refreshVitals();
+        this.refreshActionSlots();
+
+        const found = findTalent(this.classKey, talentId);
+        return found
+            ? `${found.talent.name} (${getTalentRank(this.progress, talentId)}/${found.talent.maxRank}) appris.`
+            : 'Talent amélioré.';
+    }
+
+    resetAllTalents() {
+        const refunded = resetTalents(this.progress);
+        if (refunded === 0) {
+            return 'Aucun talent à réinitialiser.';
+        }
+        saveProgress(this.progressKey, this.progress);
+        this.refreshProgress();
+        this.health = Math.min(this.health, this.stats.maxHealth);
+        this.mana = Math.min(this.mana, this.stats.maxMana);
+        this.refreshVitals();
+        this.refreshActionSlots();
+        return `Talents réinitialisés (+${refunded} point${refunded > 1 ? 's' : ''} restitué${refunded > 1 ? 's' : ''}).`;
+    }
+
     refreshInventory() {
         this.amounts.forEach((amount) => {
             amount.textContent = this.progress.items[amount.dataset.quantity];
@@ -416,24 +729,45 @@ export class TrainingCombat {
         if (weapon === 'starter') {
             return this.rules.weaponBonus;
         }
-
         return this.rules.loot[weapon]?.bonus ?? 0;
     }
 
     get equippedWeaponName() {
         const weapon = this.progress.weapon;
-        if (weapon === null) {
-            return 'Mains nues';
-        }
-        if (weapon === 'starter') {
-            return this.ranged ? 'Bâton de braise' : 'Épée de fer';
-        }
-
+        if (weapon === null) return 'Mains nues';
+        if (weapon === 'starter') return this.ranged ? 'Bâton de braise' : 'Épée de fer';
         return this.rules.loot[weapon]?.name ?? 'Aucune';
     }
 
     /**
-     * Recalcule les statistiques complètes du personnage et met à jour ATH, barre d'actions et fiche.
+     * Met à jour les 4 emplacements de sorts de talents dans la barre d'action.
+     */
+    refreshActionSlots() {
+        const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
+        this.talentSlotButtons.forEach((button, index) => {
+            const talent = unlocked[index];
+            const iconEl = button.querySelector('.action-icon');
+            const nameEl = button.querySelector('.slot-name');
+            const metaEl = button.querySelector('.slot-meta');
+            if (!talent) {
+                button.dataset.unlocked = 'false';
+                button.title = `Emplacement ${index + 3} · Débloquer un sort dans l’arbre de talents (T)`;
+                if (iconEl) iconEl.className = 'action-icon icon-locked';
+                if (nameEl) nameEl.textContent = 'Verrouillé';
+                if (metaEl) metaEl.textContent = 'Talent (T)';
+                return;
+            }
+            button.dataset.unlocked = 'true';
+            const cost = Math.max(1, Math.round((talent.manaCost ?? 6) * (1 - (this.stats?.manaCostReduction ?? 0))));
+            button.title = `${talent.name} · ${cost} ${this.rules.resourceName.toLowerCase()} · ${talent.description}`;
+            if (iconEl) iconEl.className = `action-icon ${talent.icon}`;
+            if (nameEl) nameEl.textContent = talent.name;
+            if (metaEl) metaEl.textContent = `${cost} ${this.rules.resourceName.toLowerCase()}`;
+        });
+    }
+
+    /**
+     * Recalcule les statistiques complètes du personnage et met à jour ATH, barre d'actions, fiche et talents.
      */
     refreshProgress() {
         const { level, xp } = this.progress;
@@ -451,12 +785,12 @@ export class TrainingCombat {
         }
 
         if (this.basicMetaLabel) {
-            this.basicMetaLabel.textContent = 'Rang ' + this.stats.basicSpellRank + ' · ' + this.stats.basicDamage + ' dég.';
+            this.basicMetaLabel.textContent = 'Rg ' + this.stats.basicSpellRank + ' · ' + this.stats.basicDamage + ' dég.';
         }
 
         if (this.specialMetaLabel) {
-            this.specialMetaLabel.textContent = this.rules.specialManaCost + ' '
-                + this.rules.resourceName.toLowerCase() + ' · ' + this.stats.specialDamage + ' dég.';
+            const cost = Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))));
+            this.specialMetaLabel.textContent = cost + ' ' + this.rules.resourceName.toLowerCase() + ' · ' + this.stats.specialDamage + ' dég.';
         }
 
         this.buttons[0].title = this.basicName
@@ -469,56 +803,46 @@ export class TrainingCombat {
             + ' · ' + this.rules.specialManaCost + ' ' + this.rules.resourceName.toLowerCase()
             + ' · Portée : ' + this.rangeLabel;
 
+        this.refreshActionSlots();
         this.refreshCharacterSheet();
+        this.renderTalentTree();
     }
 
-    /**
-     * Actualise les valeurs affichées dans la fiche de personnage, de caractéristiques et de sorts.
-     */
     refreshCharacterSheet() {
-        if (!this.stats) {
-            return;
-        }
+        if (!this.stats) return;
 
-        const totalPoints = this.stats.statPoints + this.stats.spellPoints;
         if (this.characterPointsBadge) {
-            if (totalPoints > 0) {
-                this.characterPointsBadge.textContent = '+' + totalPoints + (totalPoints > 1 ? ' pts' : ' pt');
+            const pts = this.stats.statPoints;
+            if (pts > 0) {
+                this.characterPointsBadge.textContent = '+' + pts;
                 this.characterPointsBadge.dataset.hasPoints = 'true';
             } else {
-                this.characterPointsBadge.textContent = 'Fiche & Stats';
+                this.characterPointsBadge.textContent = '';
                 this.characterPointsBadge.dataset.hasPoints = 'false';
             }
         }
 
+        if (this.talentPointsBadge) {
+            const sPts = this.stats.spellPoints;
+            if (sPts > 0) {
+                this.talentPointsBadge.textContent = '+' + sPts;
+                this.talentPointsBadge.dataset.hasPoints = 'true';
+            } else {
+                this.talentPointsBadge.textContent = '';
+                this.talentPointsBadge.dataset.hasPoints = 'false';
+            }
+        }
+
         const regenText = '+' + regenFormatter.format(this.stats.manaRegenPerSec) + '/s';
-        if (this.sheetLevelLabel) {
-            this.sheetLevelLabel.textContent = String(this.stats.level);
-        }
-        if (this.sheetXpLabel) {
-            this.sheetXpLabel.textContent = this.progress.xp + ' / ' + xpRequired(this.stats.level);
-        }
-        if (this.sheetWeaponLabel) {
-            this.sheetWeaponLabel.textContent = this.equippedWeaponName;
-        }
-        if (this.sheetMaxHealthLabel) {
-            this.sheetMaxHealthLabel.textContent = String(this.stats.maxHealth);
-        }
-        if (this.sheetMaxManaLabel) {
-            this.sheetMaxManaLabel.textContent = String(this.stats.maxMana);
-        }
-        if (this.sheetManaRegenLabel) {
-            this.sheetManaRegenLabel.textContent = regenText;
-        }
-        if (this.sheetBasicDamageLabel) {
-            this.sheetBasicDamageLabel.textContent = this.stats.basicDamage + ' dégâts';
-        }
-        if (this.sheetSpecialDamageLabel) {
-            this.sheetSpecialDamageLabel.textContent = this.stats.specialDamage + ' dégâts';
-        }
-        if (this.sheetRangeLabel) {
-            this.sheetRangeLabel.textContent = this.rangeLabel;
-        }
+        if (this.sheetLevelLabel) this.sheetLevelLabel.textContent = String(this.stats.level);
+        if (this.sheetXpLabel) this.sheetXpLabel.textContent = this.progress.xp + ' / ' + xpRequired(this.stats.level);
+        if (this.sheetWeaponLabel) this.sheetWeaponLabel.textContent = this.equippedWeaponName;
+        if (this.sheetMaxHealthLabel) this.sheetMaxHealthLabel.textContent = String(this.stats.maxHealth);
+        if (this.sheetMaxManaLabel) this.sheetMaxManaLabel.textContent = String(this.stats.maxMana);
+        if (this.sheetManaRegenLabel) this.sheetManaRegenLabel.textContent = regenText;
+        if (this.sheetBasicDamageLabel) this.sheetBasicDamageLabel.textContent = this.stats.basicDamage + ' dégâts';
+        if (this.sheetSpecialDamageLabel) this.sheetSpecialDamageLabel.textContent = this.stats.specialDamage + ' dégâts';
+        if (this.sheetRangeLabel) this.sheetRangeLabel.textContent = this.rangeLabel;
 
         if (this.statPointsLabel) {
             const count = this.stats.statPoints;
@@ -531,9 +855,7 @@ export class TrainingCombat {
 
         for (const key of statKeys) {
             const detail = this.stats.attributes[key];
-            if (this.statTotals[key]) {
-                this.statTotals[key].textContent = String(detail.total);
-            }
+            if (this.statTotals[key]) this.statTotals[key].textContent = String(detail.total);
             if (this.statDetails[key]) {
                 this.statDetails[key].textContent = 'Base ' + detail.base
                     + ' · Naturel +' + detail.natural
@@ -547,15 +869,10 @@ export class TrainingCombat {
 
         const basicStep = this.rules.basicSpellRankBonus ?? 3;
         const specialStep = this.rules.specialSpellRankBonus ?? 5;
-        if (this.spellRanks.basic) {
-            this.spellRanks.basic.textContent = 'Rang ' + this.stats.basicSpellRank;
-        }
-        if (this.spellRanks.special) {
-            this.spellRanks.special.textContent = 'Rang ' + this.stats.specialSpellRank;
-        }
+        if (this.spellRanks.basic) this.spellRanks.basic.textContent = 'Rang ' + this.stats.basicSpellRank;
+        if (this.spellRanks.special) this.spellRanks.special.textContent = 'Rang ' + this.stats.specialSpellRank;
         if (this.spellDamages.basic) {
-            this.spellDamages.basic.textContent = this.stats.basicDamage
-                + ' dégâts actuels (+' + basicStep + ' par rang)';
+            this.spellDamages.basic.textContent = this.stats.basicDamage + ' dégâts actuels (+' + basicStep + ' par rang)';
         }
         if (this.spellDamages.special) {
             this.spellDamages.special.textContent = this.stats.specialDamage
@@ -569,54 +886,176 @@ export class TrainingCombat {
     }
 
     /**
-     * Applique les dégâts d'une attaque à Saphyr et déclenche sa riposte ou sa défaite.
+     * Génère et met à jour l'arbre de talents à 3 branches (style RPG classique).
+     */
+    renderTalentTree() {
+        if (!this.talentTreeRoot) return;
+        const tree = talentTrees[this.classKey];
+        if (!tree) return;
+
+        if (this.talentPointsModalLabel) {
+            const pts = this.stats?.spellPoints ?? this.progress.spellPoints ?? 0;
+            this.talentPointsModalLabel.textContent = `${pts} point${pts > 1 ? 's' : ''} de talent disponible${pts > 1 ? 's' : ''}`;
+        }
+
+        this.talentTreeRoot.innerHTML = '';
+
+        for (const branch of tree.branches) {
+            const branchPts = getBranchPoints(this.progress, branch);
+            const colEl = document.createElement('section');
+            colEl.className = 'talent-branch';
+            colEl.style.setProperty('--branch-accent', branch.accent);
+
+            const header = document.createElement('header');
+            header.className = 'talent-branch-header';
+            header.innerHTML = `
+                <div>
+                    <h3>${branch.name}</h3>
+                    <small>${branch.subtitle}</small>
+                </div>
+                <span class="branch-points-badge">${branchPts} pts</span>
+            `;
+            colEl.appendChild(header);
+
+            const grid = document.createElement('div');
+            grid.className = 'talent-grid';
+
+            // Lignes de connexion SVG entre talents prérequis et enfants
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'talent-connectors');
+            svg.setAttribute('viewBox', '0 0 200 240');
+            svg.setAttribute('preserveAspectRatio', 'none');
+
+            for (const talent of branch.talents) {
+                if (!talent.requires) continue;
+                const parent = branch.talents.find((t) => t.id === talent.requires);
+                if (!parent) continue;
+                const x1 = parent.col === 0 ? 50 : 150;
+                const y1 = parent.tier * 80 + 40;
+                const x2 = talent.col === 0 ? 50 : 150;
+                const y2 = talent.tier * 80 + 40;
+                const active = getTalentRank(this.progress, parent.id) > 0;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', String(x1));
+                line.setAttribute('y1', String(y1));
+                line.setAttribute('x2', String(x2));
+                line.setAttribute('y2', String(y2));
+                line.setAttribute('stroke', active ? branch.accent : '#4a4352');
+                line.setAttribute('stroke-width', active ? '4' : '3');
+                svg.appendChild(line);
+            }
+            grid.appendChild(svg);
+
+            for (const talent of branch.talents) {
+                const rank = getTalentRank(this.progress, talent.id);
+                const maxed = rank >= talent.maxRank;
+                const available = canInvestTalent(this.progress, this.classKey, talent.id);
+                const state = maxed ? 'maxed' : (rank > 0 ? 'invested' : (available ? 'available' : 'locked'));
+
+                const node = document.createElement('button');
+                node.type = 'button';
+                node.className = `talent-node talent-${state}`;
+                node.style.gridRow = String(talent.tier + 1);
+                node.style.gridColumn = String(talent.col + 1);
+                node.dataset.talentId = talent.id;
+                node.innerHTML = `
+                    <span class="talent-kind">${talent.type === 'active' ? 'SORT' : 'PASSIF'}</span>
+                    <span class="action-icon ${talent.icon}" aria-hidden="true"></span>
+                    <span class="talent-rank">${rank}/${talent.maxRank}</span>
+                `;
+
+                const showTip = () => {
+                    if (!this.talentTooltip) return;
+                    const reqText = talent.minBranchPoints
+                        ? `Prérequis : ${talent.minBranchPoints} pts dans ${branch.name}`
+                        : 'Palier de base';
+                    this.talentTooltip.innerHTML = `
+                        <strong>${talent.name}</strong>
+                        <span class="tooltip-type">${talent.type === 'active' ? 'Sort actif' : 'Bonus passif'} · Rang ${rank}/${talent.maxRank}</span>
+                        <p>${talent.description}</p>
+                        <small>${reqText}</small>
+                    `;
+                };
+
+                node.addEventListener('mouseenter', showTip);
+                node.addEventListener('focus', showTip);
+                node.addEventListener('click', () => {
+                    showTip();
+                    const msg = this.spendTalentPoint(talent.id);
+                    if (this.talentStatusLabel) {
+                        this.talentStatusLabel.textContent = msg;
+                    }
+                });
+
+                grid.appendChild(node);
+            }
+
+            colEl.appendChild(grid);
+            this.talentTreeRoot.appendChild(colEl);
+        }
+    }
+
+    /**
+     * Applique les dégâts d'une attaque sur la cible et gère la riposte ou la défaite.
      */
     resolveAttack(attack, now) {
-        if (this.targetHealth === 0) {
+        const target = attack.target;
+        if (!target || !target.isAlive) {
             return;
         }
         if (!this.ranged) {
             this.recovery = { ...attack, start: now };
         }
-        if (!this.ranged && this.targetDistance() > this.range) {
-            this.tell('Saphyr est hors de portée. Portée : ' + this.rangeLabel + '.');
+        if (!this.ranged && this.distanceTo(target) > this.range) {
+            this.tell(`${target.name} est hors de portée. Portée : ${this.rangeLabel}.`);
             return;
         }
 
-        const damage = Math.min(attack.damage, this.targetHealth);
-        this.targetHealth -= damage;
-        this.refreshVitals();
+        this.applyDamageToMonster(target, attack.damage, attack.name, attack.color, now);
+    }
+
+    applyDamageToMonster(monster, rawDamage, attackName, color, now) {
+        if (!monster.isAlive) return;
+        const damage = Math.min(rawDamage, monster.health);
+        monster.health -= damage;
+        monster.syncOverlays();
+
+        if (this.selectedMonster === monster) {
+            this.refreshTargetHud();
+        }
+
         this.impacts.push({
-            x: this.target.x,
-            y: this.target.y - 20,
-            color: attack.color,
+            x: monster.sprite.x,
+            y: monster.sprite.y - 14,
+            color,
             start: now,
         });
 
-        if (this.targetHealth === 0) {
-            this.defeatDragon(now);
+        if (monster.health <= 0) {
+            this.defeatMonster(monster, now);
             return;
         }
 
-        this.dragon.pursue();
-        if (this.counterAt === Infinity) {
-            this.counterAt = now + 450;
+        monster.pursue();
+        if (monster.counterAt === Infinity) {
+            monster.counterAt = now + (monster.species === 'boar' ? 220 : 450);
         }
-        this.tell(attack.name + ' · ' + damage + ' dégâts.');
+        this.tell(`${attackName} · ${damage} dégâts sur ${monster.name} (N.${monster.level}).`);
     }
 
     /**
-     * Crédite l'XP, le butin et la montée de niveau lorsque Saphyr est vaincu.
+     * Crédite l'XP adaptée au niveau du monstre, le butin et la montée de niveau.
      */
-    defeatDragon(now) {
-        this.dragon.hide();
-        this.respawnAt = now + respawnMs;
-        this.warningEndsAt = 0;
-        this.counterAt = Infinity;
-        this.warning.clear();
-        this.targetHud.hidden = true;
+    defeatMonster(monster, now) {
+        monster.hide();
+        monster.respawnAt = now + monster.template.respawnMs;
 
-        const { item, levelUp } = awardVictory(this.progress, this.rules.loot);
+        if (this.selectedMonster === monster) {
+            this.targetHud.hidden = true;
+            this.selectedMonster = null;
+        }
+
+        const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
         saveProgress(this.progressKey, this.progress);
         this.refreshProgress();
         this.refreshInventory();
@@ -630,30 +1069,41 @@ export class TrainingCombat {
 
         const loot = this.rules.loot[item];
         const levelUpText = levelUp
-            ? ' · Niveau ' + this.progress.level + ' ! (+3 pts stats, +1 pt sort)'
-            : '.';
-        this.tell('Saphyr vaincu · +' + victoryXp + ' XP · ' + loot.name + ' (' + loot.rarity + ')' + levelUpText);
+            ? ` · Niveau ${this.progress.level} ! (+3 stats, +1 talent)`
+            : '';
+        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${levelUpText}`);
     }
 
     /**
-     * Gère l'avertissement et l'impact du souffle de Saphyr.
+     * Gère la riposte spécifique de chaque espèce (Sanglier rapide, Squelette, Dragon AoE).
      */
-    updateCounter(now) {
-        if (this.warningEndsAt) {
-            if (now < this.warningEndsAt) {
+    updateMonsterCounter(monster, now) {
+        if (now < monster.stunUntil) {
+            return;
+        }
+
+        const dist = this.distanceTo(monster);
+        const radius = monster.stats.attackRadius;
+
+        if (monster.warningEndsAt) {
+            if (now < monster.warningEndsAt) {
+                const warnColor = monster.species === 'dragon' ? 0x32cadd : (monster.species === 'boar' ? 0xff7043 : 0xd0d8ff);
+                this.warning.fillStyle(warnColor, 0.24).fillCircle(monster.sprite.x, monster.sprite.y, radius);
+                this.warning.lineStyle(1.5, warnColor, 0.9).strokeCircle(monster.sprite.x, monster.sprite.y, radius);
                 return;
             }
-            this.warningEndsAt = 0;
-            this.counterAt = now + counterIntervalMs;
-            this.warning.clear();
-            this.target.clearTint();
+            monster.warningEndsAt = 0;
+            monster.counterAt = now + monster.stats.counterIntervalMs;
+            monster.sprite.clearTint();
 
-            if (this.targetDistance() > counterRadius) {
-                this.tell('Tu as esquivé la riposte de Saphyr.');
+            if (dist > radius) {
+                this.tell(`Tu as esquivé l’attaque de ${monster.name}.`);
                 return;
             }
 
-            this.health = Math.max(0, this.health - counterDamage);
+            const reduction = 1 - (this.stats.damageReduction ?? 0);
+            const taken = Math.max(1, Math.round(monster.stats.damage * reduction));
+            this.health = Math.max(0, this.health - taken);
             this.impacts.push({
                 x: this.scene.position.x,
                 y: this.scene.position.y - 17,
@@ -664,20 +1114,20 @@ export class TrainingCombat {
 
             if (this.health === 0) {
                 this.scene.avatar.setTint(0xbb6666);
-                this.finish('Saphyr t’a vaincu. Relève-toi au camp.');
+                this.finish(`${monster.name} (N.${monster.level}) t’a vaincu. Relève-toi au camp.`);
                 return;
             }
 
-            this.tell('La riposte de Saphyr te touche.');
+            this.tell(`${monster.name} t’inflige ${taken} dégâts.`);
             return;
         }
 
-        if (now >= this.counterAt && this.targetDistance() <= counterRadius) {
-            this.warningEndsAt = now + warningMs;
-            this.dragon.breathe(this.scene.position, now, warningMs);
-            this.warning.fillStyle(0x32cadd, .28).fillCircle(this.target.x, this.target.y, counterRadius);
-            this.warning.lineStyle(2, 0x91e9ff, .95).strokeCircle(this.target.x, this.target.y, counterRadius);
-            this.tell('Saphyr prépare son souffle. Sors du cercle !');
+        if (monster.alert && now >= monster.counterAt && dist <= radius) {
+            monster.warningEndsAt = now + monster.stats.warningMs;
+            monster.startAttack(this.scene.position, now);
+            if (monster.species === 'dragon') {
+                this.tell(`${monster.name} prépare son souffle de zone ! Sors du cercle !`);
+            }
         }
     }
 
@@ -686,6 +1136,7 @@ export class TrainingCombat {
      */
     drawEffects(now) {
         if (!this.pending && !this.recovery && this.impacts.length === 0) {
+            this.effect.clear();
             return;
         }
 
@@ -695,13 +1146,13 @@ export class TrainingCombat {
 
         for (const hit of this.impacts) {
             const progress = Math.max(0, (now - hit.start) / impactMs);
-            const spread = still ? .65 : .45 + .9 * (1 - (1 - progress) ** 2);
+            const spread = still ? 0.65 : 0.45 + 0.9 * (1 - (1 - progress) ** 2);
             this.effect.fillStyle(hit.color, 1 - progress);
             for (const [dx, dy] of sparks) {
                 this.effect.fillRect(Math.round(hit.x + dx * spread), Math.round(hit.y + dy * spread), 2, 2);
             }
-            if (progress < .35) {
-                this.effect.fillStyle(0xffe3a6, .78 - progress);
+            if (progress < 0.35) {
+                this.effect.fillStyle(0xffe3a6, 0.78 - progress);
                 this.effect.fillRect(Math.round(hit.x) - 2, Math.round(hit.y) - 2, 4, 4);
             }
         }
@@ -720,8 +1171,9 @@ export class TrainingCombat {
         }
 
         const attack = this.pending;
+        const target = attack.target;
         const progress = Math.max(0, (now - attack.start) / (attack.end - attack.start));
-        if (this.ranged) {
+        if (this.ranged && target) {
             const elapsed = now - attack.start;
             const travel = Math.max(0, (elapsed - attack.castMs) / (attack.end - attack.start - attack.castMs));
             if (elapsed < attack.castMs) {
@@ -732,17 +1184,17 @@ export class TrainingCombat {
                     this.strokePixels(attack.x, attack.y + 11, -1.35, 16, 2);
                 }
             }
-            const dx = this.target.x - attack.x;
-            const dy = this.target.y - 20 - attack.y;
+            const dx = target.sprite.x - attack.x;
+            const dy = target.sprite.y - 12 - attack.y;
             for (let index = 3; index > 0; index--) {
-                const tail = Math.max(0, travel - index * .055);
+                const tail = Math.max(0, travel - index * 0.055);
                 this.effect
-                    .fillStyle(attack.color, .6 - index * .12)
+                    .fillStyle(attack.color, 0.6 - index * 0.12)
                     .fillRect(Math.round(attack.x + dx * tail) - 1, Math.round(attack.y + dy * tail) - 1, 3, 3);
             }
             const x = Math.round(attack.x + dx * travel);
             const y = Math.round(attack.y + dy * travel);
-            const size = elapsed < attack.castMs ? 1 + Math.floor((elapsed / attack.castMs) * 2) : attack.special ? 4 : 3;
+            const size = elapsed < attack.castMs ? 1 + Math.floor((elapsed / attack.castMs) * 2) : (attack.special ? 4 : 3);
             const core = Math.max(1, size * 2 - 2);
             this.effect
                 .fillStyle(attack.color, 1)
@@ -757,14 +1209,11 @@ export class TrainingCombat {
         }
     }
 
-    /**
-     * Dessine le geste d'arme ou de coup de poing au corps à corps.
-     */
     drawMelee(attack, progress, windingUp) {
         const still = this.scene.motionPreference.matches;
         const angle = attack.angle + (still
-            ? (windingUp ? -1 : .4)
-            : (windingUp ? -.35 - .95 * progress : -1.25 + 2.55 * progress));
+            ? (windingUp ? -1 : 0.4)
+            : (windingUp ? -0.35 - 0.95 * progress : -1.25 + 2.55 * progress));
         const x = this.scene.position.x + Math.cos(attack.angle) * 5;
         const y = this.scene.position.y - 19;
         const length = attack.armed ? (attack.special ? 21 : 17) : 7;
@@ -777,16 +1226,16 @@ export class TrainingCombat {
         } else {
             this.effect
                 .fillStyle(0xe8ad84, 1)
-                .fillRect(Math.round(x + Math.cos(angle) * length) - 2, Math.round(y + Math.sin(angle) * length * .65) - 2, 4, 4);
+                .fillRect(Math.round(x + Math.cos(angle) * length) - 2, Math.round(y + Math.sin(angle) * length * 0.65) - 2, 4, 4);
         }
 
         if (!windingUp && !still) {
-            this.effect.fillStyle(attack.color, .85 * (1 - progress));
+            this.effect.fillStyle(attack.color, 0.85 * (1 - progress));
             for (let step = 0; step < 7; step++) {
-                const trail = angle - step * .12;
+                const trail = angle - step * 0.12;
                 this.effect.fillRect(
                     Math.round(x + Math.cos(trail) * length) - 1,
-                    Math.round(y + Math.sin(trail) * length * .65) - 1,
+                    Math.round(y + Math.sin(trail) * length * 0.65) - 1,
                     3,
                     3,
                 );
@@ -794,32 +1243,23 @@ export class TrainingCombat {
         }
     }
 
-    /**
-     * Trace un segment pixélisé orienté selon l'angle d'attaque.
-     */
     strokePixels(x, y, angle, length, width) {
         const dx = Math.cos(angle);
-        const dy = Math.sin(angle) * .65;
+        const dy = Math.sin(angle) * 0.65;
         for (let step = 0; step <= length; step++) {
             const inset = Math.floor(width / 2);
             this.effect.fillRect(Math.round(x + dx * step) - inset, Math.round(y + dy * step) - inset, width, width);
         }
     }
 
-    /**
-     * Anime les étincelles en orbite autour d'une boule de feu.
-     */
     orbitSparks(x, y, elapsed) {
-        this.effect.fillStyle(0xf7b75f, .8);
+        this.effect.fillStyle(0xf7b75f, 0.8);
         for (let index = 0; index < 3; index++) {
             const angle = elapsed / 41 + index * 2.1;
             this.effect.fillRect(Math.round(x + Math.cos(angle) * 6), Math.round(y + Math.sin(angle) * 5), 2, 2);
         }
     }
 
-    /**
-     * Retourne la posture courante de l'avatar pendant une attaque.
-     */
     attackPose(now) {
         const attack = this.attackVisual;
         if (!attack) {
@@ -845,20 +1285,20 @@ export class TrainingCombat {
         };
     }
 
-    targetDistance() {
-        return Math.hypot(this.target.x - this.scene.position.x, this.target.y - this.scene.position.y);
+    distanceTo(monster) {
+        return Math.hypot(monster.sprite.x - this.scene.position.x, monster.sprite.y - this.scene.position.y);
     }
 
-    /**
-     * Met fin à l'entraînement lorsque le personnage tombe à 0 PV.
-     */
     finish(message) {
         this.pending = null;
         this.attackVisual = null;
         this.warning.clear();
-        this.target.clearTint();
-        this.dragon.alert = false;
-        this.dragon.path = [];
+        this.monsters.forEach((m) => {
+            m.alert = false;
+            m.path = [];
+            m.warningEndsAt = 0;
+            m.sprite.clearTint();
+        });
         this.buttons.forEach((button) => {
             button.disabled = true;
         });
@@ -867,15 +1307,27 @@ export class TrainingCombat {
         this.tell(message);
     }
 
-    /**
-     * Met à jour les jauges de vie, mana/énergie et vie de la cible dans l'ATH.
-     */
+    refreshTargetHud() {
+        const target = this.selectedMonster;
+        if (!target || !target.isAlive) {
+            this.targetHud.hidden = true;
+            return;
+        }
+        this.targetHud.hidden = false;
+        if (this.targetNameLabel) this.targetNameLabel.textContent = target.name;
+        if (this.targetLevelLabel) this.targetLevelLabel.textContent = 'Niv. ' + target.level;
+        this.meters[2].meter.max = target.maxHealth;
+        this.meters[2].meter.value = target.health;
+        this.meters[2].value.textContent = target.health + ' / ' + target.maxHealth;
+    }
+
     refreshVitals() {
-        [this.health, this.mana, this.targetHealth].forEach((amount, index) => {
+        [this.health, this.mana].forEach((amount, index) => {
             const { meter, value } = this.meters[index];
             meter.value = amount;
             value.textContent = amount + ' / ' + meter.max;
         });
+        this.refreshTargetHud();
     }
 
     tell(message) {

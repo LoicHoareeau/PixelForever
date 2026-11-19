@@ -5,7 +5,10 @@ import {
     awardVictory,
     computeCharacterStats,
     createInitialProgress,
+    getUnlockedActiveSpells,
+    investTalent,
     regenerateResource,
+    resetTalents,
     rollLoot,
     upgradeSpell,
     xpRequired,
@@ -149,4 +152,30 @@ test('la régénération automatique accumule progressivement les fractions sans
     assert.equal(capped.value, 20);
     assert.equal(capped.gained, 1);
     assert.equal(capped.carry, 0);
+});
+
+test('l’arbre de talents respecte les prérequis, débloque les sorts actifs et permet la réinitialisation', () => {
+    const progress = createInitialProgress(1);
+    progress.spellPoints = 3;
+
+    // Impossible de prendre Taillade sans 2 points dans Armes / Lame affûtée
+    assert.equal(investTalent(progress, 'warrior', 'w_cleave'), false);
+
+    // Investir 2 points dans Lame affûtée débloque Taillade
+    assert.equal(investTalent(progress, 'warrior', 'w_sharp_blade'), true);
+    assert.equal(investTalent(progress, 'warrior', 'w_sharp_blade'), true);
+    assert.equal(investTalent(progress, 'warrior', 'w_cleave'), true);
+    assert.equal(progress.spellPoints, 0);
+
+    const unlocked = getUnlockedActiveSpells(progress, 'warrior');
+    assert.equal(unlocked.length, 1);
+    assert.equal(unlocked[0].slot, 'cleave');
+
+    const stats = computeCharacterStats(warriorRules, progress, 4);
+    assert.equal(stats.basicDamage, 18); // +4 grâce aux 2 rangs de Lame affûtée
+
+    const refunded = resetTalents(progress);
+    assert.equal(refunded, 3);
+    assert.equal(progress.spellPoints, 3);
+    assert.equal(getUnlockedActiveSpells(progress, 'warrior').length, 0);
 });

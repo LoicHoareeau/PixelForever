@@ -1,6 +1,7 @@
 {% extends 'base.html.twig' %}
 
 {% block title %}Val-des-Saules{% endblock %}
+{% block body_class %}game-fullscreen{% endblock %}
 {% block layout %}game-layout{% endblock %}
 
 {% block body %}
@@ -14,13 +15,17 @@
     {% set growthStats = combat.growthStats %}
     {% set potions = {
         health: {
-            name: 'Potion de vie',
+            name: 'Vie',
+            fullName: 'Potion de vie',
             icon: 'icon-health',
+            key: 'R',
             restore: combat.healthRestore
         },
         mana: {
-            name: 'Potion ' ~ resourcePhrase,
+            name: warrior ? 'Énergie' : 'Mana',
+            fullName: 'Potion ' ~ resourcePhrase,
             icon: 'icon-mana',
+            key: 'F',
             restore: combat.manaRestore
         }
     } %}
@@ -47,27 +52,20 @@
         }
     ] %}
 
-    <section class="panel" aria-labelledby="zone-title">
-        {# En-tête de la scène et accès rapide à la fiche #}
-        <div class="panel-heading">
-            <h1 id="zone-title">Val-des-Saules</h1>
-            <div class="panel-actions">
-                <button
-                    id="hud-sheet-open"
-                    class="quiet"
-                    type="button"
-                    aria-haspopup="dialog"
-                >
-                    Fiche &amp; Stats
-                </button>
-                <a href="{{ path('character_list') }}">Mes personnages</a>
-            </div>
-        </div>
-
+    <section class="game-viewport" aria-label="Val-des-Saules">
         <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
 
-        {# Scène de jeu, ATH et barre d'actions #}
+        {# Scène plein écran : canvas Phaser + ATH flottant #}
         <div class="game-stage">
+            <div
+                id="world"
+                class="game-map"
+                data-class="{{ character.class.value }}"
+                data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"
+                data-combat="{{ combat|json_encode|e('html_attr') }}"
+            ></div>
+
+            {# ATH haut : Joueur à gauche, Cible au centre, Menu rapide à droite #}
             <div id="combat-vitals" class="combat-vitals" hidden>
                 <section class="player-hud" aria-label="État du personnage">
                     <img
@@ -80,7 +78,7 @@
                     <div class="hud-stats">
                         <div class="hud-name">
                             <strong>{{ character.name }}</strong>
-                            <small>
+                            <small class="hud-level-pill">
                                 {{ character.class.label }} · Niv. <span id="combat-level">{{ character.level }}</span>
                             </small>
                         </div>
@@ -108,22 +106,15 @@
                                 </small>
                             </span>
                         </label>
-                        <label>
-                            <span>XP</span>
-                            <meter
-                                id="combat-xp"
-                                class="xp-meter"
-                                max="100"
-                                value="0"
-                            ></meter>
-                            <span id="combat-xp-value">0 / 100</span>
-                        </label>
                     </div>
                 </section>
 
-                <section class="target-hud" id="combat-target" aria-label="État de Saphyr" hidden>
+                <section class="target-hud" id="combat-target" aria-label="Cible sélectionnée" hidden>
+                    <div class="target-header">
+                        <strong id="combat-target-name">Saphyr</strong>
+                        <span id="combat-target-level" class="target-level-badge">Niv. 10</span>
+                    </div>
                     <label>
-                        <span>Saphyr</span>
                         <meter
                             id="combat-target-health"
                             max="96"
@@ -132,108 +123,177 @@
                         <span id="combat-target-health-value">96 / 96</span>
                     </label>
                 </section>
+
+                <div class="top-right-hud">
+                    <span class="zone-badge">Val-des-Saules</span>
+                    <button
+                        id="hud-sheet-open"
+                        class="hud-quick-btn"
+                        type="button"
+                        aria-haspopup="dialog"
+                    >
+                        Fiche (C)
+                    </button>
+                    <a class="hud-quick-link" href="{{ path('character_list') }}">Personnages</a>
+                </div>
             </div>
 
-            <div
-                id="world"
-                class="game-map"
-                data-class="{{ character.class.value }}"
-                data-asset-path="{{ app.request.basePath }}/game/val-des-saules/"
-                data-combat="{{ combat|json_encode|e('html_attr') }}"
-            ></div>
-
-            <div id="combat-actions" class="combat-actions" hidden>
-                <div class="action-slots" role="group" aria-label="Barre de sorts et d’objets">
-                    <button
-                        class="action-slot"
-                        type="button"
-                        data-attack="basic"
-                        aria-keyshortcuts="1"
-                        title="{{ basic }}"
-                    >
-                        <kbd>1</kbd>
-                        <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span>
-                        <span id="combat-basic-name">{{ basic }}</span>
-                        <small id="combat-basic-meta">Rang 1 · {{ initialBasicDamage }} dég.</small>
-                    </button>
-
-                    <button
-                        class="action-slot"
-                        type="button"
-                        data-attack="special"
-                        aria-keyshortcuts="2"
-                        title="{{ combat.specialName }} · {{ combat.specialManaCost }} {{ resource }}"
-                    >
-                        <kbd>2</kbd>
-                        <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span>
-                        <span>{{ combat.specialName }}</span>
-                        <small id="combat-special-meta">{{ combat.specialManaCost }} {{ resource }} · {{ combat.specialDamage }} dég.</small>
-                    </button>
-
-                    {% for type, potion in potions %}
-                        <button
-                            class="action-slot"
-                            type="button"
-                            data-potion="{{ type }}"
-                            aria-keyshortcuts="{{ loop.index + 2 }}"
-                            title="{{ potion.name }}"
-                        >
-                            <kbd>{{ loop.index + 2 }}</kbd>
-                            <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
-                            <span>{{ potion.name }}</span>
-                            <small data-quantity="{{ type }}">2</small>
-                        </button>
-                    {% endfor %}
-
-                    <button
-                        id="character-open"
-                        class="action-slot character-slot"
-                        type="button"
-                        aria-keyshortcuts="C"
-                        aria-haspopup="dialog"
-                        title="Fiche de personnage, caractéristiques et sorts"
-                    >
-                        <kbd>C</kbd>
-                        <span class="action-icon icon-sheet" aria-hidden="true"></span>
-                        <span>Personnage</span>
-                        <small id="character-points-badge" data-has-points="true">+3 pts</small>
-                    </button>
-
-                    <button
-                        id="inventory-open"
-                        class="action-slot inventory-slot"
-                        type="button"
-                        aria-keyshortcuts="I"
-                        aria-haspopup="dialog"
-                        title="Inventaire"
-                    >
-                        <kbd>I</kbd>
-                        <span class="action-icon icon-bag" aria-hidden="true"></span>
-                        <span>Inventaire</span>
-                    </button>
-                </div>
-
+            {# Journal de combat flottant + bouton de résurrection #}
+            <div class="floating-feedback">
                 <p id="combat-status" role="status"></p>
                 <button
                     type="button"
                     id="combat-reset"
-                    class="quiet"
+                    class="resurrect-btn"
                     hidden
                 >
                     Se relever au camp
                 </button>
             </div>
+
+            {# Barre de sorts MMO plein écran (bas centre) #}
+            <div id="combat-actions" class="combat-actions" hidden>
+                <div class="action-bar-frame">
+                    <span class="bar-ornament bar-ornament-left" aria-hidden="true"></span>
+
+                    <div class="action-bar-core">
+                        {# Barre d'XP intégrée façon MMO #}
+                        <div class="xp-bar-wrap" aria-label="Expérience">
+                            <meter
+                                id="combat-xp"
+                                class="xp-meter"
+                                max="100"
+                                value="0"
+                            ></meter>
+                            <span class="xp-bar-text">XP : <span id="combat-xp-value">0 / 100</span></span>
+                        </div>
+
+                        <div class="action-bar-row">
+                            <div class="action-slots" role="group" aria-label="Barre de sorts">
+                                {# Slot 1 : Attaque de base #}
+                                <button
+                                    class="action-slot"
+                                    type="button"
+                                    data-attack="basic"
+                                    aria-keyshortcuts="1"
+                                    title="{{ basic }}"
+                                >
+                                    <kbd>1</kbd>
+                                    <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span>
+                                    <span class="slot-name" id="combat-basic-name">{{ basic }}</span>
+                                    <small class="slot-meta" id="combat-basic-meta">Rg 1 · {{ initialBasicDamage }}</small>
+                                    <span class="slot-cd" aria-hidden="true"></span>
+                                </button>
+
+                                {# Slot 2 : Sort spécial de base #}
+                                <button
+                                    class="action-slot"
+                                    type="button"
+                                    data-attack="special"
+                                    aria-keyshortcuts="2"
+                                    title="{{ combat.specialName }} · {{ combat.specialManaCost }} {{ resource }}"
+                                >
+                                    <kbd>2</kbd>
+                                    <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span>
+                                    <span class="slot-name">{{ combat.specialName }}</span>
+                                    <small class="slot-meta" id="combat-special-meta">{{ combat.specialManaCost }} {{ resource }}</small>
+                                    <span class="slot-cd" aria-hidden="true"></span>
+                                </button>
+
+                                {# Slots 3 à 6 : Sorts actifs débloqués dans l'arbre de talents #}
+                                {% for i in 0..3 %}
+                                    <button
+                                        class="action-slot"
+                                        type="button"
+                                        data-attack="talent-{{ i }}"
+                                        data-talent-slot="{{ i }}"
+                                        data-unlocked="false"
+                                        aria-keyshortcuts="{{ i + 3 }}"
+                                        title="Emplacement {{ i + 3 }} · Débloquer dans l'arbre de talents (T)"
+                                    >
+                                        <kbd>{{ i + 3 }}</kbd>
+                                        <span class="action-icon icon-locked" aria-hidden="true"></span>
+                                        <span class="slot-name">Verrouillé</span>
+                                        <small class="slot-meta">Talent (T)</small>
+                                        <span class="slot-cd" aria-hidden="true"></span>
+                                    </button>
+                                {% endfor %}
+                            </div>
+
+                            <div class="potion-slots" role="group" aria-label="Potions">
+                                {% for type, potion in potions %}
+                                    <button
+                                        class="action-slot potion-slot"
+                                        type="button"
+                                        data-potion="{{ type }}"
+                                        aria-keyshortcuts="{{ potion.key }}"
+                                        title="{{ potion.fullName }}"
+                                    >
+                                        <kbd>{{ potion.key }}</kbd>
+                                        <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
+                                        <span class="slot-name">{{ potion.name }}</span>
+                                        <small class="slot-qty" data-quantity="{{ type }}">2</small>
+                                    </button>
+                                {% endfor %}
+                            </div>
+
+                            {# Micro-menu MMO (Fiche, Talents, Sac) #}
+                            <div class="micro-menu" role="group" aria-label="Menus du personnage">
+                                <button
+                                    id="character-open"
+                                    class="micro-btn"
+                                    type="button"
+                                    aria-keyshortcuts="C"
+                                    aria-haspopup="dialog"
+                                    title="Fiche & Caractéristiques (C)"
+                                >
+                                    <span class="action-icon icon-sheet" aria-hidden="true"></span>
+                                    <span class="micro-key">C</span>
+                                    <span id="character-points-badge" class="micro-badge" data-has-points="false"></span>
+                                </button>
+
+                                <button
+                                    id="talents-open"
+                                    class="micro-btn"
+                                    type="button"
+                                    aria-keyshortcuts="T"
+                                    aria-haspopup="dialog"
+                                    title="Arbre de talents & Sorts (T)"
+                                >
+                                    <span class="action-icon icon-talent" aria-hidden="true"></span>
+                                    <span class="micro-key">T</span>
+                                    <span id="talent-points-badge" class="micro-badge" data-has-points="false"></span>
+                                </button>
+
+                                <button
+                                    id="inventory-open"
+                                    class="micro-btn"
+                                    type="button"
+                                    aria-keyshortcuts="I"
+                                    aria-haspopup="dialog"
+                                    title="Inventaire (I)"
+                                >
+                                    <span class="action-icon icon-bag" aria-hidden="true"></span>
+                                    <span class="micro-key">I</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <span class="bar-ornament bar-ornament-right" aria-hidden="true"></span>
+                </div>
+            </div>
+
+            {# Contrôles tactiles / souris #}
+            <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
+                <button class="quiet" type="button" data-direction="north" aria-label="Monter">↑</button>
+                <button class="quiet" type="button" data-direction="west" aria-label="Aller à gauche">←</button>
+                <button class="quiet" type="button" data-direction="south" aria-label="Descendre">↓</button>
+                <button class="quiet" type="button" data-direction="east" aria-label="Aller à droite">→</button>
+            </div>
         </div>
 
-        {# Contrôles tactiles / souris #}
-        <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
-            <button class="quiet" type="button" data-direction="north" aria-label="Monter">↑</button>
-            <button class="quiet" type="button" data-direction="west" aria-label="Aller à gauche">←</button>
-            <button class="quiet" type="button" data-direction="south" aria-label="Descendre">↓</button>
-            <button class="quiet" type="button" data-direction="east" aria-label="Aller à droite">→</button>
-        </div>
-
-        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD · Fiche (C) · Sac (I).</p>
+        <p id="game-controls" class="sr-only">Déplacement avec les flèches, ZQSD ou WASD · Sorts (1-6) · Potions (R/F) · Fiche (C) · Talents (T) · Sac (I).</p>
 
         {# Fenêtre modale : Inventaire #}
         <dialog id="inventory" aria-labelledby="inventory-title" aria-describedby="inventory-description">
@@ -243,7 +303,7 @@
                     <button type="submit" class="quiet" autofocus>Fermer</button>
                 </form>
             </div>
-            <p id="inventory-description">Saphyr laisse un objet à chaque victoire.</p>
+            <p id="inventory-description">Les monstres vaincus laissent du butin dans ton sac.</p>
             <ul class="inventory-items">
                 <li>
                     <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-staff' }}" aria-hidden="true"></span>
@@ -264,14 +324,14 @@
                     <li>
                         <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
                         <div>
-                            <strong>{{ potion.name }} ×<span data-quantity="{{ type }}">2</span></strong>
+                            <strong>{{ potion.fullName }} ×<span data-quantity="{{ type }}">2</span></strong>
                             <small>+{{ potion.restore }} {{ type == 'health' ? 'PV' : 'points ' ~ resourcePhrase }} · Commun · {{ combat.loot[type].chance }} %</small>
                         </div>
                         <button
                             type="button"
                             class="quiet"
                             data-potion="{{ type }}"
-                            aria-label="Boire · {{ potion.name }}"
+                            aria-label="Boire · {{ potion.fullName }}"
                         >
                             Boire
                         </button>
@@ -303,7 +363,35 @@
             <p id="inventory-status" role="status"></p>
         </dialog>
 
-        {# Fenêtre modale : Fiche de personnage, caractéristiques et sorts #}
+        {# Fenêtre modale : Arbre de Talents & Sorts (3 branches) #}
+        <dialog id="talent-tree" aria-labelledby="talent-tree-title">
+            <div class="inventory-heading">
+                <div>
+                    <h2 id="talent-tree-title">Talents &amp; Sorts · {{ character.class.label }}</h2>
+                    <p class="talent-subtitle">Investis tes points de talent pour améliorer tes passifs et débloquer de nouveaux sorts actifs.</p>
+                </div>
+                <div class="talent-header-actions">
+                    <span id="talent-points-count" class="points-pill">{{ combat.initialSpellPoints }} point disponible</span>
+                    <button type="button" id="talent-reset-btn" class="quiet">Réinitialiser</button>
+                    <form method="dialog">
+                        <button type="submit" class="quiet" autofocus>Fermer</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="talent-tree-branches" class="talent-branches"></div>
+
+            <div class="talent-footer">
+                <div id="talent-tooltip" class="talent-tooltip">
+                    <strong>Survole ou clique sur un talent</strong>
+                    <span class="tooltip-type">Aperçu</span>
+                    <p>Les sorts actifs débloqués s’ajoutent automatiquement dans ta barre de sorts (touches 3 à 6).</p>
+                </div>
+                <p id="talent-tree-status" role="status"></p>
+            </div>
+        </dialog>
+
+        {# Fenêtre modale : Fiche de personnage, caractéristiques et sorts de base #}
         <dialog id="character-sheet" aria-labelledby="character-sheet-title" aria-describedby="character-sheet-description">
             <div class="inventory-heading">
                 <h2 id="character-sheet-title">Fiche de {{ character.name }}</h2>
@@ -312,11 +400,10 @@
                 </form>
             </div>
             <p id="character-sheet-description">
-                Chaque niveau augmente naturellement tes caractéristiques et octroie +{{ combat.statPointsPerLevel }} points de stats et +{{ combat.spellPointsPerLevel }} point de sort.
+                Chaque niveau augmente naturellement tes caractéristiques et octroie +{{ combat.statPointsPerLevel }} points de stats et +{{ combat.spellPointsPerLevel }} point de talent.
             </p>
 
             <div class="sheet-sections">
-                {# Section 1 : Fiche de personnage #}
                 <section class="sheet-card sheet-summary" aria-labelledby="sheet-summary-title">
                     <h3 id="sheet-summary-title">Fiche de personnage</h3>
                     <dl class="sheet-grid">
@@ -363,7 +450,6 @@
                     </dl>
                 </section>
 
-                {# Section 2 : Fiche de statistiques #}
                 <section class="sheet-card sheet-stats" aria-labelledby="sheet-stats-title">
                     <div class="sheet-card-heading">
                         <h3 id="sheet-stats-title">Fiche de caractéristiques</h3>
@@ -397,10 +483,9 @@
                     </ul>
                 </section>
 
-                {# Section 3 : Sorts et points de sort #}
                 <section class="sheet-card sheet-spells" aria-labelledby="sheet-spells-title">
                     <div class="sheet-card-heading">
-                        <h3 id="sheet-spells-title">Sorts &amp; Points de sort</h3>
+                        <h3 id="sheet-spells-title">Maîtrise des sorts de base</h3>
                         <span id="spell-points-count" class="points-pill">{{ combat.initialSpellPoints }} point disponible</span>
                     </div>
                     <ul class="spell-list">
@@ -420,7 +505,7 @@
                                 class="quiet"
                                 data-upgrade-spell="basic"
                             >
-                                Améliorer (+1 rang)
+                                Améliorer (+1)
                             </button>
                         </li>
                         <li class="spell-row">
@@ -439,7 +524,7 @@
                                 class="quiet"
                                 data-upgrade-spell="special"
                             >
-                                Améliorer (+1 rang)
+                                Améliorer (+1)
                             </button>
                         </li>
                     </ul>
