@@ -24,13 +24,14 @@
                 <section class="player-hud" aria-label="État du personnage">
                     <img class="hud-portrait" src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'noe' : 'lina' }}/south.png" width="48" height="48" alt="">
                     <div class="hud-stats">
-                        <div class="hud-name"><strong>{{ character.name }}</strong><small>{{ character.class.label }} · Niv. {{ character.level }}</small></div>
+                        <div class="hud-name"><strong>{{ character.name }}</strong><small>{{ character.class.label }} · Niv. <span id="combat-level">{{ character.level }}</span></small></div>
                         <label>Vie <meter id="combat-health" max="{{ combat.health }}" value="{{ combat.health }}"></meter>
                             <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
                         </label>
                         <label>{{ combat.resourceName }} <meter id="combat-mana" class="{{ warrior ? 'energy-meter' : 'mana-meter' }}" max="{{ combat.mana }}" value="{{ combat.mana }}"></meter>
                             <span id="combat-mana-value">{{ combat.mana }} / {{ combat.mana }}</span>
                         </label>
+                        <label>XP <meter id="combat-xp" class="xp-meter" max="100" value="0"></meter><span id="combat-xp-value">0 / 100</span></label>
                     </div>
                 </section>
                 <section class="target-hud" id="combat-target" aria-label="État de Saphyr" hidden>
@@ -58,7 +59,7 @@
                     </button>
                 </div>
                 <p id="combat-status" role="status"></p>
-                <button type="button" id="combat-reset" class="quiet" hidden>Reprendre l’entraînement</button>
+                <button type="button" id="combat-reset" class="quiet" hidden>Se relever au camp</button>
             </div>
         </div>
         <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
@@ -73,18 +74,29 @@
                 <h2 id="inventory-title">Inventaire</h2>
                 <form method="dialog"><button type="submit" class="quiet" autofocus>Fermer</button></form>
             </div>
-            <p id="inventory-description">Sac d’entraînement. Son contenu est réinitialisé à chaque nouveau duel.</p>
+            <p id="inventory-description">Saphyr laisse un objet à chaque victoire.</p>
             <ul class="inventory-items">
                 <li>
                     <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-staff' }}" aria-hidden="true"></span>
-                    <div><strong>{{ weapon }}</strong><small id="inventory-weapon-state">Équipé · +{{ combat.weaponBonus }} dégâts de base</small></div>
-                    <button type="button" id="inventory-equip" class="quiet">Retirer</button>
+                    <div><strong>{{ weapon }}</strong><small data-weapon-state="starter">Équipé · +{{ combat.weaponBonus }} dégâts de base</small></div>
+                    <button type="button" id="inventory-equip" class="quiet" data-weapon="starter">Retirer</button>
                 </li>
                 {% for type, potion in potions %}
                     <li>
                         <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
-                        <div><strong>{{ potion.name }} ×<span data-quantity="{{ type }}">2</span></strong><small>Restaure jusqu’à {{ potion.restore }} {{ type == 'health' ? 'PV' : 'points ' ~ resourcePhrase }}</small></div>
+                        <div><strong>{{ potion.name }} ×<span data-quantity="{{ type }}">2</span></strong><small>+{{ potion.restore }} {{ type == 'health' ? 'PV' : 'points ' ~ resourcePhrase }} · Commun · {{ combat.loot[type].chance }} %</small></div>
                         <button type="button" class="quiet" data-potion="{{ type }}" aria-label="Boire · {{ potion.name }}">Boire</button>
+                    </li>
+                {% endfor %}
+                {% for type in ['rare', 'epic'] %}
+                    {% set item = combat.loot[type] %}
+                    <li>
+                        <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-staff' }}" aria-hidden="true"></span>
+                        <div>
+                            <strong>{{ item.name }} ×<span data-quantity="{{ type }}">0</span></strong>
+                            <small><span class="loot-{{ type }}">{{ item.rarity }} · {{ item.chance }} %</span> · +{{ item.bonus }} dégâts de base <span data-weapon-state="{{ type }}"></span></small>
+                        </div>
+                        <button type="button" class="quiet" data-weapon="{{ type }}" disabled>Équiper</button>
                     </li>
                 {% endfor %}
             </ul>

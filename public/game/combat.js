@@ -1,16 +1,23 @@
-const counterRadius = 58;
-const warningMs = 1000;
+import { awardVictory, loadProgress, saveProgress, victoryXp, xpRequired } from './progression.js';
+
+const counterRadius = 36;
+const warningMs = 850;
 const counterIntervalMs = 2100;
 const counterDamage = 9;
+const respawnMs = 5000;
 const impactMs = 190;
 const sparks = [[-10, -3], [-7, 6], [-3, -9], [3, 9], [7, -7], [11, 2], [0, -11], [9, 6]];
 const recoveryMs = 140;
 
 export class TrainingCombat {
-    constructor(scene, target, rules, tileSize) {
+    constructor(scene, dragon, rules, tileSize) {
         this.scene = scene;
-        this.target = target;
+        this.dragon = dragon;
+        this.target = dragon.sprite;
         this.rules = rules;
+        this.progressKey = 'pixelforever:progress:' + rules.progressKey;
+        this.progress = loadProgress(this.progressKey, rules.level);
+        this.respawnAt = Infinity;
         this.ranged = rules.ranged;
         this.range = rules.range * tileSize;
         this.rangeLabel = new Intl.NumberFormat('fr-FR').format(rules.range) + (rules.range < 2 ? ' case' : ' cases');
@@ -22,8 +29,11 @@ export class TrainingCombat {
             + rules.resourceName.toLowerCase() + ' · Portée : ' + this.rangeLabel;
         this.potionButtons = [...document.querySelectorAll('[data-potion]')];
         this.amounts = [...document.querySelectorAll('[data-quantity]')];
-        this.equipButton = document.getElementById('inventory-equip');
-        this.weaponStatus = document.getElementById('inventory-weapon-state');
+        this.weaponButtons = [...document.querySelectorAll('[data-weapon]')];
+        this.weaponStates = [...document.querySelectorAll('[data-weapon-state]')];
+        this.levelLabel = document.getElementById('combat-level');
+        this.xpMeter = document.getElementById('combat-xp');
+        this.xpLabel = document.getElementById('combat-xp-value');
         this.basicLabel = document.getElementById('combat-basic-name');
         this.meters = ['health', 'mana', 'target-health'].map(name => ({
             meter: document.getElementById('combat-' + name),
@@ -38,8 +48,10 @@ export class TrainingCombat {
     }
 
     reset() {
-        this.health = this.rules.health;
-        this.mana = this.rules.mana;
+        this.respawnAt = Infinity;
+        this.refreshProgress();
+        this.health = this.meters[0].meter.max;
+        this.mana = this.meters[1].meter.max;
         this.targetHealth = this.meters[2].meter.max;
         this.readyAt = 0;
         this.cooldownStart = 0;
@@ -48,23 +60,26 @@ export class TrainingCombat {
         this.impacts = [];
         this.pending = null;
         this.recovery = null;
-        this.potions = { health: 2, mana: 2 };
-        this.equipped = true;
+        this.attackVisual = null;
         this.warning.clear();
         this.effect.clear();
         this.scene.avatar.clearTint();
-        this.target.clearTint().setAlpha(1);
+        this.dragon.place(this.dragon.home);
         this.targetHud.hidden = true;
         this.buttons.forEach(button => { button.disabled = false; });
         this.resetButton.hidden = true;
         this.refreshVitals();
         this.refreshInventory();
         this.updateCooldown(0);
-        this.tell('Approche-toi de Saphyr pour t’entraîner.');
+        this.tell('Approche-toi de Saphyr pour l’affronter.');
     }
 
     attack(kind, now) {
-        if (this.health === 0 || this.targetHealth === 0) return;
+        if (this.health === 0) return;
+        if (this.targetHealth === 0) {
+            this.tell('Saphyr va bientôt réapparaître.');
+            return;
+        }
         if (this.pending || now < this.readyAt) {
             this.tell('L’attaque est en cours ou en recharge.');
             return;
@@ -91,7 +106,7 @@ export class TrainingCombat {
         const angle = Math.atan2(this.target.y - this.scene.position.y, this.target.x - this.scene.position.x);
         const attack = {
             color: special ? 0xff942f : this.ranged ? 0xb5b8ff : 0xffefd0,
-            damage: special ? this.rules.specialDamage : this.rules.basicDamage + (this.equipped ? this.rules.weaponBonus : 0),
+            damage: special ? this.rules.specialDamage : this.rules.basicDamage + this.weaponBonus,
             name: special ? this.rules.specialName : this.basicName,
             special,
             armed: this.equipped,
@@ -104,16 +119,25 @@ export class TrainingCombat {
             y: this.scene.position.y - 20 + Math.sin(angle) * 4,
         };
         this.pending = attack;
+        this.attackVisual = attack;
         this.tell(attack.name + ' en cours.');
     }
 
-    update(now) {
+    update(now, delta) {
+        if (now >= this.respawnAt) {
+            this.respawnAt = Infinity;
+            this.dragon.respawn(this.scene.position);
+            this.targetHealth = this.meters[2].meter.max;
+            this.refreshVitals();
+            this.tell('Saphyr est réapparu ailleurs dans Val-des-Saules.');
+        }
         if (this.pending && now >= this.pending.end) {
             const attack = this.pending;
             this.pending = null;
             this.resolveAttack(attack, now);
         }
         if (this.health > 0 && this.targetHealth > 0) this.updateCounter(now);
+        this.dragon.update(now, delta, this.scene.position);
         this.drawEffects(now);
         this.updateCooldown(now);
     }
@@ -129,11 +153,13 @@ export class TrainingCombat {
 
     drinkPotion(type) {
         if (this.health === 0) return 'Reprends l’entraînement pour boire une potion.';
-        if (!this.potions[type]) return 'Il ne reste plus de potion de ce type.';
-        if (this[type] === this.rules[type]) return 'Cette réserve est déjà pleine.';
-        const amount = Math.min(this.rules[type] - this[type], this.rules[type + 'Restore']);
+        if (!this.progress.items[type]) return 'Il ne reste plus de potion de ce type.';
+        const maximum = this.meters[type === 'health' ? 0 : 1].meter.max;
+        if (this[type] === maximum) return 'Cette réserve est déjà pleine.';
+        const amount = Math.min(maximum - this[type], this.rules[type + 'Restore']);
         this[type] += amount;
-        this.potions[type]--;
+        this.progress.items[type]--;
+        saveProgress(this.progressKey, this.progress);
         this.refreshVitals();
         this.refreshInventory();
         this.impacts.push({
@@ -144,17 +170,29 @@ export class TrainingCombat {
         return '+' + amount + (this.ranged ? ' points de mana.' : ' points d’énergie.');
     }
 
-    toggleWeapon() {
-        this.equipped = !this.equipped;
+    toggleWeapon(weapon) {
+        if (weapon !== 'starter' && !this.progress.items[weapon]) return 'Cette arme est absente du sac.';
+        this.progress.weapon = this.progress.weapon === weapon ? null : weapon;
+        saveProgress(this.progressKey, this.progress);
         this.refreshInventory();
         return this.equipped ? 'Arme équipée.' : 'Arme rangée.';
     }
 
     refreshInventory() {
-        this.amounts.forEach(amount => { amount.textContent = this.potions[amount.dataset.quantity]; });
+        this.amounts.forEach(amount => { amount.textContent = this.progress.items[amount.dataset.quantity]; });
         this.potionButtons.forEach(button => { button.disabled = this.health === 0; });
-        this.equipButton.textContent = this.equipped ? 'Retirer' : 'Équiper';
-        this.weaponStatus.textContent = this.equipped ? 'Équipé · +' + this.rules.weaponBonus + ' dégâts de base' : 'Dans le sac';
+        this.weaponButtons.forEach(button => {
+            const weapon = button.dataset.weapon;
+            button.textContent = weapon === this.progress.weapon ? 'Retirer' : 'Équiper';
+            button.disabled = weapon !== 'starter' && !this.progress.items[weapon];
+        });
+        this.weaponStates.forEach(state => {
+            const weapon = state.dataset.weaponState;
+            const equipped = weapon === this.progress.weapon;
+            state.textContent = weapon === 'starter'
+                ? (equipped ? 'Équipé · +' + this.rules.weaponBonus + ' dégâts de base' : 'Dans le sac')
+                : (equipped ? '· Équipé' : '');
+        });
         this.basicLabel.textContent = this.basicName;
         this.buttons[0].title = this.basicName + ' · Portée : ' + this.rangeLabel;
     }
@@ -163,7 +201,29 @@ export class TrainingCombat {
         return this.equipped || this.ranged ? this.rules.basicName : 'Coup de poing';
     }
 
+    get equipped() {
+        return this.progress.weapon !== null;
+    }
+
+    get weaponBonus() {
+        const weapon = this.progress.weapon;
+        if (weapon === 'starter') return this.rules.weaponBonus;
+        return this.rules.loot[weapon]?.bonus ?? 0;
+    }
+
+    refreshProgress() {
+        const { level, xp } = this.progress;
+        const levelsGained = level - this.rules.level;
+        this.meters[0].meter.max = this.rules.health + levelsGained * 5;
+        this.meters[1].meter.max = this.rules.mana + levelsGained * 3;
+        this.levelLabel.textContent = level;
+        this.xpMeter.max = xpRequired(level);
+        this.xpMeter.value = xp;
+        this.xpLabel.textContent = xp + ' / ' + this.xpMeter.max;
+    }
+
     resolveAttack(attack, now) {
+        if (this.targetHealth === 0) return;
         if (!this.ranged) this.recovery = { ...attack, start: now };
         if (!this.ranged && this.targetDistance() > this.range) {
             this.tell('Saphyr est hors de portée. Portée : ' + this.rangeLabel + '.');
@@ -174,12 +234,33 @@ export class TrainingCombat {
         this.refreshVitals();
         this.impacts.push({ x: this.target.x, y: this.target.y - 20, color: attack.color, start: now });
         if (this.targetHealth === 0) {
-            this.target.setAlpha(.55);
-            this.finish('Saphyr s’incline. Entraînement réussi !');
+            this.defeatDragon(now);
             return;
         }
+        this.dragon.pursue();
         if (this.counterAt === Infinity) this.counterAt = now + 450;
         this.tell(attack.name + ' · ' + damage + ' dégâts.');
+    }
+
+    defeatDragon(now) {
+        this.dragon.hide();
+        this.respawnAt = now + respawnMs;
+        this.warningEndsAt = 0;
+        this.counterAt = Infinity;
+        this.warning.clear();
+        this.targetHud.hidden = true;
+        const { item, levelUp } = awardVictory(this.progress, this.rules.loot);
+        saveProgress(this.progressKey, this.progress);
+        this.refreshProgress();
+        this.refreshInventory();
+        if (levelUp) {
+            this.health = this.meters[0].meter.max;
+            this.mana = this.meters[1].meter.max;
+            this.refreshVitals();
+        }
+        const loot = this.rules.loot[item];
+        this.tell('Saphyr vaincu · +' + victoryXp + ' XP · ' + loot.name + ' (' + loot.rarity + ')'
+            + (levelUp ? ' · Niveau ' + this.progress.level + ' !' : '.'));
     }
 
     updateCounter(now) {
@@ -200,7 +281,7 @@ export class TrainingCombat {
             this.refreshVitals();
             if (this.health === 0) {
                 this.scene.avatar.setTint(0xbb6666);
-                this.finish('Saphyr a remporté le duel.');
+                this.finish('Saphyr t’a vaincu. Relève-toi au camp.');
                 return;
             }
             this.tell('La riposte de Saphyr te touche.');
@@ -209,10 +290,10 @@ export class TrainingCombat {
 
         if (now >= this.counterAt && this.targetDistance() <= counterRadius) {
             this.warningEndsAt = now + warningMs;
-            this.target.setTint(0xffbc91);
-            this.warning.fillStyle(0xff5738, .28).fillCircle(this.target.x, this.target.y, counterRadius);
-            this.warning.lineStyle(2, 0xff5236, .95).strokeCircle(this.target.x, this.target.y, counterRadius);
-            this.tell('Saphyr prépare sa riposte. Sors du cercle !');
+            this.dragon.breathe(this.scene.position, now, warningMs);
+            this.warning.fillStyle(0x32cadd, .28).fillCircle(this.target.x, this.target.y, counterRadius);
+            this.warning.lineStyle(2, 0x91e9ff, .95).strokeCircle(this.target.x, this.target.y, counterRadius);
+            this.tell('Saphyr prépare son souffle. Sors du cercle !');
         }
     }
 
@@ -316,11 +397,14 @@ export class TrainingCombat {
     }
 
     attackPose(now) {
-        if (this.recovery) return { attack: this.recovery, pose: 'release' };
-        if (!this.pending) return null;
-        const elapsed = now - this.pending.start;
-        if (!this.ranged || elapsed < this.pending.castMs) return { attack: this.pending, pose: 'windup' };
-        return elapsed < this.pending.castMs + 100 ? { attack: this.pending, pose: 'release' } : null;
+        const attack = this.attackVisual;
+        if (!attack) return null;
+        const strike = this.ranged ? attack.start + attack.castMs : attack.end;
+        if (now >= strike + recoveryMs) return null;
+        if (now < strike) {
+            return { attack, pose: 'windup', frame: Math.max(0, Math.floor(4 * (now - attack.start) / (strike - attack.start))) };
+        }
+        return { attack, pose: 'release', frame: 4 + Math.floor(5 * (now - strike) / recoveryMs) };
     }
 
     targetDistance() {
@@ -329,8 +413,11 @@ export class TrainingCombat {
 
     finish(message) {
         this.pending = null;
+        this.attackVisual = null;
         this.warning.clear();
         this.target.clearTint();
+        this.dragon.alert = false;
+        this.dragon.path = [];
         this.buttons.forEach(button => { button.disabled = true; });
         this.refreshInventory();
         this.resetButton.hidden = false;

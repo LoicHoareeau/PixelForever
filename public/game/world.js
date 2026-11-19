@@ -1,5 +1,6 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
+import { Saphyr } from './dragon.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -35,7 +36,6 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
     const villagers = {
         lina: { x: 184, y: 190, facing: 'south-east', bounds: [176, 178, 17, 12] },
         noe: { x: 248, y: 207, facing: 'east', bounds: [235, 195, 19, 12] },
-        saphyr: { x: 312, y: 175, facing: 'south-west', bounds: [291, 163, 42, 12] },
     };
     // IDs 0–15 and 16–31 are frames of the two PixelLab terrain transition sheets.
     const baseTiles = ['chemin', 'herbe', 'eau'];
@@ -47,6 +47,7 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
         preload() {
             this.skin = world.dataset.class === 'warrior' ? 'noe' : 'lina';
             this.walkSheet = this.skin + '-walk';
+            this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);
             this.load.json('terrain', 'terrain.json');
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
@@ -56,7 +57,11 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
                 directions.forEach(direction => this.load.image(name + '-' + direction, name + '/' + direction + '.png'));
             }
             this.load.spritesheet(this.walkSheet, this.skin + '/walk.png', { frameWidth: 48, frameHeight: 48 });
-            this.load.image('saphyr-south-west', 'saphyr/south-west.png');
+            const attackSize = this.skin === 'lina' ? 64 : 68;
+            this.load.spritesheet(this.attackSheet, this.skin + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
+            this.load.spritesheet('saphyr-idle', 'saphyr/idle.png', { frameWidth: 48, frameHeight: 48 });
+            this.load.spritesheet('saphyr-walk', 'saphyr/walk.png', { frameWidth: 68, frameHeight: 68 });
+            this.load.spritesheet('saphyr-breath', 'saphyr/breath.png', { frameWidth: 68, frameHeight: 68 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
                 status.textContent = 'Un élément de la carte manque. Recharge la page pour réessayer.';
             });
@@ -82,11 +87,9 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
                     this.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
                     shadows.fillEllipse(x, y - 1, 21, 7);
                 }
-                if (name === 'saphyr') {
-                    this.saphyr = sprite;
-                }
             }
-            this.combat = new TrainingCombat(this, this.saphyr, JSON.parse(world.dataset.combat), tileSize);
+            this.dragon = new Saphyr(this, directions, tileSize);
+            this.combat = new TrainingCombat(this, this.dragon, JSON.parse(world.dataset.combat), tileSize);
             this.renderAvatar(this.time.now);
 
             const canvas = this.game.canvas;
@@ -121,9 +124,11 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
             this.combat.potionButtons.forEach(button => {
                 button.addEventListener('click', () => drinkPotion(button.dataset.potion), { signal: keyboard.signal });
             });
-            this.combat.equipButton.addEventListener('click', () => {
-                inventoryStatus.textContent = this.combat.toggleWeapon();
-            }, { signal: keyboard.signal });
+            this.combat.weaponButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    inventoryStatus.textContent = this.combat.toggleWeapon(button.dataset.weapon);
+                }, { signal: keyboard.signal });
+            });
             window.addEventListener('keydown', event => {
                 if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
                 const target = event.target;
@@ -188,7 +193,7 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
         update(time, delta) {
             if (!this.combat) return;
             this.moveFromKeys(time, delta);
-            this.combat.update(time);
+            this.combat.update(time, delta);
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
         }
@@ -252,15 +257,25 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
             const gesture = this.combat.attackPose(time);
             let texture = this.poseSheet;
             let frame = this.facing + '-idle';
+            let origin = 1;
+            let flip = false;
             if (gesture) {
-                frame = gesture.attack.facing + '-' + gesture.pose;
+                const facing = gesture.attack.facing;
+                if (facing.startsWith('north')) {
+                    frame = facing + '-' + gesture.pose;
+                } else {
+                    texture = this.attackSheet;
+                    frame = gesture.frame + (facing === 'south' ? 9 : 0);
+                    origin = this.skin === 'lina' ? 54 / 64 : 57 / 68;
+                    flip = facing.includes('west');
+                }
             } else if (walking) {
                 texture = this.walkSheet;
                 frame = directions.indexOf(this.facing) * walkFrames
                     + Math.floor(this.walkDistance / pixelsPerWalkFrame) % walkFrames;
             }
-            if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame);
-            this.avatar.setPosition(Math.round(x), Math.round(y)).setDepth(y);
+            if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(.5, origin);
+            this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
         }
     }

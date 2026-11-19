@@ -238,6 +238,7 @@ small { display: block; }
 }
 .combat-vitals .mana-meter { --fill: #70a8e5; }
 .combat-vitals .energy-meter { --fill: #e4ad58; }
+.combat-vitals .xp-meter { --fill: #9ccb8b; }
 .combat-vitals meter::-webkit-meter-bar { border: 0; border-radius: 0; background: #101719; }
 .combat-vitals meter::-webkit-meter-optimum-value { background: var(--fill); }
 .combat-vitals meter::-moz-meter-bar { background: var(--fill); }
@@ -304,6 +305,8 @@ button.action-slot[data-attack] {
 .inventory-items li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .45rem; padding: .35rem; border: 1px solid #605744; }
 .inventory-items strong { font-size: .88rem; }
 .inventory-items small { font-size: .75rem; }
+.loot-rare { color: #9ad6ff; }
+.loot-epic { color: #e0b7ff; }
 #inventory .quiet { padding-inline: .55rem; }
 #inventory button:disabled { opacity: .5; cursor: default; }
 

@@ -114,6 +114,7 @@ final class CharacterController extends AbstractController
         }
 
         $class = $character->getClass();
+        $warrior = $class === CharacterClass::Warrior;
 
         return $this->render('game/play.html.twig', [
             'character' => $character,
@@ -132,6 +133,14 @@ final class CharacterController extends AbstractController
                 'healthRestore' => Character::HEALTH_POTION_RESTORE,
                 'manaRestore' => Character::MANA_POTION_RESTORE,
                 'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
+                'level' => $character->getLevel(),
+                'progressKey' => hash('sha256', implode("\0", [$owner->getUserIdentifier(), $character->getId(), $character->getName(), $class->value])),
+                'loot' => [
+                    'health' => ['name' => 'Potion de vie', 'chance' => 50, 'rarity' => 'Commun'],
+                    'mana' => ['name' => $warrior ? 'Potion d’énergie' : 'Potion de mana', 'chance' => 30, 'rarity' => 'Commun'],
+                    'rare' => ['name' => $warrior ? 'Lame des saules' : 'Bâton des saules', 'chance' => 15, 'rarity' => 'Rare', 'bonus' => 7],
+                    'epic' => ['name' => $warrior ? 'Croc de Saphyr' : 'Sceptre de Saphyr', 'chance' => 5, 'rarity' => 'Épique', 'bonus' => 11],
+                ],
             ],
         ]);
     }
