@@ -33,6 +33,8 @@ import { Saphyr } from './dragon.js';
     const directions = [
         'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east',
     ];
+    // The other frames in Noé's north-west row have stray white pixels.
+    const noeNorthWestWalk = [0, 1, 2, 5, 6];
     const spawns = {
         lina: { x: 184, y: 190, facing: 'south-east' },
         noe: { x: 248, y: 207, facing: 'east' },
@@ -261,8 +263,11 @@ import { Saphyr } from './dragon.js';
                 }
             } else if (walking) {
                 texture = this.walkSheet;
-                frame = directions.indexOf(this.facing) * walkFrames
-                    + Math.floor(this.walkDistance / pixelsPerWalkFrame) % walkFrames;
+                const step = Math.floor(this.walkDistance / pixelsPerWalkFrame);
+                const walkFrame = this.skin === 'noe' && this.facing === 'north-west'
+                    ? noeNorthWestWalk[step % noeNorthWestWalk.length]
+                    : step % walkFrames;
+                frame = directions.indexOf(this.facing) * walkFrames + walkFrame;
             }
             if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
