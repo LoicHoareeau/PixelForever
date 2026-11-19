@@ -93,6 +93,25 @@ final class CharacterController extends AbstractController
 
         $request->getSession()->set(self::SELECTED_CHARACTER, $character->getId());
 
-        return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('game_play', status: Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/jeu', name: 'game_play', methods: ['GET'])]
+    public function play(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $session = $request->getSession();
+        $selectedId = $session->get(self::SELECTED_CHARACTER);
+        $character = $selectedId === null ? null : $entities->getRepository(PlayerCharacter::class)->findOneBy([
+            'id' => $selectedId,
+            'owner' => $owner,
+        ]);
+
+        if ($character === null) {
+            $session->remove(self::SELECTED_CHARACTER);
+
+            return $this->redirectToRoute('character_list');
+        }
+
+        return $this->render('game/play.html.twig', ['character' => $character]);
     }
 }

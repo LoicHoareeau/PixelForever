@@ -162,8 +162,17 @@ small { display: block; }
 .roster { display: grid; gap: .65rem; list-style: none; margin: 0; padding: 0; }
 .roster-item { flex-wrap: wrap; }
 .character-name { flex: 1 1 9rem; overflow-wrap: anywhere; }
-.status { color: var(--gold); font-size: .9rem; font-weight: 650; }
 .empty { margin: 0; }
+
+.game-layout { width: min(100% - 2rem, 66rem); margin-top: 2rem; }
+.game-layout .panel { padding: clamp(.85rem, 3vw, 1.8rem); }
+.game-character { display: flex; align-items: center; gap: .7rem; }
+#game-controls { color: var(--muted); margin: .8rem 0 .6rem; }
+.game-map { aspect-ratio: 3 / 2; overflow: hidden; background: var(--well); outline: 1px solid var(--border); }
+.game-map canvas { display: block; image-rendering: pixelated; }
+.game-map canvas:focus-visible { outline-offset: -4px; }
+.game-directions:not([hidden]) { display: flex; justify-content: center; flex-wrap: wrap; gap: .45rem; margin-top: .9rem; }
+.game-directions button { min-width: 2.75rem; touch-action: manipulation; }
 
 @media (max-width: 35rem) {
     .class-grid { grid-template-columns: 1fr; }

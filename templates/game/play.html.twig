@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}La clairière de Braise{% endblock %}
+{% block layout %}game-layout{% endblock %}
+
+{% block body %}
+    <section class="panel" aria-labelledby="zone-title">
+        <div class="panel-heading">
+            <h1 id="zone-title">La clairière de Braise</h1>
+            <a href="{{ path('character_list') }}">Mes personnages</a>
+        </div>
+        <div class="game-character {{ character.class.value }}">
+            <span class="class-icon" aria-hidden="true">{{ character.class.value == 'warrior' ? '⚔' : '✦' }}</span>
+            <div class="character-name">
+                <strong>{{ character.name }}</strong>
+                <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
+            </div>
+        </div>
+        <p id="game-controls">Déplacement avec les flèches, ZQSD ou WASD.</p>
+        <p id="game-status" role="status">Chargement de la clairière…</p>
+        <div id="world" class="game-map" data-class="{{ character.class.value }}" data-map-url="{{ app.request.basePath }}/game/clairiere.png"></div>
+        <div class="game-directions" role="group" aria-label="Déplacer le personnage" hidden>
+            <button class="quiet" type="button" data-direction="ArrowUp" aria-label="Monter">↑</button>
+            <button class="quiet" type="button" data-direction="ArrowLeft" aria-label="Aller à gauche">←</button>
+            <button class="quiet" type="button" data-direction="ArrowDown" aria-label="Descendre">↓</button>
+            <button class="quiet" type="button" data-direction="ArrowRight" aria-label="Aller à droite">→</button>
+        </div>
+        <noscript><p>Active JavaScript pour déplacer ton personnage.</p></noscript>
+    </section>
+    <script src="{{ app.request.basePath }}/game/phaser-3.90.0.min.js" defer></script>
+    <script src="{{ app.request.basePath }}/game/world.js" defer></script>
+{% endblock %}

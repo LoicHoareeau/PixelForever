@@ -1,6 +1,8 @@
 # PixelForever · Front-end
 
-PixelForever se joue dans un navigateur. Le premier parcours va de l’inscription à l’exploration d’une carte pixel art continue. Les écrans de compte et de personnage utilisent Twig. Le jeu utilise un Canvas 2D pour la carte, les sprites et les effets, avec une interface HTML pour les formulaires, les panneaux et la barre d’actions.
+PixelForever se joue dans un navigateur. Le premier parcours va de l’inscription à l’exploration d’une carte pixel art. Les écrans de compte et de personnage utilisent Twig. Phaser affiche la carte et les sprites dans un canvas, avec une interface HTML pour les formulaires, les panneaux et les commandes.
+
+Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. Symfony vérifie que le personnage appartient au compte connecté, puis ouvre la clairière de Braise. Cette première scène permet d’explorer le hameau et ses sentiers en solo, avec les flèches, ZQSD, WASD ou les boutons de direction. Phaser 3.90.0 et sa licence sont servis depuis `public/game/`.
 
 ## Écrans
 

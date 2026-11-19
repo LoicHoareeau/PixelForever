@@ -18,14 +18,10 @@
                             <strong>{{ character.name }}</strong>
                             <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
                         </div>
-                        {% if character.id == selectedId %}
-                            <span class="status" role="status">Sélectionné</span>
-                        {% else %}
-                            <form method="post" action="{{ path('character_select', {id: character.id}) }}">
-                                <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">
-                                <button class="quiet" type="submit" aria-label="Sélectionner {{ character.name }}">Sélectionner</button>
-                            </form>
-                        {% endif %}
+                        <form method="post" action="{{ path('character_select', {id: character.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">
+                            <button type="submit" aria-label="Jouer avec {{ character.name }}">Jouer</button>
+                        </form>
                     </li>
                 {% endfor %}
             </ul>
