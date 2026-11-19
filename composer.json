@@ -2,6 +2,7 @@
     "name": "pixelforever/pixelforever",
     "description": "MMORPG en pixel art jouable dans le navigateur",
     "type": "project",
+    "license": "proprietary",
     "require": {
         "php": ">=8.2",
         "ext-pdo": "*",

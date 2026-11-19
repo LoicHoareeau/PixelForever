@@ -1,5 +1,6 @@
 framework:
     default_locale: fr
+    secret: '%env(APP_SECRET)%'
     session:
         cookie_secure: auto
         cookie_httponly: true
@@ -27,3 +28,7 @@ doctrine_migrations:
     migrations_paths:
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+
+when@dev:
+    parameters:
+        env(APP_SECRET): 'pixelforever-local-development'

@@ -30,10 +30,19 @@ final class CharacterController extends AbstractController
             ['owner' => $owner],
             ['id' => 'ASC'],
         );
+        $session = $request->getSession();
+        $selectedId = $session->get(self::SELECTED_CHARACTER);
+        if ($selectedId !== null) {
+            $ownedIds = array_map(static fn (PlayerCharacter $character): ?int => $character->getId(), $characters);
+            if (!in_array($selectedId, $ownedIds, true)) {
+                $session->remove(self::SELECTED_CHARACTER);
+                $selectedId = null;
+            }
+        }
 
         return $this->render('character/list.html.twig', [
             'characters' => $characters,
-            'selectedId' => $request->getSession()->get(self::SELECTED_CHARACTER),
+            'selectedId' => $selectedId,
         ]);
     }
 

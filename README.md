@@ -16,6 +16,12 @@ php -S 127.0.0.1:8000 -t public
 
 Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour créer et sélectionner un Guerrier ou un Mage. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. Le monde partagé et le combat dans le navigateur restent à intégrer.
 
+En production, définis la variable d’environnement `APP_SECRET` avec une valeur aléatoire propre au déploiement.
+
+## Tester le parcours de compte
+
+Avec les extensions PHP `dom` et `pdo_sqlite` activées, lance `php tests/account_flow.php`. Le test applique les migrations sur une base SQLite temporaire et vérifie l’inscription, la connexion et la gestion des personnages pour deux comptes.
+
 ## Règles métier du prototype
 
 | Classe | PV max. | Mana max. | Attaque de base | Compétence | Portée |
