@@ -1,0 +1,29 @@
+{% use 'form_div_layout.html.twig' %}
+
+{% block form_row %}
+    <div class="field">
+        {{ form_label(form) }}
+        {% set descriptions = [] %}
+        {% if help is not empty %}
+            {% set descriptions = descriptions|merge([id ~ '_help']) %}
+        {% endif %}
+        {% if errors|length %}
+            {% set descriptions = descriptions|merge([id ~ '_errors']) %}
+        {% endif %}
+        {% set field_attr = descriptions ? {'aria-describedby': descriptions|join(' ')} : {} %}
+        {% if errors|length %}
+            {% set field_attr = field_attr|merge({'aria-invalid': 'true'}) %}
+        {% endif %}
+        {{ form_widget(form, {attr: field_attr}) }}
+        {{ form_help(form) }}
+        {{ form_errors(form) }}
+    </div>
+{% endblock %}
+
+{% block form_errors %}
+    {% if errors|length %}
+        <ul class="error" id="{{ id }}_errors" role="alert">
+            {% for error in errors %}<li>{{ error.message }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes personnages{% endblock %}
+{% block body %}
+    <section class="panel" aria-labelledby="heading">
+        <div class="panel-heading">
+            <h1 id="heading">Mes personnages</h1>
+            <a class="button" href="{{ path('character_create') }}">Nouveau personnage</a>
+        </div>
+        {% if characters is empty %}
+            <p class="empty">Crée ton premier Guerrier ou Mage pour commencer.</p>
+        {% else %}
+            <ul class="roster">
+                {% for character in characters %}
+                    <li class="roster-item {{ character.class.value }}{% if character.id == selectedId %} selected{% endif %}">
+                        <span class="class-icon" aria-hidden="true">{{ character.class.value == 'warrior' ? '⚔' : '✦' }}</span>
+                        <div class="character-name">
+                            <strong>{{ character.name }}</strong>
+                            <small>{{ character.class.label }} · Niveau {{ character.level }}</small>
+                        </div>
+                        {% if character.id == selectedId %}
+                            <span class="status" role="status">Sélectionné</span>
+                        {% else %}
+                            <form method="post" action="{{ path('character_select', {id: character.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">
+                                <button class="quiet" type="submit" aria-label="Sélectionner {{ character.name }}">Sélectionner</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+{% endblock %}

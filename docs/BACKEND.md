@@ -1,6 +1,6 @@
 # PixelForever · Back-end
 
-Ce document décrit le back-end prévu pour la première version jouable. Le projet dispose d’un premier noyau métier PHP dans `src/Game/` et d’un chargement automatique Composer. Symfony, Doctrine, l’authentification, la persistance et le serveur temps réel restent à intégrer. Le Blob du noyau actuel sert de référence pour le combat et le butin. Le bestiaire cible figure dans le [game design](GAME_DESIGN.md).
+Symfony et Doctrine gèrent l’inscription, la connexion et la création de personnages. La sélection est enregistrée dans la session après vérification du propriétaire. Le jeton de connexion au monde, le serveur temps réel et la persistance de la progression de jeu restent à intégrer. Le Blob de `src/Game/` sert de référence pour le combat et le butin. Le bestiaire cible figure dans le [game design](GAME_DESIGN.md).
 
 ## Parcours du compte au monde
 
@@ -15,7 +15,7 @@ Ce document décrit le back-end prévu pour la première version jouable. Le pro
 | Entité | Relations et données principales |
 | --- | --- |
 | `User` | Pseudo, e-mail, mot de passe haché. Un compte peut posséder plusieurs personnages. |
-| `Character` | `ManyToOne` vers `User`. Nom, classe, niveau, XP et or. |
+| `PlayerCharacter` | `ManyToOne` vers `User`. Nom, classe, niveau, XP et or. |
 | `ItemDefinition` | Catalogue des potions et équipements. Type, rareté, classe requise, emplacement, mains occupées et prix de revente. |
 | `InventoryEntry` | `ManyToOne` vers `Character` et `ItemDefinition`. Une entrée par pièce d’équipement, une quantité pour les consommables empilables. |
 | `EquipmentSlot` | Emplacement d’un personnage associé à une entrée de son inventaire. Unicité par personnage et emplacement. Une même entrée ne peut occuper qu’un emplacement. |

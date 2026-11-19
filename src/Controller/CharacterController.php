@@ -1,0 +1,98 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller;
+
+use App\Entity\PlayerCharacter;
+use App\Entity\User;
+use App\Game\CharacterClass;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\EnumType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Validator\Constraints as Assert;
+
+#[Route('/personnages')]
+final class CharacterController extends AbstractController
+{
+    private const SELECTED_CHARACTER = 'selected_character';
+
+    #[Route('', name: 'character_list', methods: ['GET'])]
+    public function list(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $characters = $entities->getRepository(PlayerCharacter::class)->findBy(
+            ['owner' => $owner],
+            ['id' => 'ASC'],
+        );
+
+        return $this->render('character/list.html.twig', [
+            'characters' => $characters,
+            'selectedId' => $request->getSession()->get(self::SELECTED_CHARACTER),
+        ]);
+    }
+
+    #[Route('/nouveau', name: 'character_create', methods: ['GET', 'POST'])]
+    public function create(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $form = $this->createFormBuilder(null, ['csrf_token_id' => 'create_character'])
+            ->add('name', TextType::class, [
+                'label' => 'Nom du personnage',
+                'attr' => ['minlength' => 2, 'maxlength' => 24],
+                'constraints' => [
+                    new Assert\NotBlank(message: 'Choisis un nom.'),
+                    new Assert\Length(min: 2, max: 24, minMessage: 'Le nom doit contenir au moins 2 caractères.', maxMessage: 'Le nom doit contenir au plus 24 caractères.'),
+                    new Assert\Regex(pattern: "/^\\p{L}[\\p{L}\\p{M} '\\x{2019}-]*$/uD", message: 'Utilise des lettres, des espaces, des apostrophes ou des tirets.'),
+                ],
+            ])
+            ->add('class', EnumType::class, [
+                'label' => 'Classe',
+                'class' => CharacterClass::class,
+                'choice_label' => static fn (CharacterClass $class): string => $class->label(),
+                'expanded' => true,
+                'placeholder' => false,
+                'invalid_message' => 'Choisis une classe valide.',
+                'constraints' => [new Assert\NotNull(message: 'Choisis une classe.')],
+            ])
+            ->getForm();
+
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $data = $form->getData();
+            $character = new PlayerCharacter($owner, $data['name'], $data['class']);
+            $entities->persist($character);
+            $entities->flush();
+            $request->getSession()->set(self::SELECTED_CHARACTER, $character->getId());
+            $this->addFlash('success', 'Ton personnage est créé.');
+
+            return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
+        }
+
+        return $this->render('character/create.html.twig', ['form' => $form]);
+    }
+
+    #[Route('/{id}/selection', name: 'character_select', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function select(int $id, Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        if (!$this->isCsrfTokenValid('select_character', $request->request->getString('_token'))) {
+            throw new AccessDeniedHttpException('Le formulaire a expiré.');
+        }
+
+        $character = $entities->getRepository(PlayerCharacter::class)->findOneBy([
+            'id' => $id,
+            'owner' => $owner,
+        ]);
+        if (!$character) {
+            throw $this->createNotFoundException();
+        }
+
+        $request->getSession()->set(self::SELECTED_CHARACTER, $character->getId());
+
+        return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
+    }
+}
