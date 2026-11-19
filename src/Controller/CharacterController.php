@@ -122,6 +122,7 @@ final class CharacterController extends AbstractController
                 'mana' => $class->maxMana(),
                 'resourceName' => $class === CharacterClass::Warrior ? 'Énergie' : 'Mana',
                 'range' => $class->attackRange(),
+                'ranged' => $class === CharacterClass::Mage,
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),
                 'basicName' => $class === CharacterClass::Warrior ? 'Coup d’épée' : 'Trait arcanique',

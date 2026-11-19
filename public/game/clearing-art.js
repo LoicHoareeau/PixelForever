@@ -1,6 +1,4 @@
 const frameSize = 48;
-const walkFrames = 4;
-const footOffsets = [[-1, 1], [0, 0], [1, -1], [0, 0]];
 const canopy = [
     '..........44444..........',
     '.......4443333444........',
@@ -31,8 +29,8 @@ const trees = [
     [233, 286], [213, 311], [189, 298], [147, 307], [114, 285], [82, 305],
 ];
 
-export function createWalkSheet(scene, skin, directions) {
-    const sheet = scene.textures.createCanvas(skin + '-poses', frameSize * (walkFrames + 3), frameSize * directions.length);
+export function createPoseSheet(scene, skin, directions) {
+    const sheet = scene.textures.createCanvas(skin + '-poses', frameSize * 3, frameSize * directions.length);
     const context = sheet.getContext();
     directions.forEach((direction, row) => {
         const source = scene.textures.get(skin + '-' + direction).getSourceImage();
@@ -43,37 +41,16 @@ export function createWalkSheet(scene, skin, directions) {
         while (bottom > 0 && !pixels.subarray(bottom * frameSize * 4, (bottom + 1) * frameSize * 4)
             .some((value, index) => index % 4 === 3 && value > 100)) bottom--;
 
-        const bootY = bottom - 5;
-        const visibleBoots = Array.from({ length: frameSize }, (_, x) => x).filter(x => {
-            for (let row = bottom - 2; row <= bottom; row++) {
-                if (pixels[(row * frameSize + x) * 4 + 3] > 100) return true;
-            }
-            return false;
-        });
-        const split = Math.round((visibleBoots[0] + visibleBoots.at(-1)) / 2);
         context.clearRect(0, y, frameSize, frameSize);
         const anchor = y + 46 - bottom;
         context.drawImage(source, 0, anchor);
         sheet.add(direction + '-idle', 0, 0, y, frameSize, frameSize);
 
         const horizontal = direction.includes('east') ? 1 : direction.includes('west') ? -1 : 0;
-        footOffsets.forEach(([left, right], frame) => {
-            const x = (frame + 1) * frameSize;
-            const bob = frame % 2;
-            context.drawImage(source, 0, 0, frameSize, bootY, x, anchor - bob, frameSize, bootY);
-            const boots = frameSize - bootY;
-            // Keep the rear boot behind the leading boot on side-on views.
-            for (const [start, extent, offset] of [[0, split, left], [split, frameSize - split, right]]) {
-                const lift = offset === 1 ? 1 : 0;
-                context.drawImage(source, start, bootY, extent, boots,
-                    x + start + offset * horizontal * 2, anchor + bootY - lift, extent, boots);
-            }
-            sheet.add(direction + '-' + frame, 0, x, y, frameSize, frameSize);
-        });
         const vertical = direction.includes('south') ? 1 : direction.includes('north') ? -1 : 0;
         const torsoHeight = bottom - 11;
         for (const [index, pose, lean] of [[0, 'windup', -1], [1, 'release', 1]]) {
-            const x = (walkFrames + 1 + index) * frameSize;
+            const x = (index + 1) * frameSize;
             context.drawImage(source, 0, torsoHeight, frameSize, frameSize - torsoHeight,
                 x, anchor + torsoHeight, frameSize, frameSize - torsoHeight);
             context.drawImage(source, 0, 0, frameSize, torsoHeight + 2,

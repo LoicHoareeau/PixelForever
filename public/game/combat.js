@@ -7,16 +7,19 @@ const sparks = [[-10, -3], [-7, 6], [-3, -9], [3, 9], [7, -7], [11, 2], [0, -11]
 const recoveryMs = 140;
 
 export class TrainingCombat {
-    constructor(scene, target, rules, ranged, tileSize) {
+    constructor(scene, target, rules, tileSize) {
         this.scene = scene;
         this.target = target;
         this.rules = rules;
-        this.ranged = ranged;
+        this.ranged = rules.ranged;
         this.range = rules.range * tileSize;
+        this.rangeLabel = new Intl.NumberFormat('fr-FR').format(rules.range) + (rules.range < 2 ? ' case' : ' cases');
         this.status = document.getElementById('combat-status');
         this.resetButton = document.getElementById('combat-reset');
         this.targetHud = document.getElementById('combat-target');
         this.buttons = [...document.querySelectorAll('[data-attack]')];
+        this.buttons[1].title = rules.specialName + ' · ' + rules.specialManaCost + ' '
+            + rules.resourceName.toLowerCase() + ' · Portée : ' + this.rangeLabel;
         this.potionButtons = [...document.querySelectorAll('[data-potion]')];
         this.amounts = [...document.querySelectorAll('[data-quantity]')];
         this.equipButton = document.getElementById('inventory-equip');
@@ -67,7 +70,7 @@ export class TrainingCombat {
             return;
         }
         if (this.targetDistance() > this.range) {
-            this.tell('Saphyr est hors de portée. Approche-toi.');
+            this.tell('Saphyr est hors de portée. Portée : ' + this.rangeLabel + '.');
             return;
         }
         const special = kind === 'special';
@@ -153,7 +156,7 @@ export class TrainingCombat {
         this.equipButton.textContent = this.equipped ? 'Retirer' : 'Équiper';
         this.weaponStatus.textContent = this.equipped ? 'Équipé · +' + this.rules.weaponBonus + ' dégâts de base' : 'Dans le sac';
         this.basicLabel.textContent = this.basicName;
-        this.buttons[0].title = this.basicName;
+        this.buttons[0].title = this.basicName + ' · Portée : ' + this.rangeLabel;
     }
 
     get basicName() {
@@ -163,7 +166,7 @@ export class TrainingCombat {
     resolveAttack(attack, now) {
         if (!this.ranged) this.recovery = { ...attack, start: now };
         if (!this.ranged && this.targetDistance() > this.range) {
-            this.tell('Saphyr est hors de portée.');
+            this.tell('Saphyr est hors de portée. Portée : ' + this.rangeLabel + '.');
             return;
         }
         const damage = Math.min(attack.damage, this.targetHealth);

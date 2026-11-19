@@ -1,5 +1,5 @@
 import { TrainingCombat } from './combat.js';
-import { buildClearing, createWalkSheet } from './clearing-art.js';
+import { buildClearing, createPoseSheet } from './clearing-art.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -16,7 +16,8 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
     const width = 28 * tileSize;
     const height = 20 * tileSize;
     const speed = 92;
-    const stride = 10;
+    const walkFrames = 8;
+    const pixelsPerWalkFrame = 7;
     const assetPath = world.dataset.assetPath;
     const bindings = {
         ArrowUp: 'north', KeyW: 'north',
@@ -27,6 +28,7 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
     const attacks = { Digit1: 'basic', Digit2: 'special' };
     const potions = { Digit3: 'health', Digit4: 'mana' };
     const vectors = { north: [0, -1], west: [-1, 0], south: [0, 1], east: [1, 0] };
+    // Each row of walk.png follows this order.
     const directions = [
         'east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east',
     ];
@@ -43,6 +45,8 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
         motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 
         preload() {
+            this.skin = world.dataset.class === 'warrior' ? 'noe' : 'lina';
+            this.walkSheet = this.skin + '-walk';
             this.load.setPath(assetPath);
             this.load.json('terrain', 'terrain.json');
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
@@ -51,6 +55,7 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
             for (const name of ['lina', 'noe']) {
                 directions.forEach(direction => this.load.image(name + '-' + direction, name + '/' + direction + '.png'));
             }
+            this.load.spritesheet(this.walkSheet, this.skin + '/walk.png', { frameWidth: 48, frameHeight: 48 });
             this.load.image('saphyr-south-west', 'saphyr/south-west.png');
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
                 status.textContent = 'Un élément de la carte manque. Recharge la page pour réessayer.';
@@ -60,10 +65,9 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
         create() {
             if (this.load.totalFailed > 0) return;
             this.terrain = this.cache.json.get('terrain');
-            this.skin = world.dataset.class === 'warrior' ? 'noe' : 'lina';
             this.obstacles = [];
             this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
-            this.poseSheet = createWalkSheet(this, this.skin, directions);
+            this.poseSheet = createPoseSheet(this, this.skin, directions);
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
             const shadows = this.add.graphics().setDepth(3).fillStyle(0x172622, .48);
@@ -82,7 +86,7 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
                     this.saphyr = sprite;
                 }
             }
-            this.combat = new TrainingCombat(this, this.saphyr, JSON.parse(world.dataset.combat), this.skin === 'lina', tileSize);
+            this.combat = new TrainingCombat(this, this.saphyr, JSON.parse(world.dataset.combat), tileSize);
             this.renderAvatar(this.time.now);
 
             const canvas = this.game.canvas;
@@ -246,9 +250,16 @@ import { buildClearing, createWalkSheet } from './clearing-art.js';
             const { x, y } = this.position;
             const walking = time - this.lastWalkAt < 90;
             const gesture = this.combat.attackPose(time);
-            const pose = gesture?.pose ?? (walking ? Math.floor(this.walkDistance / stride) % 4 : 'idle');
-            const frame = (gesture?.attack.facing ?? this.facing) + '-' + pose;
-            if (this.avatar.frame.name !== frame) this.avatar.setTexture(this.poseSheet, frame);
+            let texture = this.poseSheet;
+            let frame = this.facing + '-idle';
+            if (gesture) {
+                frame = gesture.attack.facing + '-' + gesture.pose;
+            } else if (walking) {
+                texture = this.walkSheet;
+                frame = directions.indexOf(this.facing) * walkFrames
+                    + Math.floor(this.walkDistance / pixelsPerWalkFrame) % walkFrames;
+            }
+            if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame);
             this.avatar.setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
         }
