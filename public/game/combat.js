@@ -247,11 +247,11 @@ export class TrainingCombat {
     }
 
     get range() {
-        return (this.rules.range + (this.stats?.bonusRangeTiles ?? 0)) * this.tileSize;
+        return ((this.rules.specialRange ?? this.rules.range) + (this.stats?.bonusRangeTiles ?? 0)) * this.tileSize;
     }
 
     get rangeLabel() {
-        const tiles = this.rules.range + (this.stats?.bonusRangeTiles ?? 0);
+        const tiles = this.range / this.tileSize;
         return numberFormatter.format(tiles) + (tiles < 2 ? ' case' : ' cases');
     }
 
@@ -1219,7 +1219,8 @@ export class TrainingCombat {
         if (this.spellRanks.basic) this.spellRanks.basic.textContent = 'Rang ' + this.stats.basicSpellRank;
         if (this.spellRanks.special) this.spellRanks.special.textContent = 'Rang ' + this.stats.specialSpellRank;
         if (this.spellDamages.basic) {
-            this.spellDamages.basic.textContent = this.basicWeapon.damage + ' dégâts actuels (+' + basicStep + ' par rang)';
+            const rankBonus = this.basicWeapon.ranged ? '' : ' (+' + basicStep + ' par rang)';
+            this.spellDamages.basic.textContent = this.basicWeapon.damage + ' dégâts actuels' + rankBonus;
         }
         if (this.spellDamages.special) {
             this.spellDamages.special.textContent = this.stats.specialDamage

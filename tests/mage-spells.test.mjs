@@ -3,14 +3,14 @@ import test from 'node:test';
 import { TrainingCombat } from '../public/game/combat.js';
 import { createInitialProgress } from '../public/game/progression.js';
 
-function battle(weapon = 'rare', targetX = 70) {
+function battle(weapon = 'rare', targetX = 240) {
     const casterNeighbor = { name: 'Près du mage', isAlive: true, sprite: { x: 8, y: 0 } };
     const target = { name: 'Cible', isAlive: true, sprite: { x: targetX, y: 0 } };
     const targetNeighbor = { name: 'Près de la cible', isAlive: true, sprite: { x: targetX + 20, y: 0 } };
     const instance = Object.create(TrainingCombat.prototype);
     const hits = [];
     Object.assign(instance, {
-        rules: { classKey: 'mage', range: 5, ranged: true, resourceName: 'Mana' },
+        rules: { classKey: 'mage', range: 7.5, specialRange: 15, ranged: true, resourceName: 'Mana' },
         classKey: 'mage', ranged: true, progress: { ...createInitialProgress(), weapon },
         stats: { basicDamage: 12, specialDamage: 22 }, mana: 40, tileSize: 16,
         scene: { position: { x: 0, y: 0 }, facing: 'east', face() {} },
@@ -35,7 +35,7 @@ for (const slot of ['fire_wall', 'fire_whirl', 'frost_nova', 'arcane_blast']) {
 
     test(`${slot} sans cible ou hors de portée ne dépense rien`, () => {
         for (const unavailable of ['missing', 'dead', 'distant']) {
-            const { instance, target, hits } = battle('rare', unavailable === 'distant' ? 300 : 70);
+            const { instance, target, hits } = battle('rare', unavailable === 'distant' ? 265 : 240);
             if (unavailable === 'missing') instance.getActiveTarget = () => null;
             if (unavailable === 'dead') target.isAlive = false;
             instance.castTalentSpell({ slot, name: slot, manaCost: 7 }, 100);

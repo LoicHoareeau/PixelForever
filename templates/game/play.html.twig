@@ -10,7 +10,7 @@
     {% set basic = combat.basicName %}
     {% set resource = combat.resourceName|lower %}
     {% set resourcePhrase = warrior ? 'd’énergie' : 'de mana' %}
-    {% set initialBasicDamage = combat.basicDamage + combat.weaponBonus %}
+    {% set initialBasicDamage = ((combat.basicDamage + combat.weaponBonus) * (warrior ? 1 : combat.wandDamageMultiplier))|round %}
     {% set baseStats = combat.baseStats %}
     {% set growthStats = combat.growthStats %}
     {% set potions = {
@@ -529,7 +529,7 @@
                                     <span class="spell-rank-badge" data-spell-rank="basic">Rang 1</span>
                                 </div>
                                 <small data-spell-damage="basic">
-                                    {{ initialBasicDamage }} dégâts actuels (+{{ combat.basicSpellRankBonus }} par rang)
+                                    {{ initialBasicDamage }} dégâts actuels{% if warrior %} (+{{ combat.basicSpellRankBonus }} par rang){% endif %}
                                 </small>
                             </div>
                             <button

@@ -22,11 +22,11 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-L’épée et le croc frappent à 1,5 case. Le Mage commence avec la Baguette de braise : projectile à 7,5 cases (extensible à 8 avec Déflagration) pour compenser une régénération de base réduite (`1,0/s`) et des coûts en mana relevés (`15` à `28` selon les sorts ; Boule de feu `18`). Boule de feu, Mur de feu et Tourbillon de feu demandent `1,0 s` d’incantation (barre de sort dédiée `#cast-bar` annulée avec remboursement si le mage se déplace). Son Sceptre de Saphyr se comporte comme une baguette ; le Bâton des saules frappe au contact à 1,5 case. Sans arme, les deux classes frappent au poing à 1,5 case. L’auto-attaque est gratuite. Boule de feu garde sa portée de sort quand un bâton est équipé.
+L’épée, le croc, le Bâton des saules et les poings frappent à 1,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 7,5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
-Les quatre sorts de talents du Mage restent utilisables à distance avec un bâton ou sans arme. Tourbillon de feu et Nova de givre visent la cible à cinq cases et touchent les monstres à moins de 54 px de celle-ci, plutôt que ceux autour du mage. Mur de feu et Déflagration gardent leur portée étendue. Les sorts exigent une cible vivante à portée avant toute dépense. Taillade conserve sa zone autour du Guerrier.
+Boule de feu, Tourbillon de feu et Nova de givre portent à 15 cases avant bonus avec chaque arme et à mains nues. Tourbillon et Nova touchent dans un rayon de 54 px autour de la cible. Mur de feu porte à 16 cases et Déflagration à 16,5 cases avant bonus. Les sorts exigent une cible vivante à portée avant toute dépense. Taillade conserve sa zone autour du Guerrier.
 
 Noé ne doit pas utiliser sa planche « Frappe à la lanterne » pour un tir ou une incantation : les poses orientées existantes servent au geste magique, et les effets dessinent le projectile. Le bâton peut utiliser la frappe de contact. Préparation et récupération permettent de lire le cycle à 30 FPS ; les sorts de talents déclenchent aussi un geste. Les directions nord utilisent des poses dérivées du sprite au lieu d’une frappe tournée dans le mauvais sens.
 

@@ -8,7 +8,7 @@ import { createInitialProgress } from '../public/game/progression.js';
 function combat(weapon = 'starter') {
     const instance = Object.create(TrainingCombat.prototype);
     Object.assign(instance, {
-        rules: { classKey: 'mage', range: 5, ranged: true, cooldownMs: 500, specialManaCost: 10 },
+        rules: { classKey: 'mage', range: 7.5, specialRange: 15, ranged: true, cooldownMs: 500, specialManaCost: 10, wandDamageMultiplier: 0.5 },
         progress: { ...createInitialProgress(), weapon },
         stats: { basicDamage: 12, specialDamage: 22 },
         classKey: 'mage', ranged: true, tileSize: 16, health: 40, mana: 40, readyAt: 0,
@@ -23,7 +23,9 @@ test('la baguette de départ prépare un projectile sans consommer de mana', () 
     const instance = combat();
     instance.attack('basic', 0);
     assert.equal(instance.pending.ranged, true);
-    assert.equal(instance.pending.range, 80);
+    assert.equal(instance.pending.range, 120);
+    assert.equal(instance.pending.damage, 6);
+    assert.equal(instance.cancelCastOnMove(), false);
     assert.equal(instance.mana, 40);
 });
 

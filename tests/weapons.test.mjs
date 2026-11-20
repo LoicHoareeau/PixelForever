@@ -3,14 +3,14 @@ import test from 'node:test';
 import { basicWeaponProfile, createInitialProgress, loadProgress, awardVictory, investTalent } from '../public/game/progression.js';
 import { TrainingCombat } from '../public/game/combat.js';
 
-const rules = { classKey: 'mage', range: 5, ranged: true };
+const rules = { classKey: 'mage', range: 7.5, specialRange: 15, ranged: true, wandDamageMultiplier: 0.5 };
 const stats = { basicDamage: 20, bonusRangeTiles: .5 };
 
 test('la baguette tire de loin, le bâton et les mains nues frappent au contact', () => {
     const progress = createInitialProgress(10);
     for (const weapon of ['starter', 'epic']) {
         progress.weapon = weapon;
-        assert.deepEqual(basicWeaponProfile(rules, progress, stats, 16), { ranged: true, range: 88, damage: 20 });
+        assert.deepEqual(basicWeaponProfile(rules, progress, stats, 16), { ranged: true, range: 128, damage: 10 });
     }
     for (const weapon of ['rare', null]) {
         progress.weapon = weapon;
@@ -23,7 +23,7 @@ test('les deux talents de baguette respectent les prérequis et ne renforcent ni
     assert.equal(investTalent(progress, 'mage', 'm_wand_focus'), false);
     for (let i = 0; i < 5; i++) assert.equal(investTalent(progress, 'mage', 'm_wand_mastery'), true);
     for (let i = 0; i < 3; i++) assert.equal(investTalent(progress, 'mage', 'm_wand_focus'), true);
-    assert.equal(basicWeaponProfile(rules, progress, stats, 16).damage, 34);
+    assert.equal(basicWeaponProfile(rules, progress, stats, 16).damage, 21);
     progress.weapon = 'rare';
     assert.equal(basicWeaponProfile(rules, progress, stats, 16).damage, 20);
     progress.weapon = 'epic';
@@ -55,13 +55,13 @@ test('le bâton préserve la portée des sorts, leur coût en mana et leur recha
         health: 50, mana: 20, readyAt: 0, tileSize: 16, ranged: true, classKey: 'mage',
         scene: { position: { x: 0, y: 0 }, facing: 'east', face() {} },
         targetHud: {}, refreshTargetHud() {}, refreshVitals() {}, setSlotCooldown() {}, tell() {},
-        getActiveTarget: () => ({ name: 'Sanglier', sprite: { x: 50, y: 0 } }), distanceTo: () => 50,
+        getActiveTarget: () => ({ name: 'Sanglier', isAlive: true, sprite: { x: 240, y: 0 } }), distanceTo: () => 240,
     });
     combat.attack('basic', 100);
     assert.equal(combat.pending, undefined);
     combat.attack('special', 100);
     assert.equal(combat.pending.ranged, true);
-    assert.equal(combat.pending.range, 88);
+    assert.equal(combat.pending.range, 248);
     assert.equal(combat.mana, 10);
     const first = combat.pending;
     combat.attack('special', 110);
@@ -71,6 +71,12 @@ test('le bâton préserve la portée des sorts, leur coût en mana et leur recha
     combat.mana = 0;
     combat.attack('special', 1000);
     assert.equal(combat.pending, null);
+    combat.mana = 20;
+    combat.distanceTo = () => 249;
+    combat.attack('special', 1000);
+    assert.equal(combat.pending, null);
+    assert.equal(combat.mana, 20);
+    assert.equal(combat.readyAt, 900);
 });
 
 test('les anciennes sauvegardes gardent le butin et acceptent les nouveaux matériaux', () => {
