@@ -107,6 +107,32 @@ export const monsterTemplates = {
         patrolCells: [[184, 132], [152, 132], [148, 142], [182, 147], [157, 154], [176, 156], [162, 135], [174, 136], [149, 154], [186, 155]],
         statsForLevel: demonStats,
     },
+    breach_lord: {
+        species: 'breach_lord',
+        label: 'Malakor, Seigneur de la Brèche',
+        isBoss: true,
+        minLevel: 40,
+        maxLevel: 40,
+        attackRange: 38,
+        aggroRange: 136,
+        zone: zones.breach_lord,
+        patrolCells: [
+            [104, 158], [97, 152], [111, 152], [114, 158], [111, 164],
+            [97, 164], [94, 158], [104, 150], [104, 166], [99, 158],
+        ],
+        respawnMs: 30000,
+        statsForLevel() {
+            return {
+                maxHealth: 18500,
+                damage: 295,
+                patrolSpeed: 24,
+                chaseSpeed: 76,
+                windupMs: 480,
+                attackIntervalMs: 1350,
+                xp: 6500,
+            };
+        },
+    },
 };
 
 function randomInt(min, max) {
@@ -118,6 +144,7 @@ export class Monster {
         this.scene = scene;
         this.species = species;
         this.template = monsterTemplates[species];
+        this.isBoss = Boolean(this.template.isBoss);
         this.art = monsterArt[species];
         this.tileSize = tileSize;
         this.columns = scene.terrain[0].length;
@@ -152,24 +179,28 @@ export class Monster {
             0,
             0,
             this.art.shadow,
-            species === 'dragon' ? 9 : 6,
+            species === 'dragon' || this.isBoss ? 11 : 6,
             0x172622,
             0.5,
         ).setDepth(3);
 
         // Anneau de sélection sous le monstre ciblé
-        this.targetRing = scene.add.ellipse(0, 0, this.art.shadow + 3, species === 'dragon' ? 11 : 8)
-            .setStrokeStyle(1.5, 0xf0c781, 0.95)
+        this.targetRing = scene.add.ellipse(0, 0, this.art.shadow + 4, species === 'dragon' || this.isBoss ? 13 : 8)
+            .setStrokeStyle(1.5, this.isBoss ? 0xffa74f : 0xf0c781, 0.95)
             .setDepth(4)
             .setVisible(false);
 
         // Mini barre de vie + niveau au-dessus du monstre
-        this.hpBg = scene.add.rectangle(0, 0, 26, 3, 0x101719, 0.9).setDepth(340);
-        this.hpFill = scene.add.rectangle(0, 0, 24, 2, 0xd76c61, 1).setOrigin(0, 0.5).setDepth(341);
+        this.barWidth = this.isBoss ? 40 : 24;
+        this.hpBg = scene.add.rectangle(0, 0, this.barWidth + 2, this.isBoss ? 4 : 3, 0x101719, 0.92).setDepth(340);
+        this.hpFill = scene.add.rectangle(0, 0, this.barWidth, this.isBoss ? 3 : 2, this.isBoss ? 0xe58c3a : 0xd76c61, 1)
+            .setOrigin(0, 0.5)
+            .setDepth(341);
         this.nameTag = scene.add.text(0, 0, '', {
             fontFamily: 'system-ui, sans-serif',
-            fontSize: '7px',
-            color: '#f7eddd',
+            fontSize: this.isBoss ? '8px' : '7px',
+            fontStyle: this.isBoss ? 'bold' : 'normal',
+            color: this.isBoss ? '#ffd78c' : '#f7eddd',
             stroke: '#101719',
             strokeThickness: 2,
         }).setOrigin(0.5, 1).setDepth(342);
@@ -179,6 +210,8 @@ export class Monster {
         this.slowUntil = 0;
         this.counterAt = Infinity;
         this.attackEndsAt = 0;
+        this.phase = 1;
+        this.attackCounter = 0;
 
         this.spawnLevel = Math.min(this.template.maxLevel, this.template.minLevel + initialSpawnIndex);
         const spawnIdx = this.patrol[species === 'boar' ? 0 : initialSpawnIndex % this.patrol.length];
@@ -213,6 +246,8 @@ export class Monster {
 
         this.home = index;
         this.patrolIndex = Math.max(0, this.patrol.indexOf(index));
+        this.phase = 1;
+        this.attackCounter = 0;
         this.alert = false;
         this.cancelAttack();
         this.facing = 3;
@@ -267,12 +302,51 @@ export class Monster {
         this.sprite.clearTint();
     }
 
+    nextBossSkill() {
+        if (!this.isBoss || this.attackCounter === 0) {
+            return 'melee';
+        }
+        if (this.phase === 2) {
+            const slot = this.attackCounter % 3;
+            return slot === 1 ? 'seismic_ring' : (slot === 2 ? 'magma_rift' : 'melee');
+        }
+        return this.attackCounter % 2 === 1 ? 'seismic_ring' : 'melee';
+    }
+
+    checkBossPhase() {
+        if (this.isBoss && this.phase === 1 && this.health > 0 && this.health <= this.maxHealth * 0.55) {
+            this.phase = 2;
+            return true;
+        }
+        return false;
+    }
+
+    attackDamage() {
+        return this.attackVisual?.damage ?? this.stats.damage;
+    }
+
+    currentAttackIntervalMs() {
+        return this.isBoss && this.phase === 2
+            ? Math.round(this.stats.attackIntervalMs * 0.85)
+            : this.stats.attackIntervalMs;
+    }
+
     canAttack(player) {
         if (!inZone(this.template.zone, player.x, player.y)) return false;
         const dx = player.x - this.sprite.x;
         const dy = player.y - this.sprite.y;
         const distance = Math.hypot(dx, dy);
-        if (distance > this.template.attackRange) return false;
+
+        // Au moment de résoudre une compétence de boss déjà lancée, tester sa géométrie.
+        if (this.attackVisual?.bossSkill) {
+            return this.hitTestBossSpecial(player);
+        }
+
+        const plannedSkill = this.isBoss ? this.nextBossSkill() : 'melee';
+        const maxRange = plannedSkill === 'magma_rift'
+            ? 165
+            : (plannedSkill === 'seismic_ring' ? 128 : this.template.attackRange);
+        if (distance > maxRange) return false;
         const steps = Math.max(1, Math.ceil(distance / 4));
         for (let step = 1; step <= steps; step++) {
             if (!this.scene.canStand(this.sprite.x + dx * step / steps, this.sprite.y + dy * step / steps)) return false;
@@ -280,17 +354,83 @@ export class Monster {
         return true;
     }
 
+    hitTestBossSpecial(player) {
+        const visual = this.attackVisual;
+        if (!visual) return false;
+        if (visual.bossSkill === 'seismic_ring') {
+            return Math.hypot(player.x - visual.originX, player.y - visual.originY) <= visual.radius;
+        }
+        if (visual.bossSkill === 'magma_rift') {
+            const relX = player.x - visual.originX;
+            const relY = player.y - visual.originY;
+            const proj = relX * visual.dirX + relY * visual.dirY;
+            const perp = Math.abs(relX * -visual.dirY + relY * visual.dirX);
+            return proj >= -6 && proj <= visual.riftRange && perp <= visual.halfWidth;
+        }
+        return false;
+    }
+
     startAttack(player, now) {
         this.face(player.x - this.sprite.x, player.y - this.sprite.y);
+        const angle = Math.atan2(player.y - this.sprite.y, player.x - this.sprite.x);
+
+        if (this.isBoss) {
+            const skill = this.nextBossSkill();
+            this.attackCounter++;
+            if (skill === 'seismic_ring') {
+                const castEnd = now + 950;
+                this.attackEndsAt = castEnd;
+                this.attackVisual = {
+                    start: now,
+                    castEnd,
+                    end: castEnd,
+                    x: this.sprite.x,
+                    y: this.sprite.y - 24,
+                    originX: this.sprite.x,
+                    originY: this.sprite.y,
+                    radius: 78,
+                    angle,
+                    bossSkill: 'seismic_ring',
+                    label: 'Onde sismique',
+                    damage: 390,
+                };
+                this.sprite.setTint(0xff9a44);
+                return;
+            }
+            if (skill === 'magma_rift') {
+                const castEnd = now + 850;
+                this.attackEndsAt = castEnd;
+                this.attackVisual = {
+                    start: now,
+                    castEnd,
+                    end: castEnd,
+                    x: this.sprite.x,
+                    y: this.sprite.y - 24,
+                    originX: this.sprite.x,
+                    originY: this.sprite.y,
+                    dirX: Math.cos(angle),
+                    dirY: Math.sin(angle),
+                    riftRange: 165,
+                    halfWidth: 16,
+                    angle,
+                    bossSkill: 'magma_rift',
+                    label: 'Faille de magma',
+                    damage: 360,
+                };
+                this.sprite.setTint(0xff6b38);
+                return;
+            }
+        }
+
         const castEnd = now + this.stats.windupMs;
         this.attackEndsAt = castEnd + (this.species === 'dragon' ? 250 : 0);
         this.attackVisual = {
             start: now, castEnd, end: this.attackEndsAt,
             x: this.sprite.x, y: this.sprite.y - 12,
-            angle: Math.atan2(player.y - this.sprite.y, player.x - this.sprite.x),
+            angle,
+            damage: this.stats.damage,
         };
         if (this.species === 'dragon') {
-            const angle = this.attackVisual.angle;
             this.attackVisual.projectile = {
                 x: this.sprite.x, y: this.sprite.y,
                 dx: Math.cos(angle), dy: Math.sin(angle),
@@ -299,6 +439,8 @@ export class Monster {
             this.sprite.setTint(0xb0f5ff);
         } else if (this.species === 'boar') {
             this.sprite.setTint(0xffb49a);
+        } else if (this.isBoss) {
+            this.sprite.setTint(0xffbe7a);
         } else {
             this.sprite.setTint(0xd7e8ff);
         }
@@ -339,7 +481,8 @@ export class Monster {
         const overlayDepth = this.scene.terrain.length * this.tileSize + 2;
         this.hpBg.setPosition(x, y - headOffset).setDepth(overlayDepth);
         const ratio = Math.max(0, Math.min(1, this.health / this.maxHealth));
-        this.hpFill.setPosition(x - 12, y - headOffset).setDisplaySize(Math.max(0, 24 * ratio), 2).setDepth(overlayDepth + 1);
+        const width = this.barWidth ?? 24;
+        this.hpFill.setPosition(x - width / 2, y - headOffset).setDisplaySize(Math.max(0, width * ratio), this.isBoss ? 3 : 2).setDepth(overlayDepth + 1);
         this.nameTag.setPosition(x, y - headOffset - 3).setDepth(overlayDepth + 2);
     }
 

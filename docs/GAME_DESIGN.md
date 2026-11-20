@@ -11,15 +11,15 @@ Créer un Guerrier ou un Mage → parler au PNJ → explorer la clairière, le c
 | Classe / équipement | Attaque de base gratuite | Portée |
 | --- | --- | --- |
 | Guerrier · Épée de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 1,5 case |
-| Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 5 cases avant bonus |
+| Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 7,5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 1,5 case |
 | Arme retirée | Coup de poing | 1,5 case |
 
-Le Guerrier utilise Lina, la mêlée et l’énergie. Le Mage utilise Noé et le mana. Le portrait et le personnage suivent la même classe. Les apparences et les planches de marche existantes sont conservées.
+Le Guerrier utilise Lina, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, la distance (`7,5` cases) et le mana (`1,0/s` de base, régénération par Esprit réduite à `+0,14/s` par point afin d’imposer une vraie gestion du mana). Le portrait et le personnage suivent la même classe. Les apparences et les planches de marche existantes sont conservées.
 
-L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer Boule de feu à distance. L’attaque de base reste disponible sans mana ; Boule de feu et Attaque chargée coûtent initialement 10 points de ressource. Les talents peuvent réduire les coûts et délais. La cadence de base est de 500 ms, avec préparation et impact ; aucune seconde attaque de base ne part pendant l’attaque en cours.
+L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer Boule de feu à distance. L’attaque de base reste disponible sans mana ; Attaque chargée coûte 10 d’énergie, tandis que Boule de feu coûte 18 de mana avec une incantation de 1,0 s. Les talents peuvent réduire les coûts et délais. La cadence de base est de 500 ms, avec préparation, effets visuels enrichis, secousses de caméra mesurées et impact ; aucune seconde attaque de base ne part pendant l’attaque en cours.
 
-Tous les sorts offensifs du Mage ciblent à distance, quelle que soit son arme. Tourbillon de feu et Nova de givre se déclenchent autour de la cible sélectionnée, dans un rayon de 54 px, à cinq cases de portée de lancement avant bonus. Mur de feu couvre 38 px autour de la cible et porte à six cases ; Déflagration porte à 6,5 cases. Nova ralentit pendant 2,5 secondes. Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste une zone de mêlée du Guerrier, centrée sur lui.
+Tous les sorts offensifs du Mage ciblent à distance (`7,5` cases avant bonus), quelle que soit son arme. Tourbillon de feu (28 mana, cast 1,0 s) et Nova de givre (20 mana) se déclenchent autour de la cible sélectionnée dans un rayon de 54 px. Mur de feu (22 mana, cast 1,0 s) couvre 38 px autour de la cible à `7,5` cases + 16 px ; Déflagration (15 mana) porte à `9` cases avant bonus. Interrompre une incantation d’une seconde en se déplaçant rembourse le mana. Nova ralentit pendant 2,5 secondes (`1,25 s` sur un boss). Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste une zone de mêlée du Guerrier, centrée sur lui.
 
 La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Une défaite permet de se relever au camp en gardant la progression.
 
@@ -52,12 +52,11 @@ La préparation et la fin du geste sont cadencées pour rester lisibles à 30 FP
 | Terres dévastées · Brèche des cendres | Diablotins N.21–25 |
 | Terres dévastées · Plaine calcinée | Molosses infernaux N.25–30 |
 | Terres dévastées · Citadelle de la Brèche | Gardes de la Brèche N.30–35 |
+| Trône d’Obsidienne (chaussée sud-ouest) | Malakor, Seigneur de la Brèche · Boss N.40 |
 
-Le monde mesure 4 096 × 3 072 px (256 × 192 tuiles de 16 px). Il dessine une péninsule bordée par la mer ouverte et une ceinture continue de falaises côtières de trois cases, avec quatre belvédères panoramiques (Cap des Saules, Baie Émeraude, Baie de Saphyr et Cap d’Obsidienne) et des couloirs de transition en dégradé organique entre chaque biome. Trente-quatre monstres (7 sangliers, 6 squelettes, 5 dragons, 6 diablotins, 5 molosses et 5 gardes) patrouillent dans leurs secteurs élargis. La caméra suit le joueur ; l’ATH reste fixe en plein écran. La touche `Tab` (`Maj+Tab` en arrière) change exclusivement de cible entre les monstres vivants à proximité sans déplacer le focus dans la fenêtre. Les chemins entre zones et belvédères restent accessibles.
+Le monde mesure 4 096 × 3 072 px (256 × 192 tuiles de 16 px). Il dessine une péninsule bordée par la mer ouverte et une ceinture continue de falaises côtières de trois cases, avec quatre belvédères panoramiques (Cap des Saules, Baie Émeraude, Baie de Saphyr et Cap d’Obsidienne), l’île du Trône d’Obsidienne accessible depuis la Citadelle et des couloirs de transition en dégradé organique entre chaque biome. Trente-cinq monstres (7 sangliers, 6 squelettes, 5 dragons, 6 diablotins, 5 molosses, 5 gardes et le Boss N.40 Malakor) patrouillent dans leurs secteurs. La caméra suit le joueur (avec tremblement visuel décroissant sur les impacts lourds) ; l’ATH reste fixe en plein écran. La touche `Tab` (`Maj+Tab` en arrière) change exclusivement de cible entre les monstres vivants à proximité sans déplacer le focus dans la fenêtre. Les chemins entre zones, belvédères et boss restent accessibles.
 
-Les monstres engagent à proximité, préparent leur attaque et respectent leur recharge. Sangliers, squelettes et démons frappent au contact. Le dragon fixe sa direction au début de sa préparation de 450 ms et la signale au sol. Son souffle parcourt ensuite la ligne à 142 px/s et blesse une seule fois au contact. Un pas de côté pendant le vol ou un obstacle entre le projectile et le joueur évite l’impact. Étourdir ou tuer le dragon éteint son souffle. Patrouilles, poursuites et réapparitions restent dans le secteur de l’espèce.
-
-Les niveaux 1–2 restent abordables. Un diablotin N.22 a 1 914 PV, inflige 82 dégâts et donne 676 XP. Un molosse N.27 a 2 954 PV, inflige 124 dégâts et donne 966 XP. Le garde N.35 atteint 5 554 PV, 230 dégâts et 1 638 XP. Les valeurs exécutées sont dans `monsters.js`.
+Les monstres engagent à proximité, préparent leur attaque et respectent leur recharge. Sangliers, squelettes et démons frappent au contact. Le dragon fixe sa direction au début de sa préparation de 450 ms et la signale au sol. Malakor alterne clivage d’obsidienne (mêlée, `295` dégâts), **Onde sismique** circulaire télégraphiée (`390` dégâts, rayon `78 px`) et, sous `55 % PV` (Phase 2), **Faille de magma** linéaire (`360` dégâts, portée `165 px`) ; ses contrôles (`étourdissement` / `ralentissement`) durent moitié moins longtemps. Un diablotin N.22 a 1 914 PV, inflige 82 dégâts et donne 676 XP ; le garde N.35 atteint 5 554 PV, 230 dégâts et 1 638 XP ; **Malakor N.40 possède 18 500 PV et octroie 6 500 XP** (`réapparition 30 s`). Les valeurs exécutées sont dans `monsters.js`.
 
 ## Quête et butin
 
@@ -67,7 +66,7 @@ Chaque défaite crédite de l’XP selon l’espèce/niveau et un tirage personn
 
 ## Persistance et objectifs futurs
 
-Le compte, les personnages, le niveau et l’XP sont en base. Sac, équipement, allocations et quête sont locaux au navigateur. Le niveau 2 demande 100 XP puis les seuils augmentent de 50 par niveau. Le bestiaire actuel monte au N.35 et le client accepte des personnages jusqu’au N.9 999.
+Le compte, les personnages, le niveau et l’XP sont en base. Sac, équipement, allocations et quête sont locaux au navigateur. Le niveau 2 demande 100 XP puis les seuils augmentent de 50 par niveau. Le bestiaire actuel monte au Boss N.40 et le client accepte des personnages jusqu’au N.9 999.
 
 Le monde partagé, la validation serveur des combats, la persistance complète, les marchands, haches, boucliers, livres et armures restent des objectifs. Ils ne doivent pas être présentés comme disponibles dans l’interface actuelle.
 

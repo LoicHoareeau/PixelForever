@@ -1,7 +1,7 @@
 import { cliffTile, seaTile, zones } from './exploration.js';
 import { biomeWeights, distanceToRegion } from './biome-gradient.js';
 
-const wastelandZones = [zones.imp, zones.hound, zones.fiend];
+const wastelandZones = [zones.imp, zones.hound, zones.fiend, zones.breach_lord];
 
 // ---------------------------------------------------------------------------
 // Helpers de bruit déterministe et palettes côtières pixel art

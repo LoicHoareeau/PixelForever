@@ -127,6 +127,11 @@ export class TrainingCombat {
         this.targetHud = document.getElementById('combat-target');
         this.targetNameLabel = document.getElementById('combat-target-name');
         this.targetLevelLabel = document.getElementById('combat-target-level');
+        this.targetPhaseLabel = document.getElementById('combat-target-phase');
+        this.castBar = document.getElementById('cast-bar');
+        this.castBarName = document.getElementById('cast-bar-name');
+        this.castBarMeter = document.getElementById('cast-bar-meter');
+        this.castBarTime = document.getElementById('cast-bar-time');
         this.combatActions = document.getElementById('combat-actions');
         this.buttons = [...document.querySelectorAll('[data-attack]')];
         this.talentSlotButtons = [...document.querySelectorAll('[data-talent-slot]')];
@@ -190,9 +195,11 @@ export class TrainingCombat {
 
         this.effect = scene.add.graphics().setDepth(scene.terrain.length * tileSize + 1);
 
-        // Cooldowns individuels par compétence + buff Berserk
+        // Cooldowns individuels par compétence + buff Berserk + VFX et textes flottants
         this.spellCooldowns = new Map();
         this.berserkUntil = 0;
+        this.spellEffects = [];
+        this.damageNumbers = [];
 
         // Clic sur un monstre pour le cibler
         this.monsters.forEach((monster) => {
@@ -293,11 +300,20 @@ export class TrainingCombat {
         this.readyAt = 0;
         this.cooldownStart = 0;
         this.impacts = [];
+        this.spellEffects = [];
+        this.clearFloatingTexts();
         this.pending = null;
         this.recovery = null;
         this.attackVisual = null;
         this.effect.clear();
         this.scene.avatar.clearTint();
+        this.scene?.cameraFeel?.reset?.();
+        if (this.castBar) {
+            this.castBar.hidden = true;
+        }
+        if (this.targetPhaseLabel) {
+            this.targetPhaseLabel.hidden = true;
+        }
 
         this.monsters.forEach((m, index) => {
             m.respawnAt = Infinity;
@@ -385,8 +401,10 @@ export class TrainingCombat {
 
         const berserkMult = now < this.berserkUntil ? 1.4 : 1;
         const baseDmg = special ? this.stats.specialDamage : this.basicWeapon.damage;
-        const castMs = ranged ? (special ? 210 : 180) : 0;
-        const duration = ranged ? (special ? 380 : 330) : (special ? 480 : 140);
+        const specialCastMs = special && ranged ? (this.rules.specialCastMs ?? 210) : 0;
+        const castMs = ranged ? (special ? specialCastMs : 180) : 0;
+        const flightMs = castMs >= 500 ? 260 : (special ? 170 : 150);
+        const duration = ranged ? castMs + flightMs : (special ? 480 : 140);
         const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
 
         const attack = {
@@ -404,13 +422,78 @@ export class TrainingCombat {
             start: now,
             end: now + duration,
             castMs,
+            interruptible: ranged && castMs >= 500,
+            manaCost,
+            slotKey: special ? 'special' : 'basic',
             x: this.scene.position.x + Math.cos(angle) * 7,
             y: this.scene.position.y - 20 + Math.sin(angle) * 4,
         };
 
         this.pending = attack;
         this.attackVisual = attack;
+        this.refreshCastBar(now);
         this.tell(attack.name + ' sur ' + target.name + '...');
+    }
+
+    /**
+     * Interrompt une incantation longue (1 s) lorsque le personnage se déplace et rembourse le mana.
+     */
+    cancelCastOnMove() {
+        const pending = this.pending;
+        if (!pending || !pending.interruptible) {
+            return false;
+        }
+        const now = this.scene?.time?.now ?? pending.start;
+        if (now >= pending.start + pending.castMs) {
+            return false;
+        }
+
+        const maxMana = this.meters?.[1]?.meter?.max ?? Infinity;
+        if (pending.manaCost > 0) {
+            this.mana = Math.min(maxMana, this.mana + pending.manaCost);
+        }
+        if (pending.slotKey === 'special') {
+            this.readyAt = 0;
+            this.spellCooldowns?.delete?.('special');
+        }
+        this.pending = null;
+        this.attackVisual = null;
+        if (this.castBar) {
+            this.castBar.hidden = true;
+        }
+        this.refreshVitals();
+        this.tell('Incantation interrompue par le déplacement.');
+        return true;
+    }
+
+    /**
+     * Déclenche une zone de compétence sur le centre indiqué avec effets et secousse.
+     */
+    triggerAreaSpell(slot, name, center, damage, color, radius, now, slowMs = 0) {
+        const hits = this.monsters.filter((m) => m.isAlive && Math.hypot(m.sprite.x - center.x, m.sprite.y - center.y) <= radius);
+        if (hits.length === 0) {
+            return false;
+        }
+
+        this.impacts.push({ x: center.x, y: center.y - 10, color, start: now });
+        this.spellEffects?.push?.({
+            kind: slot,
+            x: center.x,
+            y: center.y - 6,
+            radius,
+            color,
+            start: now,
+            duration: slot === 'fire_whirl' ? 680 : 560,
+        });
+        this.triggerShake(slot === 'fire_whirl' || slot === 'fire_wall' ? 'medium' : 'small');
+
+        for (const m of hits) {
+            if (slowMs > 0) {
+                m.slowUntil = now + (m.isBoss ? Math.round(slowMs * 0.5) : slowMs);
+            }
+            this.applyDamageToMonster(m, damage, name, color, now, true);
+        }
+        return true;
     }
 
     /**
@@ -421,6 +504,12 @@ export class TrainingCombat {
         if (cdInfo && now < cdInfo.end) {
             const left = ((cdInfo.end - now) / 1000).toFixed(1);
             this.tell(`${talent.name} en recharge (${left}s).`);
+            return;
+        }
+
+        const castTimeMs = talent.castTimeMs ?? 0;
+        if (castTimeMs > 0 && this.pending) {
+            this.tell('Une incantation est déjà en cours.');
             return;
         }
 
@@ -440,6 +529,16 @@ export class TrainingCombat {
             this.berserkUntil = now + 6000;
             this.setSlotCooldown(talent.slot, now, cdMs);
             this.impacts.push({ x: this.scene.position.x, y: this.scene.position.y - 16, color: 0xff5a36, start: now });
+            this.spellEffects?.push?.({
+                kind: 'berserk_aura',
+                x: this.scene.position.x,
+                y: this.scene.position.y - 14,
+                radius: 26,
+                color: 0xff6238,
+                start: now,
+                duration: 520,
+            });
+            this.triggerShake('small');
             this.refreshVitals();
             this.tell('Berserk activé ! +40 % de dégâts pendant 6s.');
             return;
@@ -452,46 +551,92 @@ export class TrainingCombat {
             return;
         }
 
-        // Taillade reste en mêlée ; les zones du mage sont lancées sur sa cible.
-        if (talent.slot === 'cleave' || talent.slot === 'fire_whirl' || talent.slot === 'frost_nova') {
-            const rangedArea = talent.slot !== 'cleave';
-            if (rangedArea && this.distanceTo(target) > this.range) {
+        // Vérification préalable de portée avant tout lancement (et avant incantation de 1 s)
+        if (talent.slot === 'fire_whirl' || talent.slot === 'frost_nova') {
+            if (this.distanceTo(target) > this.range) {
                 this.tell(`${target.name} est hors de portée pour ${talent.name}.`);
                 return;
             }
-            const center = rangedArea ? target.sprite : this.scene.position;
-            const radius = talent.slot === 'cleave' ? 38 : 54;
-            const hits = this.monsters.filter((m) => m.isAlive && Math.hypot(m.sprite.x - center.x, m.sprite.y - center.y) <= radius);
-            if (hits.length === 0) {
-                this.tell(`Aucun ennemi à portée pour ${talent.name}.`);
+        } else if (talent.slot === 'fire_wall') {
+            if (this.distanceTo(target) > this.range + 16) {
+                this.tell(`${target.name} est hors de portée pour Mur de feu.`);
                 return;
             }
+        } else if (talent.slot === 'engage') {
+            if (this.distanceTo(target) > 4.5 * this.tileSize) {
+                this.tell(`${target.name} est trop loin pour Engagement.`);
+                return;
+            }
+        } else if (talent.slot === 'shield_bash') {
+            if (this.distanceTo(target) > this.range + 6) {
+                this.tell(`${target.name} est hors de portée pour Coup de bouclier.`);
+                return;
+            }
+        } else if (talent.slot === 'arcane_blast') {
+            if (this.distanceTo(target) > this.range + 1.5 * this.tileSize) {
+                this.tell(`${target.name} est hors de portée pour Déflagration.`);
+                return;
+            }
+        }
+
+        // Sorts de feu avec temps d'incantation de 1,0 s (annulables en se déplaçant)
+        if (castTimeMs > 0) {
             this.mana -= manaCost;
-            if (rangedArea) this.scene.face(center.x - this.scene.position.x, center.y - this.scene.position.y);
-            this.setSlotCooldown(talent.slot, now, cdMs);
+            this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
+            const castState = {
+                kind: 'talentCast',
+                talent,
+                target,
+                manaCost,
+                cdMs,
+                berserkMult,
+                ranged: true,
+                facing: this.scene.facing,
+                color: 0xff7b2f,
+                name: talent.name,
+                start: now,
+                castMs: castTimeMs,
+                end: now + castTimeMs,
+                interruptible: true,
+            };
+            this.pending = castState;
+            this.attackVisual = castState;
+            this.refreshVitals();
+            this.refreshCastBar(now);
+            this.tell(`Incantation : ${talent.name}…`);
+            return;
+        }
+
+        this.executeTalentImpact(talent, target, manaCost, cdMs, berserkMult, now);
+    }
+
+    executeTalentImpact(talent, target, manaCost, cdMs, berserkMult, now, alreadyPaid = false) {
+        if (talent.slot === 'cleave' || talent.slot === 'fire_whirl' || talent.slot === 'frost_nova') {
+            const rangedArea = talent.slot !== 'cleave';
+            const center = rangedArea ? target.sprite : this.scene.position;
+            const radius = talent.slot === 'cleave' ? 38 : 54;
             const color = talent.slot === 'frost_nova' ? 0x78ccf0 : (talent.slot === 'fire_whirl' ? 0xff7b2f : 0xffe09e);
             const mult = talent.slot === 'fire_whirl' ? 1.25 : (talent.slot === 'frost_nova' ? 0.75 : 0.95);
             const dmg = Math.round(this.stats.specialDamage * mult * berserkMult);
-
-            this.impacts.push({ x: center.x, y: center.y - 10, color, start: now });
-            for (const m of hits) {
-                if (talent.slot === 'frost_nova') {
-                    m.slowUntil = now + 2500;
+            const hasHit = this.monsters.some((m) => m.isAlive && Math.hypot(m.sprite.x - center.x, m.sprite.y - center.y) <= radius);
+            if (!hasHit) {
+                if (!alreadyPaid) {
+                    this.tell(`Aucun ennemi à portée pour ${talent.name}.`);
                 }
-                this.applyDamageToMonster(m, dmg, talent.name, color, now);
+                return;
             }
+            if (!alreadyPaid) {
+                this.mana -= manaCost;
+            }
+            if (rangedArea) this.scene.face(center.x - this.scene.position.x, center.y - this.scene.position.y);
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            this.triggerAreaSpell(talent.slot, talent.name, center, dmg, color, radius, now, talent.slot === 'frost_nova' ? 2500 : 0);
             this.refreshVitals();
             return;
         }
 
-        // Engagement : ruée vers la cible jusqu'à 4.5 cases
         if (talent.slot === 'engage') {
-            const maxEngage = 4.5 * this.tileSize;
-            if (this.distanceTo(target) > maxEngage) {
-                this.tell(`${target.name} est trop loin pour Engagement.`);
-                return;
-            }
-            this.mana -= manaCost;
+            if (!alreadyPaid) this.mana -= manaCost;
             this.setSlotCooldown(talent.slot, now, cdMs);
             const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
             const destX = target.sprite.x - Math.cos(angle) * 14;
@@ -500,59 +645,81 @@ export class TrainingCombat {
                 this.scene.position.set(destX, destY);
             }
             this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
+            this.spellEffects?.push?.({
+                kind: 'engage_slam',
+                x: target.sprite.x,
+                y: target.sprite.y - 6,
+                radius: 26,
+                color: 0xf0a64b,
+                start: now,
+                duration: 420,
+            });
+            this.triggerShake('small');
             const dmg = Math.round(this.stats.specialDamage * 1.15 * berserkMult);
-            this.applyDamageToMonster(target, dmg, talent.name, 0xf0a64b, now);
+            this.applyDamageToMonster(target, dmg, talent.name, 0xf0a64b, now, true);
             this.refreshVitals();
             return;
         }
 
-        // Coup de bouclier : étourdit et interrompt l'attaque du monstre
         if (talent.slot === 'shield_bash') {
-            if (this.distanceTo(target) > this.range + 6) {
-                this.tell(`${target.name} est hors de portée pour Coup de bouclier.`);
-                return;
-            }
-            this.mana -= manaCost;
+            if (!alreadyPaid) this.mana -= manaCost;
             this.setSlotCooldown(talent.slot, now, cdMs);
-            target.stunUntil = now + 2000;
+            target.stunUntil = now + (target.isBoss ? 1000 : 2000);
             target.cancelAttack();
+            this.spellEffects?.push?.({
+                kind: 'shield_wave',
+                x: target.sprite.x,
+                y: target.sprite.y - 10,
+                radius: 24,
+                color: 0x9be0de,
+                start: now,
+                duration: 420,
+            });
+            this.triggerShake('small');
             const dmg = Math.round(this.stats.basicDamage * 1.1 * berserkMult);
-            this.applyDamageToMonster(target, dmg, talent.name, 0x9be0de, now);
+            this.applyDamageToMonster(target, dmg, talent.name, 0x9be0de, now, true);
             this.refreshVitals();
             return;
         }
 
-        // Mur de feu : AoE centrée sur la cible
         if (talent.slot === 'fire_wall') {
-            if (this.distanceTo(target) > this.range + 16) {
-                this.tell(`${target.name} est hors de portée pour Mur de feu.`);
-                return;
-            }
-            this.mana -= manaCost;
+            if (!alreadyPaid) this.mana -= manaCost;
+            this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
             this.setSlotCooldown(talent.slot, now, cdMs);
             const dmg = Math.round(this.stats.specialDamage * 1.15 * berserkMult);
-            const cx = target.sprite.x;
-            const cy = target.sprite.y;
-            const hits = this.monsters.filter((m) => m.isAlive && Math.hypot(m.sprite.x - cx, m.sprite.y - cy) <= 38);
-            for (const m of hits) {
-                this.applyDamageToMonster(m, dmg, talent.name, 0xff6b2b, now);
-            }
+            this.triggerAreaSpell('fire_wall', talent.name, target.sprite, dmg, 0xff6b2b, 38, now, 0);
             this.refreshVitals();
             return;
         }
 
-        // Déflagration arcanique : portée étendue
         if (talent.slot === 'arcane_blast') {
-            if (this.distanceTo(target) > this.range + 1.5 * this.tileSize) {
-                this.tell(`${target.name} est hors de portée pour Déflagration.`);
-                return;
-            }
-            this.mana -= manaCost;
+            if (!alreadyPaid) this.mana -= manaCost;
+            this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
             this.setSlotCooldown(talent.slot, now, cdMs);
+            this.spellEffects?.push?.({
+                kind: 'arcane_beam',
+                x: this.scene.position.x,
+                y: this.scene.position.y - 20,
+                targetX: target.sprite.x,
+                targetY: target.sprite.y - 14,
+                color: 0xc99eff,
+                start: now,
+                duration: 380,
+            });
             const dmg = Math.round(this.stats.specialDamage * 1.05 * berserkMult);
-            this.applyDamageToMonster(target, dmg, talent.name, 0xc99eff, now);
+            this.applyDamageToMonster(target, dmg, talent.name, 0xc99eff, now, true);
             this.refreshVitals();
         }
+    }
+
+    resolveTalentCast(pending, now) {
+        const { talent, target, manaCost, cdMs, berserkMult } = pending;
+        if (!target || !target.isAlive) {
+            this.tell(`${talent.name} interrompu : la cible n’est plus active.`);
+            this.refreshVitals();
+            return;
+        }
+        this.executeTalentImpact(talent, target, manaCost, cdMs, berserkMult, now, true);
     }
 
     setSlotCooldown(slotKey, now, durationMs) {
@@ -585,7 +752,11 @@ export class TrainingCombat {
         if (this.pending && now >= this.pending.end) {
             const attack = this.pending;
             this.pending = null;
-            this.resolveAttack(attack, now);
+            if (attack.kind === 'talentCast') {
+                this.resolveTalentCast(attack, now);
+            } else {
+                this.resolveAttack(attack, now);
+            }
         }
 
         if (this.health > 0 && this.mana < this.meters[1].meter.max) {
@@ -621,6 +792,8 @@ export class TrainingCombat {
             }
         }
 
+        this.refreshCastBar(now);
+        this.updateFloatingTexts(now);
         this.drawEffects(now);
         this.updateCooldowns(now);
     }
@@ -1121,14 +1294,43 @@ export class TrainingCombat {
             return;
         }
 
-        this.applyDamageToMonster(target, attack.damage, attack.name, attack.color, now);
+        if (attack.special) {
+            this.spellEffects?.push?.({
+                kind: attack.ranged ? 'fireball_burst' : 'heavy_slash',
+                x: target.sprite.x,
+                y: target.sprite.y - 12,
+                radius: attack.ranged ? 30 : 24,
+                angle: attack.angle ?? 0,
+                color: attack.color ?? 0xff942f,
+                start: now,
+                duration: 420,
+            });
+            this.triggerShake('small');
+        }
+
+        this.applyDamageToMonster(target, attack.damage, attack.name, attack.color, now, Boolean(attack.special));
     }
 
-    applyDamageToMonster(monster, rawDamage, attackName, color, now) {
+    applyDamageToMonster(monster, rawDamage, attackName, color, now, isSpecial = false) {
         if (!monster.isAlive) return;
         const damage = Math.min(rawDamage, monster.health);
         monster.health -= damage;
         monster.syncOverlays();
+
+        const enteredPhase2 = typeof monster.checkBossPhase === 'function' && monster.checkBossPhase();
+        if (enteredPhase2) {
+            this.triggerShake('large');
+            this.spellEffects?.push?.({
+                kind: 'phase_enrage',
+                x: monster.sprite.x,
+                y: monster.sprite.y - 18,
+                radius: 56,
+                color: 0xff7b2f,
+                start: now,
+                duration: 750,
+            });
+            this.tell(`${monster.name} entre en Cataclysme de la Brèche (Phase 2) !`);
+        }
 
         if (this.selectedMonster === monster) {
             this.refreshTargetHud();
@@ -1140,6 +1342,13 @@ export class TrainingCombat {
             color,
             start: now,
         });
+        this.spawnFloatingText(
+            monster.sprite.x,
+            monster.sprite.y - (monster.isBoss ? 56 : 30),
+            `-${damage}`,
+            isSpecial ? '#ffd670' : '#f7f1e1',
+            now,
+        );
 
         if (monster.health <= 0) {
             this.defeatMonster(monster, now);
@@ -1147,7 +1356,9 @@ export class TrainingCombat {
         }
 
         monster.pursue();
-        this.tell(`${attackName} · ${damage} dégâts sur ${monster.name} (N.${monster.level}).`);
+        if (!enteredPhase2) {
+            this.tell(`${attackName} · ${damage} dégâts sur ${monster.name} (N.${monster.level}).`);
+        }
     }
 
     /**
@@ -1160,7 +1371,14 @@ export class TrainingCombat {
 
         if (this.selectedMonster === monster) {
             this.targetHud.hidden = true;
+            this.targetHud.dataset.boss = 'false';
+            if (this.targetPhaseLabel) {
+                this.targetPhaseLabel.hidden = true;
+            }
             this.selectedMonster = null;
+        }
+        if (monster.isBoss) {
+            this.triggerShake('large');
         }
 
         const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
@@ -1195,23 +1413,43 @@ export class TrainingCombat {
         }
 
         const shot = monster.attackVisual?.projectile;
+        const bossVisual = monster.attackVisual?.bossSkill ? monster.attackVisual : null;
         if (shot || monster.attackEndsAt) {
             if (!shot && now < monster.attackEndsAt) return;
+            const rawDamage = typeof monster.attackDamage === 'function' ? monster.attackDamage() : monster.stats.damage;
             const outcome = shot ? monster.advanceBreath(now, this.scene.position)
                 : monster.canAttack(this.scene.position) ? 'hit' : 'miss';
             if (outcome === 'travel') return;
-            if (shot) monster.cancelAttack();
-            else {
+
+            if (bossVisual) {
+                this.spellEffects?.push?.({
+                    kind: bossVisual.bossSkill === 'magma_rift' ? 'magma_detonation' : 'seismic_detonation',
+                    x: bossVisual.originX,
+                    y: bossVisual.originY,
+                    radius: bossVisual.radius ?? 78,
+                    dirX: bossVisual.dirX ?? 1,
+                    dirY: bossVisual.dirY ?? 0,
+                    riftRange: bossVisual.riftRange ?? 165,
+                    color: 0xff7b2f,
+                    start: now,
+                    duration: 540,
+                });
+                this.triggerShake(outcome === 'hit' ? 'large' : 'medium');
+                monster.cancelAttack();
+            } else if (shot) {
+                monster.cancelAttack();
+            } else {
                 monster.attackEndsAt = 0;
                 monster.sprite.clearTint();
             }
+
             if (outcome === 'miss') {
                 this.tell(`Tu as esquivé l’attaque de ${monster.name}.`);
                 return;
             }
 
             const reduction = 1 - (this.stats.damageReduction ?? 0);
-            const taken = Math.max(1, Math.round(monster.stats.damage * reduction));
+            const taken = Math.max(1, Math.round(rawDamage * reduction));
             this.health = Math.max(0, this.health - taken);
             this.impacts.push({
                 x: this.scene.position.x,
@@ -1219,6 +1457,9 @@ export class TrainingCombat {
                 color: 0xf78863,
                 start: now,
             });
+            if (!bossVisual) {
+                this.triggerShake(monster.isBoss || monster.species === 'dragon' ? 'medium' : 'small');
+            }
             this.refreshVitals();
 
             if (this.health === 0) {
@@ -1233,23 +1474,30 @@ export class TrainingCombat {
 
         if (now >= monster.counterAt && monster.canAttack(this.scene.position)) {
             monster.startAttack(this.scene.position, now);
-            monster.counterAt = now + monster.stats.attackIntervalMs;
+            const interval = typeof monster.currentAttackIntervalMs === 'function'
+                ? monster.currentAttackIntervalMs()
+                : monster.stats.attackIntervalMs;
+            monster.counterAt = now + interval;
         }
     }
 
     /**
-     * Dessine les animations d'attaques et d'impacts en pixel art sur la scène.
+     * Dessine les animations d'attaques, sorts et télégraphies épiques en pixel art.
      */
     drawEffects(now) {
-        const enemyAttacking = this.monsters.some(monster => monster.attackVisual
-            && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs));
-        if (!this.pending && !this.recovery && this.impacts.length === 0 && !enemyAttacking) {
+        const enemyAttacking = this.monsters.some((monster) => monster.isAlive && (
+            (monster.isBoss && monster.phase === 2)
+            || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
+        ));
+        this.spellEffects = (this.spellEffects ?? []).filter((fx) => now - fx.start < fx.duration);
+        if (!this.pending && !this.recovery && this.impacts.length === 0 && this.spellEffects.length === 0 && !enemyAttacking) {
             this.effect.clear();
             return;
         }
 
         this.effect.clear();
         this.drawMonsterAttacks(now);
+        this.drawSpellEffects(now);
         this.impacts = this.impacts.filter((hit) => now - hit.start < impactMs);
         const still = this.scene.motionPreference.matches;
 
@@ -1280,12 +1528,21 @@ export class TrainingCombat {
         }
 
         const attack = this.pending;
+        if (attack.kind === 'talentCast') {
+            this.drawCastCircle(now, attack.start, attack.castMs, attack.color);
+            return;
+        }
+
         const target = attack.target;
         const progress = Math.max(0, (now - attack.start) / (attack.end - attack.start));
         if (attack.ranged && target) {
             const elapsed = now - attack.start;
-            const travel = Math.max(0, (elapsed - attack.castMs) / (attack.end - attack.start - attack.castMs));
+            const flightSpan = Math.max(1, attack.end - attack.start - attack.castMs);
+            const travel = Math.max(0, (elapsed - attack.castMs) / flightSpan);
             if (elapsed < attack.castMs) {
+                if (attack.castMs >= 500) {
+                    this.drawCastCircle(now, attack.start, attack.castMs, attack.color);
+                }
                 attack.x = this.scene.position.x + Math.cos(attack.angle) * 7;
                 attack.y = this.scene.position.y - 20 + Math.sin(attack.angle) * 4;
                 if (attack.armed) {
@@ -1295,10 +1552,11 @@ export class TrainingCombat {
             }
             const dx = target.sprite.x - attack.x;
             const dy = target.sprite.y - 12 - attack.y;
-            for (let index = 3; index > 0; index--) {
-                const tail = Math.max(0, travel - index * 0.055);
+            const tailSteps = attack.special ? 5 : 3;
+            for (let index = tailSteps; index > 0; index--) {
+                const tail = Math.max(0, travel - index * 0.045);
                 this.effect
-                    .fillStyle(attack.color, 0.6 - index * 0.12)
+                    .fillStyle(attack.color, 0.65 - index * 0.1)
                     .fillRect(Math.round(attack.x + dx * tail) - 1, Math.round(attack.y + dy * tail) - 1, 3, 3);
             }
             const x = Math.round(attack.x + dx * travel);
@@ -1310,7 +1568,7 @@ export class TrainingCombat {
                 .fillRect(x - size + 1, y - size, core, size * 2)
                 .fillRect(x - size, y - size + 1, size * 2, core);
             this.effect.fillStyle(attack.special ? 0xffe1a0 : 0xf3eaff, 1).fillRect(x - 1, y - 1, 2, 2);
-            if (attack.special && !still) {
+            if ((attack.special || !still) && travel > 0) {
                 this.orbitSparks(x, y, elapsed);
             }
         } else {
@@ -1318,12 +1576,133 @@ export class TrainingCombat {
         }
     }
 
+    drawCastCircle(now, start, castMs, color) {
+        const progress = Math.max(0, Math.min(1, (now - start) / Math.max(1, castMs)));
+        const cx = Math.round(this.scene.position.x);
+        const cy = Math.round(this.scene.position.y - 2);
+        const radius = 15 + Math.sin(progress * Math.PI) * 3;
+        this.effect.lineStyle(1.5, color, 0.55 + progress * 0.4);
+        this.effect.strokeEllipse(cx, cy, radius * 2, radius * 1.15);
+        for (let i = 0; i < 4; i++) {
+            const angle = now / 180 + (i * Math.PI) / 2;
+            const px = Math.round(cx + Math.cos(angle) * radius * (1 - progress * 0.35));
+            const py = Math.round(cy + Math.sin(angle) * radius * 0.58 * (1 - progress * 0.35));
+            this.effect.fillStyle(0xffeaad, 0.9).fillRect(px - 1, py - 1, 3, 3);
+        }
+    }
+
+    drawSpellEffects(now) {
+        for (const fx of this.spellEffects ?? []) {
+            const p = Math.max(0, Math.min(1, (now - fx.start) / fx.duration));
+            const alpha = 1 - p;
+
+            if (fx.kind === 'arcane_beam') {
+                this.effect.lineStyle(3, 0xa86cf0, alpha * 0.85);
+                this.effect.lineBetween(fx.x, fx.y, fx.targetX, fx.targetY);
+                this.effect.lineStyle(1, 0xf6ebff, alpha);
+                this.effect.lineBetween(fx.x, fx.y, fx.targetX, fx.targetY);
+                this.effect.lineStyle(1.5, 0xc99eff, alpha).strokeEllipse(fx.targetX, fx.targetY, 16 + p * 22, 10 + p * 14);
+                continue;
+            }
+
+            if (fx.kind === 'fire_whirl') {
+                const r = (fx.radius ?? 54) * (0.45 + 0.55 * p);
+                this.effect.lineStyle(2, 0xff7b2f, alpha * 0.9).strokeEllipse(fx.x, fx.y, r * 2, r * 1.3);
+                for (let arm = 0; arm < 3; arm++) {
+                    const baseA = now / 90 + (arm * Math.PI * 2) / 3;
+                    for (let step = 0; step < 5; step++) {
+                        const a = baseA - step * 0.28;
+                        const dist = r * (1 - step * 0.14);
+                        const px = Math.round(fx.x + Math.cos(a) * dist);
+                        const py = Math.round(fx.y + Math.sin(a) * dist * 0.68);
+                        this.effect.fillStyle(step === 0 ? 0xffe49c : 0xff6229, alpha).fillRect(px - 2, py - 2, 4, 4);
+                    }
+                }
+                continue;
+            }
+
+            if (fx.kind === 'frost_nova') {
+                const r = (fx.radius ?? 54) * (0.3 + 0.7 * p);
+                this.effect.lineStyle(2, 0x8de2ff, alpha).strokeEllipse(fx.x, fx.y, r * 2, r * 1.3);
+                for (let i = 0; i < 8; i++) {
+                    const a = (i * Math.PI) / 4;
+                    const px = Math.round(fx.x + Math.cos(a) * r);
+                    const py = Math.round(fx.y + Math.sin(a) * r * 0.65);
+                    this.effect.fillStyle(0xe5fbff, alpha).fillRect(px - 2, py - 3, 4, 6);
+                }
+                continue;
+            }
+
+            if (fx.kind === 'fire_wall') {
+                const r = fx.radius ?? 38;
+                for (let i = -3; i <= 3; i++) {
+                    const px = Math.round(fx.x + i * (r / 3.5));
+                    const py = Math.round(fx.y + Math.sin(i + p * 6) * 6);
+                    const flameH = Math.round((10 + ((i + 4) % 3) * 4) * alpha);
+                    this.effect.fillStyle(0xff5e28, alpha * 0.9).fillRect(px - 2, py - flameH, 4, flameH);
+                    this.effect.fillStyle(0xffe08a, alpha).fillRect(px - 1, py - Math.max(2, flameH - 3), 2, Math.max(2, flameH - 3));
+                }
+                continue;
+            }
+
+            if (fx.kind === 'magma_detonation') {
+                const steps = Math.floor((fx.riftRange ?? 165) / 14);
+                for (let i = 1; i <= steps; i++) {
+                    const px = Math.round(fx.x + fx.dirX * i * 14);
+                    const py = Math.round(fx.y + fx.dirY * i * 14);
+                    const h = Math.round(18 * alpha);
+                    this.effect.fillStyle(0xff5c28, alpha * 0.9).fillRect(px - 5, py - h, 10, h);
+                    this.effect.fillStyle(0xffe79b, alpha).fillRect(px - 2, py - Math.round(h * 0.7), 4, Math.round(h * 0.7));
+                }
+                continue;
+            }
+
+            const r = (fx.radius ?? 40) * (0.35 + 0.65 * p);
+            this.effect.lineStyle(2.5, fx.color ?? 0xff942f, alpha).strokeEllipse(fx.x, fx.y, r * 2, r * 1.35);
+            this.effect.lineStyle(1, 0xffe4a0, alpha * 0.8).strokeEllipse(fx.x, fx.y, r * 1.4, r * 0.95);
+        }
+    }
+
     drawMonsterAttacks(now) {
         for (const monster of this.monsters) {
+            if (!monster.isAlive) continue;
+
+            // Aura volcanique permanente en Phase 2 sur Malakor
+            if (monster.isBoss && monster.phase === 2 && !this.scene.motionPreference.matches) {
+                const bx = monster.sprite.x;
+                const by = monster.sprite.y - 16;
+                for (let i = 0; i < 4; i++) {
+                    const a = now / 220 + (i * Math.PI) / 2;
+                    const px = Math.round(bx + Math.cos(a) * 28);
+                    const py = Math.round(by + Math.sin(a) * 16 - ((now / 45 + i * 7) % 14));
+                    this.effect.fillStyle(i % 2 === 0 ? 0xff7b2f : 0xffe08a, 0.75).fillRect(px - 1, py - 1, 3, 3);
+                }
+            }
+
             const attack = monster.attackVisual;
-            if (!monster.isAlive || !attack || (!attack.projectile && now >= attack.end + recoveryMs)) continue;
+            if (!attack || (!attack.projectile && !attack.bossSkill && now >= attack.end + recoveryMs)) continue;
+
+            // Télégraphies au sol des compétences du Boss N.40
+            if (attack.bossSkill) {
+                const progress = Math.max(0, Math.min(1, (now - attack.start) / Math.max(1, attack.castEnd - attack.start)));
+                if (attack.bossSkill === 'seismic_ring') {
+                    const r = attack.radius ?? 78;
+                    this.effect.fillStyle(0xff4a24, 0.14 + progress * 0.18).fillEllipse(attack.originX, attack.originY, r * 2, r * 1.35);
+                    this.effect.lineStyle(2, 0xff9f43, 0.85).strokeEllipse(attack.originX, attack.originY, r * 2, r * 1.35);
+                    this.effect.lineStyle(1.5, 0xffe49c, 0.95).strokeEllipse(attack.originX, attack.originY, r * 2 * progress, r * 1.35 * progress);
+                } else if (attack.bossSkill === 'magma_rift') {
+                    const endX = attack.originX + attack.dirX * attack.riftRange;
+                    const endY = attack.originY + attack.dirY * attack.riftRange;
+                    this.effect.lineStyle(attack.halfWidth * 1.6, 0xff3b1f, 0.18 + progress * 0.22);
+                    this.effect.lineBetween(attack.originX, attack.originY, endX, endY);
+                    this.effect.lineStyle(2, 0xffc66e, 0.9);
+                    this.effect.lineBetween(attack.originX, attack.originY, endX, endY);
+                }
+                continue;
+            }
+
             const elapsed = now - attack.start;
-            const color = monster.species === 'dragon' ? 0x7bdef2 : 0xffba87;
+            const color = monster.species === 'dragon' ? 0x7bdef2 : (monster.isBoss ? 0xff7a3d : 0xffba87);
             this.effect.fillStyle(color, .9);
             if (attack.projectile) {
                 const shot = attack.projectile;
@@ -1351,7 +1730,7 @@ export class TrainingCombat {
             } else {
                 const progress = Math.min(1, elapsed / (attack.end - attack.start));
                 const angle = attack.angle + (this.scene.motionPreference.matches ? 0 : -.65 + progress * 1.3);
-                this.strokePixels(attack.x, attack.y, angle, 8 + progress * 12, 2);
+                this.strokePixels(attack.x, attack.y, angle, monster.isBoss ? 18 + progress * 20 : 8 + progress * 12, monster.isBoss ? 3 : 2);
             }
         }
     }
@@ -1363,7 +1742,7 @@ export class TrainingCombat {
             : (windingUp ? -0.35 - 0.95 * progress : -1.25 + 2.55 * progress));
         const x = this.scene.position.x + Math.cos(attack.angle) * 5;
         const y = this.scene.position.y - 19;
-        const length = attack.armed ? (attack.staff ? 23 : attack.special ? 21 : 17) : 7;
+        const length = attack.armed ? (attack.staff ? 23 : attack.special ? 23 : 18) : 7;
 
         if (attack.armed) {
             this.effect.fillStyle(attack.staff ? 0x573d29 : 0x443443, 1);
@@ -1377,15 +1756,24 @@ export class TrainingCombat {
         }
 
         if (!windingUp && !still) {
-            this.effect.fillStyle(attack.color, 0.85 * (1 - progress));
-            for (let step = 0; step < 7; step++) {
-                const trail = angle - step * 0.12;
+            const trailSteps = attack.special ? 11 : 8;
+            this.effect.fillStyle(attack.color, 0.9 * (1 - progress));
+            for (let step = 0; step < trailSteps; step++) {
+                const trail = angle - step * 0.11;
                 this.effect.fillRect(
                     Math.round(x + Math.cos(trail) * length) - 1,
                     Math.round(y + Math.sin(trail) * length * 0.65) - 1,
-                    3,
-                    3,
+                    attack.special ? 4 : 3,
+                    attack.special ? 4 : 3,
                 );
+                if (attack.special && step < 7) {
+                    this.effect.fillStyle(0xffde94, 0.7 * (1 - progress)).fillRect(
+                        Math.round(x + Math.cos(trail) * (length + 5)) - 1,
+                        Math.round(y + Math.sin(trail) * (length + 5) * 0.65) - 1,
+                        2,
+                        2,
+                    );
+                }
             }
         }
     }
@@ -1436,9 +1824,75 @@ export class TrainingCombat {
         return Math.hypot(monster.sprite.x - this.scene.position.x, monster.sprite.y - this.scene.position.y);
     }
 
+    triggerShake(tier) {
+        this.scene?.cameraFeel?.triggerTier?.(tier);
+    }
+
+    refreshCastBar(now) {
+        if (!this.castBar) {
+            return;
+        }
+        const pending = this.pending;
+        if (!pending || pending.castMs < 500 || now >= pending.start + pending.castMs) {
+            this.castBar.hidden = true;
+            return;
+        }
+        const elapsed = Math.max(0, now - pending.start);
+        const remainingSec = Math.max(0, (pending.start + pending.castMs - now) / 1000).toFixed(1);
+        this.castBar.hidden = false;
+        if (this.castBarName) this.castBarName.textContent = pending.name ?? 'Incantation';
+        if (this.castBarMeter) this.castBarMeter.value = Math.min(100, Math.round((elapsed * 100) / pending.castMs));
+        if (this.castBarTime) this.castBarTime.textContent = `${remainingSec}s`;
+    }
+
+    spawnFloatingText(x, y, text, color = '#ffe3a6', now = 0) {
+        if (typeof this.scene?.add?.text !== 'function' || !this.damageNumbers) {
+            return;
+        }
+        const depth = (this.scene.terrain?.length ?? 192) * this.tileSize + 20;
+        const label = this.scene.add.text(Math.round(x), Math.round(y), text, {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: '9px',
+            fontStyle: 'bold',
+            color,
+            stroke: '#101719',
+            strokeThickness: 2,
+        }).setOrigin(0.5, 1).setDepth(depth);
+        this.damageNumbers.push({ label, startY: y, start: now });
+    }
+
+    updateFloatingTexts(now) {
+        if (!this.damageNumbers || this.damageNumbers.length === 0) {
+            return;
+        }
+        const active = [];
+        for (const entry of this.damageNumbers) {
+            const elapsed = now - entry.start;
+            if (elapsed >= 650) {
+                entry.label.destroy?.();
+                continue;
+            }
+            const progress = elapsed / 650;
+            entry.label.setY(Math.round(entry.startY - progress * 14));
+            entry.label.setAlpha?.(Math.max(0, 1 - progress));
+            active.push(entry);
+        }
+        this.damageNumbers = active;
+    }
+
+    clearFloatingTexts() {
+        for (const entry of this.damageNumbers ?? []) {
+            entry.label.destroy?.();
+        }
+        this.damageNumbers = [];
+    }
+
     finish(message) {
         this.pending = null;
         this.attackVisual = null;
+        if (this.castBar) {
+            this.castBar.hidden = true;
+        }
         this.monsters.forEach((m) => {
             m.alert = false;
             m.path = [];
@@ -1453,14 +1907,32 @@ export class TrainingCombat {
     }
 
     refreshTargetHud() {
+        if (!this.targetHud) {
+            return;
+        }
         const target = this.selectedMonster;
         if (!target || !target.isAlive) {
             this.targetHud.hidden = true;
+            this.targetHud.dataset.boss = 'false';
+            if (this.targetPhaseLabel) this.targetPhaseLabel.hidden = true;
             return;
         }
         this.targetHud.hidden = false;
+        this.targetHud.dataset.boss = String(Boolean(target.isBoss));
         if (this.targetNameLabel) this.targetNameLabel.textContent = target.name;
-        if (this.targetLevelLabel) this.targetLevelLabel.textContent = 'Niv. ' + target.level;
+        if (this.targetLevelLabel) {
+            this.targetLevelLabel.textContent = (target.isBoss ? 'BOSS · Niv. ' : 'Niv. ') + target.level;
+        }
+        if (this.targetPhaseLabel) {
+            if (target.isBoss) {
+                this.targetPhaseLabel.hidden = false;
+                this.targetPhaseLabel.textContent = target.phase === 2
+                    ? 'Phase 2 · Cataclysme de la Brèche'
+                    : 'Phase 1 · Seigneur d’Obsidienne';
+            } else {
+                this.targetPhaseLabel.hidden = true;
+            }
+        }
         this.meters[2].meter.max = target.maxHealth;
         this.meters[2].meter.value = target.health;
         this.meters[2].value.textContent = target.health + ' / ' + target.maxHealth;

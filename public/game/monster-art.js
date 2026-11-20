@@ -9,4 +9,5 @@ export const monsterArt = {
     imp: { frame: 56, width: 37, height: 33, stride: 32, shadow: 18 },
     hound: { frame: 68, width: 54, height: 36, stride: 41, shadow: 27 },
     fiend: { frame: 72, width: 48, height: 49, stride: 43, shadow: 29 },
+    breach_lord: { frame: 128, width: 88, height: 96, stride: 56, shadow: 48 },
 };

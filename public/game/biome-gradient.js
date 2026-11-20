@@ -21,7 +21,7 @@ export const biomeFadeConfig = {
         reach: 184,
         warp: 48,
         seedOffset: 47,
-        zones: [zones.imp, zones.hound, zones.fiend],
+        zones: [zones.imp, zones.hound, zones.fiend, zones.breach_lord],
     },
 };
 

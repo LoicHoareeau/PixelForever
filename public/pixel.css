@@ -490,6 +490,22 @@ body.game-fullscreen .masthead {
     border-color: #a4564d;
 }
 
+.target-hud[data-boss="true"] {
+    width: min(21rem, 38vw);
+    border-color: #e4a84b;
+    background: linear-gradient(180deg, #2a1824f5 0%, #160e16f8 100%);
+    box-shadow: 0 6px 18px #070308d4, inset 0 1px 0 #ffcf7966;
+}
+
+.target-phase {
+    display: block;
+    margin: -.05rem 0 .24rem;
+    font-size: .68rem;
+    font-weight: 700;
+    color: #ffbe6e;
+    letter-spacing: .02em;
+}
+
 .target-header {
     display: flex;
     justify-content: space-between;
@@ -609,6 +625,47 @@ body.game-fullscreen .masthead {
     align-items: center;
     gap: .45rem;
     pointer-events: none;
+}
+
+.cast-bar {
+    width: min(18rem, 72vw);
+    padding: .28rem .5rem;
+    background: linear-gradient(180deg, #1d1522eb 0%, #120d16f2 100%);
+    border: 1px solid #d4964e;
+    box-shadow: 0 3px 10px #060308b8;
+}
+
+.cast-bar[hidden] {
+    display: none;
+}
+
+.cast-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .7rem;
+    color: #ffe3b0;
+    margin-bottom: .18rem;
+}
+
+.cast-bar meter {
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: .42rem;
+}
+
+.cast-bar meter::-webkit-meter-bar {
+    background: #0d0911;
+    border: 1px solid #48354d;
+}
+
+.cast-bar meter::-webkit-meter-optimum-value {
+    background: linear-gradient(90deg, #e2723b, #ffcf79);
+}
+
+.cast-bar meter::-moz-meter-bar {
+    background: linear-gradient(90deg, #e2723b, #ffcf79);
 }
 
 #combat-status {

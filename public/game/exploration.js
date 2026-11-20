@@ -16,6 +16,7 @@ export const zones = {
     imp: { name: 'Terres dévastées · Brèche (N.21–25)', left: 200, top: 76, right: 238, bottom: 114 },
     hound: { name: 'Terres dévastées · Plaine calcinée (N.25–30)', left: 196, top: 118, right: 236, bottom: 168 },
     fiend: { name: 'Terres dévastées · Citadelle (N.30–35)', left: 142, top: 126, right: 192, bottom: 168 },
+    breach_lord: { name: 'Trône d’Obsidienne · Boss N.40', left: 82, top: 142, right: 132, bottom: 174 },
 };
 
 export const coastalLookouts = [
@@ -30,7 +31,10 @@ export function isCoastBorderTile(tile) {
 }
 
 export function inWasteland(x, y) {
-    return inZone(zones.imp, x, y) || inZone(zones.hound, x, y) || inZone(zones.fiend, x, y);
+    return inZone(zones.imp, x, y)
+        || inZone(zones.hound, x, y)
+        || inZone(zones.fiend, x, y)
+        || inZone(zones.breach_lord, x, y);
 }
 
 export function inZone(zone, x, y) {
@@ -95,6 +99,9 @@ export function buildTerrain(clearing) {
     road(166, 142, 218, 144);
     road(166, 143, 168, 166);
     road(162, 164, 172, 166);
+    // Chaussée d'obsidienne vers l'arène du Boss N.40
+    road(104, 156, 167, 158);
+    road(102, 155, 106, 160);
 
     const protectedAreas = [
         ...Object.values(zones),
@@ -108,6 +115,7 @@ export function buildTerrain(clearing) {
         { left: 216, top: 95, right: 218, bottom: 144 },
         { left: 166, top: 142, right: 218, bottom: 144 },
         { left: 162, top: 143, right: 172, bottom: 166 },
+        { left: 102, top: 155, right: 167, bottom: 160 },
     ];
 
     const isProtected = (x, y) => protectedAreas.some((box) => pointInBox(x, y, box, 4));
@@ -232,6 +240,8 @@ export const wastelandRuins = [
     [145, 128], [145, 148], [154, 160], [186, 160],
     // Monolithes en lisière Montagnes -> Terres dévastées
     [193, 84], [194, 104], [158, 119], [179, 120],
+    // Piliers périphériques du Trône d'Obsidienne (Boss N.40)
+    [86, 145], [127, 145], [85, 171], [127, 171], [104, 144], [104, 172],
 ];
 
 export const rocks = [

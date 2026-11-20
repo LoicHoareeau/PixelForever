@@ -293,6 +293,8 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         ['Brèche des cendres · N.21–25', 204, 78],
         ['Plaine calcinée · N.25–30', 200, 119],
         ['Citadelle de la Brèche · N.30–35', 150, 128],
+        ['← Trône d’Obsidienne · Boss N.40', 132, 150],
+        ['Trône de Malakor · Palier N.40', 97, 146],
     ]) {
         const x = column * tileSize;
         const y = row * tileSize;
