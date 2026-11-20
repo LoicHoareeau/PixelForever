@@ -2,6 +2,7 @@ import { cliffTile, inWasteland, inZone, rocks, seaTile, zones } from './explora
 import { biomeWeights } from './biome-gradient.js';
 import { addCoastalProps, animateCoast, drawCoastalFloor } from './coast-art.js';
 import { addCemeteryMist, addRegionalScenery, createScorchedCliff, drawRegionalGround } from './regional-art.js';
+import { isInStarterTown } from './starter-town.js';
 
 const frameSize = 48;
 // Positions are the feet of the tree trunks, so the canopy sorts with actors.
@@ -95,6 +96,7 @@ export function treePositions(terrain) {
             || inZone(zones.skeleton, x, y)
             || inZone(zones.dragon, x, y)
             || inLookoutCorridor(tx, ty)
+            || isInStarterTown(x, y, 20)
             || (x > 96 && x < 192 && y > 80 && y < 180)
         ) {
             return false;
@@ -285,6 +287,9 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     addRegionalScenery(scene, shadows, tileSize);
     const mist = addCemeteryMist(scene, tileSize);
     for (const [text, column, row] of [
+        ['↑ Clairière · N.1–5', 100, 32],
+        ['← Clairière · N.1–5', 76, 17],
+        ['← Bastion de Braise', 105, 36],
         ['Belvédère marin ↓', 25, 21],
         ['Cimetière →', 42, 13],
         ['Cimetière des Saules · N.5–10', 88, 50],

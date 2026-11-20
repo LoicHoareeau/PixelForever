@@ -4,6 +4,16 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Le prototype jouable utilise Phaser 3.90.0, Twig et JavaScript. Les règles PHP historiques de `src/Game/` ne remplacent pas le moteur de combat actuel du navigateur.
 
+## Aperçu
+
+### Accueil du Val-des-Saules
+
+![Accueil de PixelForever avec le diorama du Val-des-Saules et les boutons d’inscription et de connexion](docs/captures/accueil.png)
+
+### Choix du personnage
+
+![Cartes du Guerrier et du Mage avec leurs portraits, niveaux et caractéristiques](docs/captures/personnages.png)
+
 ## Lancer PixelForever avec PostgreSQL
 
 ```sh
@@ -24,7 +34,7 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre le jeu, crée un compte et choisis l’une des cinq classes. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. [PixelForever en local](http://127.0.0.1:8000)
+Crée un compte ou connecte-toi, puis choisis l’une des cinq classes dans **Tes personnages**. Clique sur **Jouer** pour apparaître au **Bastion de Braise**, une ville sûre. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. [PixelForever en local](http://127.0.0.1:8000)
 
 ## Vérifications locales
 
@@ -45,7 +55,7 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 - La lumière change progressivement entre la clairière diurne, le cimetière froid et les côtes volcaniques. Lanternes, fissures, sorts et Rage de Malakor éclairent leur voisinage. Chaque biome a ses propres effets d’ambiance, du pollen doré aux étincelles violettes du Cap du Gouffre.
 - Les sorts et les techniques de Malakor jouent des cycles pixel art pour la charge, le projectile ou l’impact. Le Tourbillon se dresse en double hélice et l’Onde sismique soulève un anneau d’obsidienne.
 - Les monstres ont huit orientations et des animations propres à leur famille. Le souffle du dragon et les techniques des gardiens côtiers signalent au sol les zones à esquiver.
-- Quête du PNJ : accepter, vaincre trois sangliers, puis revenir recevoir deux potions de vie. `!` doré disponible, `?` gris en cours, `?` doré à rendre.
+- Parle à Rakka au Bastion (`E` ou clic) pour accepter sa quête. Suis la route vers la clairière, bats trois sangliers, puis reviens recevoir deux potions de vie. `!` doré indique une quête disponible, `?` gris une quête en cours et `?` doré une quête à rendre.
 
 ### Combat et équipement
 
@@ -61,7 +71,7 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 | Chasseur · Arc | Flèche rapide | 8 cases |
 | Mains nues | Coup de poing | 1,5 case |
 
-L’attaque de base est gratuite. Boule de feu garde ses 7,5 cases de portée avant bonus, y compris avec un bâton. Maîtrise des baguettes et Focalisation de la baguette renforcent les auto-attaques à la baguette. [Règles des classes et des talents](docs/GAME_DESIGN.md)
+L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes. [Règles des classes et des talents](docs/GAME_DESIGN.md)
 
 Le Démoniste combine Corruption instantanée, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité pour leurs dagues et leur arc. Le Guerrier peut investir en Défense et équiper la Hache de fer depuis le sac. Son arme apparaît en main et la hache joue une frappe avec un croissant incandescent. [Effets visuels](docs/VFX.md)
 

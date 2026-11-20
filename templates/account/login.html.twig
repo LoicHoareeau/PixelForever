@@ -1,25 +1,23 @@
-{% extends 'base.html.twig' %}
+{% extends 'portal/access.html.twig' %}
 
 {% block title %}Connexion{% endblock %}
-{% block layout %}compact{% endblock %}
-{% block body %}
-    <section class="panel" aria-labelledby="heading">
-        <h1 id="heading">Connexion</h1>
-        {% if error %}
-            <p class="error" role="alert">Connexion impossible. Vérifie ton e-mail et ton mot de passe, ou réessaie dans quelques instants.</p>
-        {% endif %}
-        <form class="stack" action="{{ path('account_login') }}" method="post">
-            <div class="field">
-                <label for="email">Adresse e-mail</label>
-                <input id="email" type="email" name="_username" value="{{ email }}" autocomplete="username" required>
-            </div>
-            <div class="field">
-                <label for="password">Mot de passe</label>
-                <input id="password" type="password" name="_password" autocomplete="current-password" required>
-            </div>
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-            <button type="submit">Se connecter</button>
-        </form>
-        <p class="secondary">Première visite ? <a href="{{ path('account_register') }}">Créer un compte</a></p>
-    </section>
+{% block access_form %}
+    <h1 id="heading">Connexion</h1>
+    <p class="val-lead">Retrouve tes personnages et reprends la route.</p>
+    {% if error %}
+        <p class="error" role="alert">Connexion impossible. Vérifie ton e-mail et ton mot de passe, ou réessaie dans quelques instants.</p>
+    {% endif %}
+    <form class="stack" action="{{ path('account_login') }}" method="post">
+        <div class="field">
+            <label for="email">Adresse e-mail</label>
+            <input id="email" type="email" name="_username" value="{{ email }}" autocomplete="username" required>
+        </div>
+        <div class="field">
+            <label for="password">Mot de passe</label>
+            <input id="password" type="password" name="_password" autocomplete="current-password" required>
+        </div>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+        <button type="submit">Se connecter</button>
+    </form>
+    <p class="secondary">Première visite ? <a href="{{ path('account_register') }}">Créer un compte</a></p>
 {% endblock %}

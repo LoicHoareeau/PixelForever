@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+
+{% block body_class %}val-portal{% endblock %}
+{% block theme_color %}#0e1914{% endblock %}
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ app.request.basePath }}/portal/val.css">
+{% endblock %}
+{% block masthead_actions %}
+    <nav class="portal-nav" aria-label="Compte">
+        {% if app.user %}
+            <a href="{{ path('character_list') }}"{% if app.current_route == 'character_list' %} aria-current="page"{% endif %}>Personnages</a>
+            {{ parent() }}
+        {% else %}
+            <a href="{{ path('account_login') }}"{% if app.current_route == 'account_login' %} aria-current="page"{% endif %}>Connexion</a>
+        {% endif %}
+    </nav>
+{% endblock %}

@@ -19,15 +19,16 @@ PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les
 ## Vérifications après déploiement
 
 1. Comparer le SHA déployé avec celui de la branche suivie ; consulter les journaux de construction et de migration en cas d’échec.
-2. Ouvrir la connexion et accéder à un personnage existant ; vérifier son niveau et son XP après reconnexion.
+2. Ouvrir l’accueil et vérifier que le diorama se charge. Suivre **Se connecter**, jouer avec un personnage existant et vérifier son niveau et son XP après reconnexion.
 3. Vérifier le plein écran, le défilement de caméra, les décors et le chargement des sprites sans erreur.
-4. Vérifier l’arme équipée : Baguette de braise / Sceptre à distance, Bâton des saules au contact, Boule de feu toujours à distance. Contrôler le geste d’incantation, la recharge et le mana.
+4. Vérifier que la Baguette de braise et le Sceptre tirent en mouvement à 7,5 cases avant bonus avec des dégâts réduits, et que le Bâton des saules frappe au contact. Lancer Boule de feu à 15 cases avec le bâton, puis vérifier la recharge, le mana et le remboursement si le Mage se déplace pendant l’incantation.
 5. Vérifier l’ATH de sauvegarde après une victoire. Si les anciens scripts semblent encore actifs, recharger les ressources puis comparer les fichiers servis au commit déployé.
 6. Suivre le chemin à l’est des montagnes jusqu’aux Terres dévastées. Contrôler les trois bandes de niveau N.21–35 et esquiver un souffle du dragon en quittant sa ligne après le lancement.
 7. Depuis le Trône d’Obsidienne, suivre la chaussée sud puis la route vers l’est jusqu’au Belvédère des Brisants. Vérifier les trois bandes N.41–60 dans l’ATH, les limites des falaises et une esquive circulaire ou linéaire.
-8. Créer un Démoniste, un Voleur et un Chasseur. Tester le projectile du diablotin, l’aggro du marcheur du Vide et l’interruption du drain. Vérifier un tir d’arc et une frappe de dague. Sur le Guerrier, équiper la hache, frapper puis retirer l’arme.
-9. Vérifier les seuils de Malakor à 65 % et 25 %, la déferlante de la Rage sur toute la carte, le répit avant le premier balayage, la continuité des rayons dans les bandes dangereuses, leur désintégration et la disparition progressive des braises. À la victoire, équiper la pièce reçue dans l’inventaire et contrôler la fiche après rechargement.
-10. Parcourir la clairière et un secteur sombre, puis vérifier que les halos restent centrés en déplaçant la caméra ou en redimensionnant la fenêtre. Vérifier les particules d’ambiance et les sprites d’impact. Contrôler la lisibilité des bandes de Malakor avec et sans mouvement réduit.
+8. Vérifier l’apparition et le retour après défaite au Bastion de Braise, parler à Rakka, puis emprunter la porte est vers la clairière. Vérifier les halos de la forge et de la hutte et leur rendu fixe en mouvement réduit.
+9. Créer un Démoniste, un Voleur et un Chasseur. Tester le projectile du diablotin, l’aggro du marcheur du Vide et l’interruption du drain. Vérifier un tir d’arc et une frappe de dague. Sur le Guerrier, équiper la hache, frapper puis retirer l’arme.
+10. Vérifier les seuils de Malakor à 65 % et 25 %, la déferlante de la Rage sur toute la carte, le répit avant le premier balayage, la continuité des rayons dans les bandes dangereuses, leur désintégration et la disparition progressive des braises. À la victoire, équiper la pièce reçue dans l’inventaire et contrôler la fiche après rechargement.
+11. Parcourir la clairière et un secteur sombre, puis vérifier que les halos restent centrés en déplaçant la caméra ou en redimensionnant la fenêtre. Vérifier les particules d’ambiance et les sprites d’impact. Contrôler la lisibilité des bandes de Malakor avec et sans mouvement réduit.
 
 Contrôler le chargement de `combat-vfx.png`, `class-vfx.png`, `class-gear.png` et `class-familiars.png` dans l’onglet Réseau du navigateur. [Vérifications VFX](VFX.md#vérifications)
 

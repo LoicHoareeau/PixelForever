@@ -2,6 +2,10 @@
 
 État au 20 novembre 2026. Twig affiche les écrans de compte/personnage et l’ATH ; Phaser 3.90.0 affiche le monde dans un canvas. `public/game/world.js` relie déplacements, caméra, sprites, commandes et dialogues ; `combat.js` applique les attaques et effets ; `progression.js` calcule les bonus, armes, talents et sauvegardes locales.
 
+## Accueil et choix du personnage
+
+Twig rend l’accueil public du Val-des-Saules, la connexion, l’inscription et les écrans de personnage. `public/portal/val.css` adapte leur mise en page aux petits écrans. Le diorama 3D de l’accueil et de la connexion est une illustration JPEG. Les cartes des personnages mettent les sprites de jeu sur des socles éclairés et indiquent la classe, le niveau et les caractéristiques de base. **Actif** indique le personnage sélectionné en session.
+
 ## Carte et ressources visuelles
 
 La carte de 256 × 252 tuiles de 16 px (4 096 × 4 032 px) forme une péninsule côtière élargie avec des couloirs tampons entre biomes, couvrant la clairière et son cap marin au sud-ouest, le cimetière agrandi et son belvédère sur la baie Émeraude, les montagnes face à la baie de Saphyr, les Terres dévastées, le Trône d’Obsidienne et la côte méridionale jusqu’au Belvédère des Brisants. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. La mer ouverte et la ceinture continue de falaises de trois cases bloquent le déplacement.
@@ -12,9 +16,13 @@ La carte de 256 × 252 tuiles de 16 px (4 096 × 4 032 px) forme une péninsule 
 
 Le Guerrier conserve l’identifiant de skin `lina` avec le nouvel atlas d’armure `warrior`. Le Mage utilise Noé. Les trois autres classes ont leurs propres portraits et atlas.
 
+`starter-town.js` place `bastion-de-braise.png` entre la clairière et la route du cimetière. Cette maquette peinte en pixel art est composée dans un calque de 608 × 405 px dont les bords se fondent dans le terrain. Les bâtiments, le tambour et les palissades ont des collisions au sol. Les quatre habitants utilisent l’atlas `bastion-habitants.png` et sont triés en profondeur au pied comme les personnages jouables.
+
 ## Éclairage
 
 `world-lighting.js` transforme les poids de `biome-gradient.js` en couleurs ambiantes. Une carte de référence échantillonnée à raison d’un pixel par tuile est interpolée autour de la caméra. La couche `MULTIPLY` assombrit terrain et sprites et s’éclaircit sous les sources. Une seconde couche `ADD`, limitée à 36 % d’opacité globale, colore les halos. Les textures de travail sont dimensionnées à la zone visible avec marge et actualisées à environ 30 Hz. Le rendu utilise les modes de fusion de Phaser sur WebGL. En Canvas, la fusion multiplicative est vérifiée sur le contexte 2D à l’initialisation. Un masque translucide conserve le terrain visible si cette fusion est indisponible.
+
+Au Bastion, les braseros et le foyer de la forge émettent de la lumière chaude, des flammes et des braises. La cheminée laisse monter une fumée légère. Les charmes de Vesha éclairent sa hutte en turquoise. En mouvement réduit, les sources et les particules gardent une pose fixe.
 
 Les lanternes, la cabane et les fissures fournissent les sources fixes. Le personnage actif, les incantations, leurs impacts et la Rage de Malakor fournissent les sources mobiles. Les télégraphies, jauges et textes de combat sont dessinés au-dessus des deux couches. La préférence de mouvement réduit fixe le scintillement et l’intensité des halos de sorts pendant leur présence.
 
@@ -22,11 +30,11 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-L’épée, le croc et la Hache de fer frappent à 1,5 case. Le Mage commence avec la Baguette de braise : projectile à 7,5 cases (extensible à 8 avec Déflagration) pour compenser une régénération de base réduite (`1,0/s`) et des coûts en mana relevés (`15` à `28` selon les sorts ; Boule de feu `18`). Boule de feu, Mur de feu et Tourbillon de feu demandent `1,0 s` d’incantation (barre de sort dédiée `#cast-bar` annulée avec remboursement si le mage se déplace). Son Sceptre de Saphyr se comporte comme une baguette ; le Bâton des saules frappe au contact à 1,5 case. Sans arme, les personnages frappent au poing à 1,5 case. L’auto-attaque est gratuite. Boule de feu garde sa portée de sort quand un bâton est équipé.
+L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 1,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 7,5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
-Les quatre sorts de talents du Mage restent utilisables à distance avec un bâton ou sans arme. Tourbillon de feu et Nova de givre visent la cible à 7,5 cases avant bonus et touchent les monstres à moins de 54 px de celle-ci. Mur de feu et Déflagration gardent leur portée étendue. Les sorts exigent une cible vivante à portée avant toute dépense. Taillade conserve sa zone autour du Guerrier.
+Boule de feu, Tourbillon de feu et Nova de givre portent à 15 cases avant bonus avec chaque arme et à mains nues. Tourbillon et Nova touchent dans un rayon de 54 px autour de la cible. Mur de feu porte à 16 cases et Déflagration à 16,5 cases avant bonus. Les sorts exigent une cible vivante à portée avant toute dépense. Taillade conserve sa zone autour du Guerrier.
 
 Le Mage utilise des poses orientées pour le tir et l’incantation. Le bâton peut jouer la « Frappe à la lanterne » de Noé au contact. Les directions nord utilisent des poses dérivées du sprite. La préparation et la récupération sont lisibles à 30 FPS.
 
@@ -44,7 +52,7 @@ Les sept atlas d’origine de `public/game/val-des-saules/monsters/` contiennent
 
 Le dragon annonce une ligne de tir pendant sa préparation. Le rendu du souffle suit la position réelle du projectile, qui avance par petits pas de collision pour détecter le joueur et le décor même lors d’une image lente.
 
-`quest_early.png` représente l’habitante du hameau. Le clic, `E` ou le bouton de quête à proximité ouvre un dialogue au clavier. La quête demande trois sangliers après acceptation et récompense deux potions de vie au retour, une seule fois. Le marqueur est `!` doré, puis `?` gris, puis `?` doré, puis caché ; le texte donne aussi l’état. La quête reste locale au personnage.
+`E`, le bouton de l’ATH ou le clic permettent de parler à un habitant à portée. Rakka ouvre le dialogue de quête. Les autres habitants répondent dans le statut de jeu. La quête demande trois sangliers après acceptation et donne deux potions de vie au retour une seule fois. Le marqueur passe de `!` doré à `?` gris, puis `?` doré, et disparaît après la remise. La quête reste locale au personnage.
 
 ## Interface et commandes par défaut
 

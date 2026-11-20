@@ -4,7 +4,13 @@
 
 ## Boucle de jeu
 
-Créer un Guerrier, un Mage, un Démoniste, un Voleur ou un Chasseur → parler au PNJ → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
+Créer un Guerrier, un Mage, un Démoniste, un Voleur ou un Chasseur → apparaître au Bastion de Braise → parler à Rakka → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
+
+## Bastion de Braise
+
+Les cinq classes commencent sur la place du Bastion et s’y relèvent après une défaite. Les monstres restent dans leurs zones de patrouille et le combat est désactivé en ville. Les palissades aux bannières de cuir, la forge de roche sombre et les tentes du marché donnent au Bastion une identité de clan orc originale dans le Val-des-Saules. La porte est rejoint la route principale. La porte nord offre un raccourci vers le chemin de la clairière.
+
+Rakka, l’intendante de la grande halle, confie la quête des sangliers. Granm à la forge, Vesha près de sa hutte et Drok au marché ont chacun un dialogue. Leurs ateliers pourront accueillir la forge, l’herboristerie et le commerce dans une version future.
 
 ## Classes et attaques
 
@@ -18,7 +24,7 @@ Créer un Guerrier, un Mage, un Démoniste, un Voleur ou un Chasseur → parler 
 | Chasseur · Arc | Flèche rapide | 8 cases |
 | Arme retirée | Coup de poing | 1,5 case |
 
-Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, la distance (`7,5` cases) et le mana (`1,0/s` de base, régénération par Esprit réduite à `+0,14/s` par point afin d’imposer une vraie gestion du mana). Le portrait et le personnage suivent la même classe.
+Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, les sorts à distance et le mana (`1,0/s` de base, régénération par Esprit de `+0,14/s` par point). La baguette et le sceptre tirent en mouvement à 7,5 cases et infligent 50 % des dégâts d’auto-attaque avant Focalisation et Maîtrise des baguettes.
 
 Le Démoniste applique Corruption sans incantation. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse toutes les 500 ms pendant 2 s, en rendant des PV selon les dégâts infligés. Se déplacer interrompt l’incantation ou la canalisation. Une pulsation déjà jouée engage le coût et la recharge du drain.
 
@@ -26,9 +32,9 @@ Le Démoniste garde une invocation à la fois. Le diablotin, disponible au nivea
 
 Un Mage au bâton garde la portée de Boule de feu. Tir perforant requiert un arc équipé. L’attaque de base est gratuite. Attaque chargée coûte 10 d’énergie et Boule de feu coûte 18 de mana avec 1 s d’incantation. La cadence de base est de 500 ms et une attaque en cours bloque le lancement d’une autre auto-attaque. Les talents peuvent réduire les coûts et les délais.
 
-Tous les sorts offensifs du Mage ciblent à distance (`7,5` cases avant bonus), quelle que soit son arme. Tourbillon de feu (28 mana, cast 1,0 s) et Nova de givre (20 mana) se déclenchent autour de la cible sélectionnée dans un rayon de 54 px. Mur de feu (22 mana, cast 1,0 s) couvre 38 px autour de la cible à `7,5` cases + 16 px ; Déflagration (15 mana) porte à `9` cases avant bonus. Interrompre une incantation d’une seconde en se déplaçant rembourse le mana. Nova ralentit pendant 2,5 secondes (`0,625 s` sur Malakor). Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste une zone de mêlée du Guerrier, centrée sur lui.
+Boule de feu, Tourbillon de feu et Nova de givre portent à 15 cases avant bonus, quelle que soit l’arme équipée. Tourbillon de feu (28 mana, incantation de 1 s) et Nova de givre (20 mana) touchent dans un rayon de 54 px autour de la cible. Mur de feu (22 mana, incantation de 1 s) porte à 16 cases et couvre 38 px autour de la cible. Déflagration (15 mana) porte à 16,5 cases avant bonus. Se déplacer pendant une incantation l’annule et rembourse le mana. Nova ralentit pendant 2,5 secondes (`0,625 s` sur Malakor). Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste centrée sur le Guerrier.
 
-La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Une défaite permet de se relever au camp en gardant la progression.
+La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Après une défaite, le personnage se relève au Bastion et garde sa progression.
 
 ## Talents et progression
 
@@ -73,7 +79,7 @@ La lumière ambiante évolue avec le biome. La clairière reste diurne, le cimet
 
 ## Quête et butin
 
-L’habitante du hameau propose **Sécuriser le sentier** : accepter, vaincre trois sangliers, puis revenir pour recevoir deux potions de vie une seule fois. `!` doré : disponible ; `?` gris : en cours ; `?` doré : à rendre ; aucun marqueur après remise. Le dialogue donne aussi l’état en texte.
+Rakka propose **Sécuriser le sentier** au Bastion. Une fois la quête acceptée, vaincre trois sangliers puis revenir la voir pour recevoir deux potions de vie une seule fois. Le marqueur affiche `!` doré, `?` gris en cours et `?` doré au retour. Le dialogue indique aussi l’état de la quête.
 
 Chaque défaite crédite de l’XP selon l’espèce/niveau et un tirage personnel : vie 47 %, ressource 30 %, arme rare 15 %, arme épique 5 %, écaille 2 %, cœur 1 %. Le catalogue comprend les six objets PixelLab : Lame des saules, Bâton des saules, Croc de Saphyr, Sceptre de Saphyr, Écaille de Saphyr et Cœur de flamme bleue. Les deux derniers sont des matériaux sans usage d’équipement actuel. Le choix des armes dépend de la classe. Le tirage de base est commun aux espèces. Le tirage d’armure s’y ajoute selon le monstre vaincu.
 

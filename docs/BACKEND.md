@@ -6,7 +6,7 @@
 
 `User` conserve pseudo et e-mail uniques, avec mot de passe haché. `PlayerCharacter` appartient à un `User` et contient nom, classe (`CharacterClass`), niveau, expérience et or. Les deux seules entités Doctrine actuelles sont dans `src/Entity/`.
 
-Après connexion, le joueur crée puis sélectionne son personnage. Symfony vérifie son propriétaire et conserve la sélection en session. Le bouton Jouer ouvre `CharacterController::play()` qui fournit à Twig les statistiques et le catalogue de butin, puis `world.js` initialise Phaser. Il n’y a pas encore de jeton WebSocket ni de serveur de monde partagé.
+`GET /` affiche l’accueil. Un visiteur peut s’inscrire ou se connecter ; un joueur déjà connecté peut rejoindre ses personnages directement. Après connexion, le joueur crée puis sélectionne son personnage. Symfony vérifie son propriétaire et conserve la sélection en session. Le bouton **Jouer** sélectionne le personnage et redirige vers `CharacterController::play()` qui fournit à Twig les statistiques et le catalogue de butin, puis `world.js` initialise Phaser. Il n’y a pas encore de jeton WebSocket ni de serveur de monde partagé.
 
 ## Sauvegarde du niveau et de l’XP
 
@@ -18,7 +18,7 @@ SQLite sert au développement local et aux tests ; PostgreSQL est utilisé pour 
 
 ## Règles métier et client
 
-`src/Game/CharacterClass.php` fournit les cinq classes, leurs apparences, leurs ressources, les statistiques de départ et la portée. Les nouvelles classes utilisent la colonne texte existante de Doctrine. La hache équipée et les points de Dextérité et de Défense suivent la sauvegarde locale. `CharacterController` transmet les règles au client ; `progression.js` calcule l’auto-attaque selon l’arme. La baguette tire à distance, le bâton frappe au contact ; les sorts du Mage gardent leur portée. Les constantes de départ ne sont pas les valeurs finales d’un personnage ayant progressé.
+`src/Game/CharacterClass.php` fournit les cinq classes, leurs apparences, leurs ressources et leurs valeurs de départ. Les nouvelles classes utilisent la colonne texte existante de Doctrine. La hache équipée et les points de Dextérité et de Défense suivent la sauvegarde locale. `CharacterController` transmet la portée de base (`range`), la portée de sort (`specialRange`) et le multiplicateur de dégâts de baguette (`wandDamageMultiplier`). `progression.js` calcule l’auto-attaque selon l’arme et la progression. `combat.js` applique la portée des sorts du Mage indépendamment de l’arme équipée.
 
 Les dégâts périodiques, la canalisation et les familiers sont résolus côté navigateur. Le familier actif et sa cible sont temporaires. Les talents qui débloquent les invocations sont conservés dans la sauvegarde locale avec les autres talents. [Règles des classes](GAME_DESIGN.md#classes-et-attaques) · [Logique des techniques](../public/game/class-combat.js)
 

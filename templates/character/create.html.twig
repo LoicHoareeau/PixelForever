@@ -1,9 +1,9 @@
-{% extends 'base.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
 {% block title %}Nouveau personnage{% endblock %}
 {% block body %}
-    <a class="back" href="{{ path('character_list') }}">Mes personnages</a>
-    <section class="panel" aria-labelledby="heading">
+    <section class="val-form val-create" aria-labelledby="heading">
+        <a class="back" href="{{ path('character_list') }}">← Mes personnages</a>
         <h1 id="heading">Nouveau personnage</h1>
         {{ form_start(form, {attr: {class: 'stack'}}) }}
             {{ form_errors(form) }}
@@ -11,21 +11,22 @@
             <fieldset class="class-picker"{% if form.class.vars.errors|length %} aria-describedby="{{ form.class.vars.id }}_errors"{% endif %}>
                 <legend>Classe</legend>
                 {% set profiles = {
-                    warrior: ['⚔', 'Mêlée, armes lourdes et protection'],
-                    mage: ['✦', 'Feu, givre et arcanes'],
-                    warlock: ['☽', 'Malédictions, drains et démons'],
-                    rogue: ['✧', 'Dagues, poisons et mobilité'],
-                    hunter: ['➶', 'Arc, pièges et faucon']
+                    warrior: 'Mêlée, armes lourdes et protection',
+                    mage: 'Feu, givre et arcanes',
+                    warlock: 'Malédictions, drains et démons',
+                    rogue: 'Dagues, poisons et mobilité',
+                    hunter: 'Arc, pièges et faucon'
                 } %}
                 <div class="class-grid">
                     {% for choice in form.class %}
                         {% set class = choice.vars.value %}
                         <label class="class-choice {{ class }}">
                             {{ form_widget(choice) }}
-                            <span class="class-icon" aria-hidden="true">{{ profiles[class][0] }}</span>
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class == 'mage' ? 'noe' : class }}/south.png"
+                                 width="48" height="48" alt="">
                             <span>
                                 <strong>{{ choice.vars.label }}</strong>
-                                <small>{{ profiles[class][1] }}</small>
+                                <small>{{ profiles[class] }}</small>
                             </span>
                         </label>
                     {% endfor %}
