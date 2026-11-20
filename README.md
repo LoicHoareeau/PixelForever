@@ -4,6 +4,16 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Le prototype jouable utilise Phaser 3.90.0, Twig et JavaScript. Les règles PHP historiques de `src/Game/` ne remplacent pas le moteur de combat actuel du navigateur.
 
+## Aperçu
+
+### Accueil du Val-des-Saules
+
+![Accueil de PixelForever avec le diorama du Val-des-Saules et les boutons d’inscription et de connexion](docs/captures/accueil.png)
+
+### Choix du personnage
+
+![Cartes du Guerrier et du Mage avec leurs portraits, niveaux et caractéristiques](docs/captures/personnages.png)
+
 ## Lancer PixelForever avec PostgreSQL
 
 ```sh
