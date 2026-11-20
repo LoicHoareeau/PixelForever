@@ -31,17 +31,6 @@ Les sangliers N.1–5 patrouillent dans la clairière, les squelettes N.5–10 a
 Les six planches de `public/game/val-des-saules/monsters/` contiennent huit blocs de deux lignes, dans l’ordre est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est. Chaque bloc contient un repos, 36 images de marche et trois poses d’attaque. `monster-art.js` donne la taille de découpe, l’emprise visuelle et la distance d’un cycle par espèce. La distance parcourue règle le trot du sanglier, la marche saccadée du squelette, les appuis du dragon, les bonds du diablotin, le galop du molosse et la marche lourde du garde. Les images sont ancrées aux pieds pour que le tri en profondeur suive le sol.
 
 `python tools/monster_walk.py <dossier-des-atlas> <dossier-de-sortie> --preview <dossier-d-apercu>` reconstruit les foulées depuis les poses de repos avec Pillow et NumPy. Le script découpe cuisse, tibia et pied, puis calcule la flexion du genou entre l’appui, le décollage et la retombée. Il conserve les images de repos et d’attaque de l’atlas source. Le dossier d’aperçu est facultatif.
-<<<<<<< HEAD
-=======
-
-Les 24 images de marche de chaque espèce sont générées en alpha binaire strict (`tools/build_monster_spritesheets.php`, via `php -d extension=gd tools/build_monster_spritesheets.php`) à partir des poses de repos en articulant les chaînes de membres à deux os, la flexion spinale, la tête, la queue et les ailes selon la mécanique propre à chaque race tout en conservant intacts le repos et les trois attaques :
-- **Sanglier (`boar`, 64 × 64 px, foulée 23)** : trot diagonal à deux temps avec double rebond sec, inertie de hure et battement de queue.
-- **Squelette (`skeleton`, 60 × 60 px, foulée 27)** : marche bipède saccadée à genoux vers l’avant, balancement opposé des bras (avec dague et membres arrière ombrés en profil) et retard du crâne.
-- **Dragon (`dragon`, 96 × 96 px, foulée 49)** : marche lourde à quatre temps latéraux, transfert d’épaules et de bassin, ondulation en S de la queue et suivi secondaire des ailes.
-- **Diablotin (`imp`, 56 × 56 px, foulée 32)** : foulée bondissante digitigrade avec appel fléchi, phase aérienne genoux regroupés et fouet caudal.
-- **Molosse (`hound`, 68 × 68 px, foulée 41)** : galop rotatif de prédateur avec flexion/extension réelle de l’échine, tête stabilisée et queue de contrepoids.
-- **Garde / Fiend (`fiend`, 72 × 72 px, foulée 43)** : marche martiale cuirassée avec transfert latéral de poids sur la jambe d’appui, balancement lourd des bras et tassement de tête cornu à l’impact.
->>>>>>> front/spritesheets-deplacement-anatomie
 
 Le dragon annonce une ligne de tir pendant sa préparation. Le rendu du souffle suit la position réelle du projectile, qui avance par petits pas de collision pour détecter le joueur et le décor même lors d’une image lente.
 
