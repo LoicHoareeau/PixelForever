@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { armorBonuses, armorItems, awardArmor, toggleArmor } from '../public/game/armor.js';
+import { createMalakorTrial, isMalakorWaveHit, malakorAtlasColumns, malakorFrameSize, malakorWave } from '../public/game/malakor.js';
 import { CameraFeel } from '../public/game/camera-feel.js';
 import { TrainingCombat } from '../public/game/combat.js';
 import { buildTerrain, tileSize, zones } from '../public/game/exploration.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
 import { monsterArt, monsterAtlasColumns, monsterFrames } from '../public/game/monster-art.js';
-import { basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent } from '../public/game/progression.js';
+import { basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent, loadProgress } from '../public/game/progression.js';
 
 const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/terrain.json', import.meta.url)));
 const terrain = buildTerrain(clearing);
@@ -57,7 +59,7 @@ test('CameraFeel accumule le trauma, décroît à zéro et respecte préférence
     assert.deepEqual(cam.update(16, true), { offsetX: 0, offsetY: 0, active: false });
 });
 
-test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de 2 phases et de compétences télégraphiées esquivables', () => {
+test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de trois phases et de compétences télégraphiées esquivables', () => {
     const png = readFileSync(new URL('../public/game/val-des-saules/monsters/breach_lord.png', import.meta.url));
     assert.equal(png.toString('ascii', 12, 16), 'IHDR');
     const { frame } = monsterArt.breach_lord;
@@ -66,11 +68,17 @@ test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de 2 phases et de c
         [png.readUInt32BE(16), png.readUInt32BE(20)],
         [frame * monsterAtlasColumns, (frame * monsterFrames * 8) / monsterAtlasColumns],
     );
+    for (const [name, rows] of [['malakor-actions', 20], ['malakor-rage-actions', 20], ['malakor-rage', 16]]) {
+        const atlas = readFileSync(new URL(`../public/game/val-des-saules/monsters/${name}.png`, import.meta.url));
+        assert.equal(atlas.toString('ascii', 12, 16), 'IHDR');
+        assert.deepEqual([atlas.readUInt32BE(16), atlas.readUInt32BE(20)],
+            [malakorFrameSize * malakorAtlasColumns, malakorFrameSize * rows]);
+    }
 
     const boss = new Monster(mockScene, 'breach_lord', tileSize, 0);
     assert.equal(boss.isBoss, true);
     assert.equal(boss.level, 40);
-    assert.equal(boss.maxHealth, 18500);
+    assert.equal(boss.maxHealth, 36000);
     assert.equal(boss.xpReward, 6500);
     assert.equal(boss.phase, 1);
 
@@ -78,6 +86,9 @@ test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de 2 phases et de c
     boss.pursue();
     boss.startAttack(player, 100);
     assert.equal(boss.attackDamage(), 295);
+    boss.renderPose(100);
+    assert.equal(boss.sprite.texture.key, 'malakor-actions');
+    assert.equal(boss.canAttack({ x: boss.sprite.x - 20, y: boss.sprite.y }), false);
 
     boss.attackEndsAt = 0;
     boss.startAttack(player, 2000);
@@ -95,6 +106,77 @@ test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de 2 phases et de c
     assert.equal(boss.attackVisual.special, 'magma_rift');
     assert.equal(boss.canAttack({ x: boss.sprite.x + 90, y: boss.sprite.y }), true);
     assert.equal(boss.canAttack({ x: boss.sprite.x + 90, y: boss.sprite.y + 40 }), false);
+    boss.health = 9000;
+    assert.equal(boss.checkBossPhase(), true);
+    assert.equal(boss.phase, 3);
+    boss.trial = createMalakorTrial(3, 4100, true);
+    boss.renderPose(4400);
+    assert.equal(boss.sprite.texture.key, 'malakor-rage-actions');
+    assert.equal(boss.checkBossPhase(), false);
+});
+
+test('les vagues de Rage alternent d’axe, conservent des bandes sûres et bloquent les attaques sans coût', () => {
+    const trial = createMalakorTrial(3, 5000, true);
+    const first = malakorWave(trial, trial.beginsAt);
+    const second = malakorWave(trial, trial.beginsAt + 1680);
+    assert.equal(first.vertical, true);
+    assert.equal(second.vertical, false);
+    assert.ok(first.danger.length > 4);
+    const [dangerStart, dangerEnd] = first.danger[1];
+    const player = { x: (dangerStart + dangerEnd) / 2, y: (zones.breach_lord.top + 12) * tileSize };
+    assert.equal(isMalakorWaveHit(first, player), true);
+    player.x = dangerEnd + 2;
+    assert.equal(isMalakorWaveHit(first, player), false);
+    const combat = Object.create(TrainingCombat.prototype);
+    Object.assign(combat, { scene: { position: player }, health: 100, mana: 40, readyAt: 11,
+        monsters: [{ isBoss: true, trial, template: { zone: zones.breach_lord } }], tell() {} });
+    combat.attack('special', 20);
+    assert.equal(combat.mana, 40);
+    assert.equal(combat.readyAt, 11);
+    assert.equal(combat.pending, undefined);
+});
+
+test('les deux récompenses de Malakor équipent des emplacements indépendants et respectent classe et niveau', () => {
+    const progress = createInitialProgress(40);
+    const roll = () => 0;
+    const head = awardArmor(progress, 'mage', 'breach_lord', 40, roll);
+    const hands = awardArmor(progress, 'mage', 'breach_lord', 40, roll);
+    assert.equal(head.slot, 'head');
+    assert.equal(hands.slot, 'hands');
+    assert.equal(toggleArmor(progress, 'warrior', head.id), null);
+    progress.level = 39;
+    assert.equal(toggleArmor(progress, 'mage', head.id), null);
+    progress.level = 40;
+    assert.equal(toggleArmor(progress, 'mage', head.id), true);
+    assert.equal(toggleArmor(progress, 'mage', hands.id), true);
+    assert.equal(armorBonuses(progress, 'mage').health, head.stats.health);
+    assert.equal(armorBonuses(progress, 'mage').special, hands.stats.special);
+    assert.equal(toggleArmor(progress, 'mage', head.id), false);
+    assert.equal(armorBonuses(progress, 'mage').health, 0);
+    assert.equal(progress.armor.hands, hands.id);
+    for (const id of Object.keys(armorItems)) {
+        const png = readFileSync(new URL(`../public/game/val-des-saules/items/${id}.png`, import.meta.url));
+        assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [32, 32]);
+    }
+});
+
+test('la reprise conserve les anciennes armes et rattache les armures aux pièces présentes dans le sac', () => {
+    const progress = createInitialProgress(40);
+    const storage = globalThis.localStorage;
+    globalThis.localStorage = { getItem: () => JSON.stringify(progress) };
+    try {
+        delete progress.armor;
+        assert.equal(loadProgress('test').weapon, 'starter');
+        assert.deepEqual(loadProgress('test').armor, { head: null, hands: null });
+        const piece = awardArmor(progress, 'warrior', 'breach_lord', 40, () => 0);
+        assert.equal(toggleArmor(progress, 'warrior', piece.id), true);
+        assert.equal(loadProgress('test').armor.head, piece.id);
+        delete progress.items[piece.id];
+        assert.equal(loadProgress('test').armor.head, null);
+    } finally {
+        if (storage === undefined) delete globalThis.localStorage;
+        else globalThis.localStorage = storage;
+    }
 });
 
 test('le rééquilibrage du Mage étend la portée à 7,5 cases, réduit sa régénération et impose le cast de 1 s annulable', () => {

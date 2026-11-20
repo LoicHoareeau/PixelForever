@@ -118,11 +118,10 @@
                     </div>
                     <small id="combat-target-phase" class="target-phase" hidden></small>
                     <label>
-                        <meter
-                            id="combat-target-health"
-                            max="96"
-                            value="96"
-                        ></meter>
+                        <span class="target-meter">
+                            <meter id="combat-target-health" max="96" value="96"></meter>
+                            <span class="target-thresholds" aria-hidden="true"></span>
+                        </span>
                         <span id="combat-target-health-value">96 / 96</span>
                     </label>
                 </section>
@@ -375,6 +374,8 @@
                     </li>
                 {% endfor %}
             </ul>
+            <h3>Coiffes et gants</h3>
+            <ul class="inventory-items" id="inventory-armor"></ul>
             <p id="inventory-status" role="status"></p>
         </dialog>
 
@@ -452,6 +453,8 @@
                             <dt>Arme équipée</dt>
                             <dd><strong data-sheet-weapon>{{ weapon }}</strong></dd>
                         </div>
+                        <div><dt>Coiffe</dt><dd><strong data-sheet-armor="head">Vide</strong></dd></div>
+                        <div><dt>Gants</dt><dd><strong data-sheet-armor="hands">Vide</strong></dd></div>
                         <div>
                             <dt>PV max.</dt>
                             <dd><strong data-sheet-max-health>{{ combat.health }}</strong></dd>

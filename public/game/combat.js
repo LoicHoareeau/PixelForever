@@ -1,3 +1,5 @@
+import { createMalakorTrial, isMalakorWaveHit, malakorPhases, malakorThresholds, malakorTrialInterval, malakorWave } from './malakor.js';
+import { armorItems, armorSlots, awardArmor, toggleArmor } from './armor.js';
 import {
     allocateStat,
     awardVictory,
@@ -139,6 +141,23 @@ export class TrainingCombat {
         this.amounts = [...document.querySelectorAll('[data-quantity]')];
         this.weaponButtons = [...document.querySelectorAll('[data-weapon]')];
         this.weaponStates = [...document.querySelectorAll('[data-weapon-state]')];
+        this.armorList = document.getElementById('inventory-armor');
+        this.armorLabels = [...document.querySelectorAll('[data-sheet-armor]')];
+        this.armorList?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-armor]');
+            if (!button) return;
+            const id = button.dataset.armor;
+            const equipped = toggleArmor(this.progress, this.classKey, id);
+            if (equipped === null) return;
+            saveProgress(this.progressKey, this.progress);
+            this.refreshProgress();
+            this.health = Math.min(this.health, this.stats.maxHealth);
+            this.mana = Math.min(this.mana, this.stats.maxMana);
+            this.refreshVitals();
+            this.refreshInventory();
+            this.armorList.querySelector('[data-armor="' + id + '"]')?.focus();
+            document.getElementById('inventory-status').textContent = armorItems[id].name + (equipped ? ' · Équipé' : ' · Retiré');
+        });
         this.levelLabel = document.getElementById('combat-level');
         this.xpMeter = document.getElementById('combat-xp');
         this.xpLabel = document.getElementById('combat-xp-value');
@@ -340,6 +359,10 @@ export class TrainingCombat {
         if (this.health === 0) {
             return;
         }
+        if (this.mustDodgeMalakor()) {
+            this.tell('La Brèche recouvre l’arène. Rejoins une bande sûre.');
+            return;
+        }
 
         // Gestion des slots 3..6 liés aux talents
         if (kind.startsWith('talent-')) {
@@ -489,7 +512,7 @@ export class TrainingCombat {
 
         for (const m of hits) {
             if (slowMs > 0) {
-                m.slowUntil = now + (m.isBoss ? Math.round(slowMs * 0.5) : slowMs);
+                m.slowUntil = now + (m.isBoss ? Math.round(slowMs * 0.25) : slowMs);
             }
             this.applyDamageToMonster(m, damage, name, color, now, true);
         }
@@ -500,6 +523,7 @@ export class TrainingCombat {
      * Exécute un sort actif débloqué via l'arbre de talents.
      */
     castTalentSpell(talent, now) {
+        if (this.mustDodgeMalakor()) return;
         const cdInfo = this.spellCooldowns.get(talent.slot);
         if (cdInfo && now < cdInfo.end) {
             const left = ((cdInfo.end - now) / 1000).toFixed(1);
@@ -664,8 +688,8 @@ export class TrainingCombat {
         if (talent.slot === 'shield_bash') {
             if (!alreadyPaid) this.mana -= manaCost;
             this.setSlotCooldown(talent.slot, now, cdMs);
-            target.stunUntil = now + (target.isBoss ? 1000 : 2000);
-            target.cancelAttack();
+            target.stunUntil = now + (target.isBoss ? 500 : 2000);
+            if (!target.trial) target.cancelAttack();
             this.spellEffects?.push?.({
                 kind: 'shield_wave',
                 x: target.sprite.x,
@@ -990,6 +1014,41 @@ export class TrainingCombat {
                 : (equipped ? '· Équipé' : '');
         });
 
+        if (this.armorList) {
+            const owned = Object.values(armorItems).filter((piece) => piece.classKey === this.classKey && this.progress.items[piece.id] > 0);
+            const statNames = { health: 'PV', mana: 'mana', basic: 'dégâts de base', special: 'dégâts de compétence', mitigation: 'protection' };
+            if (owned.length) {
+                this.armorList.replaceChildren(...owned.map((piece) => {
+                    const item = document.createElement('li');
+                    const icon = document.createElement('img');
+                    icon.src = this.scene.armorIconPath + piece.id + '.png';
+                    icon.alt = '';
+                    icon.className = 'armor-icon';
+                    const description = document.createElement('div');
+                    const name = document.createElement('strong');
+                    const details = document.createElement('small');
+                    const equipped = this.progress.armor?.[piece.slot] === piece.id;
+                    name.textContent = piece.name;
+                    const bonuses = Object.entries(piece.stats).map(([stat, value]) =>
+                        '+' + (stat === 'mitigation' ? Math.round(value * 100) + ' %' : value) + ' ' + statNames[stat]);
+                    details.textContent = [armorSlots[piece.slot], 'N. ' + piece.level, ...bonuses, equipped ? 'Équipé' : ''].filter(Boolean).join(' · ');
+                    description.append(name, details);
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'quiet';
+                    button.dataset.armor = piece.id;
+                    button.disabled = this.progress.level < piece.level;
+                    button.textContent = equipped ? 'Retirer' : 'Équiper';
+                    item.append(icon, description, button);
+                    return item;
+                }));
+            } else {
+                const empty = document.createElement('li');
+                empty.textContent = 'Les gardes de la Citadelle laissent les premières coiffes et paires de gants.';
+                this.armorList.replaceChildren(empty);
+            }
+        }
+
         this.basicLabel.textContent = this.basicName;
         this.buttons[0].title = this.basicName
             + ' · ' + this.basicWeapon.damage + ' dégâts'
@@ -1054,6 +1113,9 @@ export class TrainingCombat {
     refreshProgress() {
         const { level, xp } = this.progress;
         this.stats = computeCharacterStats(this.rules, this.progress, this.weaponBonus);
+        for (const label of this.armorLabels ?? []) {
+            label.textContent = armorItems[this.progress.armor?.[label.dataset.sheetArmor]]?.name ?? 'Vide';
+        }
 
         this.meters[0].meter.max = this.stats.maxHealth;
         this.meters[1].meter.max = this.stats.maxMana;
@@ -1312,25 +1374,14 @@ export class TrainingCombat {
     }
 
     applyDamageToMonster(monster, rawDamage, attackName, color, now, isSpecial = false) {
-        if (!monster.isAlive) return;
-        const damage = Math.min(rawDamage, monster.health);
+        if (!monster.isAlive || monster.trial) return;
+        const phaseFloor = monster.isBoss ? Math.round(monster.maxHealth * (malakorThresholds[monster.phase - 1] ?? 0)) : 0;
+        const damage = Math.min(monster.health - phaseFloor, monster.isBoss ? Math.max(1, Math.round(rawDamage * .8)) : rawDamage);
         monster.health -= damage;
         monster.syncOverlays();
 
-        const enteredPhase2 = typeof monster.checkBossPhase === 'function' && monster.checkBossPhase();
-        if (enteredPhase2) {
-            this.triggerShake('large');
-            this.spellEffects?.push?.({
-                kind: 'phase_enrage',
-                x: monster.sprite.x,
-                y: monster.sprite.y - 18,
-                radius: 56,
-                color: 0xff7b2f,
-                start: now,
-                duration: 750,
-            });
-            this.tell(`${monster.name} entre en Cataclysme de la Brèche (Phase 2) !`);
-        }
+        const enteredPhase = typeof monster.checkBossPhase === 'function' && monster.checkBossPhase();
+        if (enteredPhase) this.startMalakorTrial(monster, now, monster.phase === 3);
 
         if (this.selectedMonster === monster) {
             this.refreshTargetHud();
@@ -1356,7 +1407,7 @@ export class TrainingCombat {
         }
 
         monster.pursue();
-        if (!enteredPhase2) {
+        if (!enteredPhase) {
             this.tell(`${attackName} · ${damage} dégâts sur ${monster.name} (N.${monster.level}).`);
         }
     }
@@ -1382,6 +1433,7 @@ export class TrainingCombat {
         }
 
         const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
+        const armor = awardArmor(this.progress, this.classKey, monster.species, monster.level);
         recordTrailQuestDefeat(this.progress.trailQuest, monster.species);
         saveProgress(this.progressKey, this.progress);
         this.refreshProgress();
@@ -1398,14 +1450,87 @@ export class TrainingCombat {
         const levelUpText = levelUp
             ? ` · Niveau ${this.progress.level} ! (+3 stats, +1 talent)`
             : '';
-        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${levelUpText}`);
+        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${armor ? " · " + armor.name : ""}${levelUpText}`);
     }
 
     /**
      * Résout une auto-attaque ciblée, puis respecte le temps de recharge du monstre.
      */
+    mustDodgeMalakor() {
+        return this.monsters?.some((monster) => monster.isBoss && monster.trial
+            && inZone(monster.template.zone, this.scene.position.x, this.scene.position.y));
+    }
+
+    startMalakorTrial(monster, now, transform = false) {
+        monster.cancelAttack();
+        monster.poseRecovery = monster.echo = null;
+        monster.stunUntil = monster.slowUntil = 0;
+        monster.trial = createMalakorTrial(monster.phase, now, transform);
+        if (this.pending) {
+            const refund = this.pending.manaCost ?? 0;
+            this.mana = Math.min(this.meters[1].meter.max, this.mana + refund);
+            if (this.pending.slotKey === 'special') this.spellCooldowns.delete('special');
+            this.readyAt = Math.min(this.readyAt, now);
+            this.pending = this.attackVisual = null;
+            this.refreshCastBar(now);
+            this.refreshVitals();
+        }
+        monster.pursue();
+        this.refreshTargetHud();
+        this.triggerShake(transform ? 'large' : 'medium');
+        this.tell(malakorPhases[monster.phase - 1] + ' · Traverse l’arène par les bandes sûres !');
+    }
+
+    updateMalakorTrial(monster, now) {
+        if (now >= monster.trial.endsAt) {
+            monster.trial = null;
+            monster.counterAt = now + (monster.phase === 3 ? 3150 : 2600);
+            monster.nextTrialAt = now + malakorTrialInterval;
+            this.refreshTargetHud();
+            this.tell('La Brèche se referme. Malakor est vulnérable !');
+            return;
+        }
+        const wave = malakorWave(monster.trial, now);
+        if (!wave?.impact || wave.index === monster.trial.lastImpact) return;
+        monster.trial.lastImpact = wave.index;
+        this.triggerShake('medium');
+        if (isMalakorWaveHit(wave, this.scene.position)) this.takeMonsterHit(monster, monster.phase === 3 ? 570 : 385, now);
+    }
+
+    takeMonsterHit(monster, damage, now) {
+        const taken = Math.max(1, Math.round(damage * (1 - (this.stats.damageReduction ?? 0))));
+        this.health = Math.max(0, this.health - taken);
+        this.impacts.push({ x: this.scene.position.x, y: this.scene.position.y - 17, color: 0xf78863, start: now });
+        this.refreshVitals();
+        if (this.health === 0) {
+            this.scene.avatar.setTint(0xbb6666);
+            this.finish(`${monster.name} (N.${monster.level}) t’a vaincu. Relève-toi au camp.`);
+            return;
+        }
+        this.tell(`${monster.name} t’inflige ${taken} dégâts.`);
+    }
+
     updateMonsterCounter(monster, now) {
         if (!monster.isAlive || this.health <= 0) return;
+        if (monster.isBoss && monster.alert && inZone(monster.template.zone, this.scene.position.x, this.scene.position.y)) {
+            if (monster.trial) {
+                this.updateMalakorTrial(monster, now);
+                return;
+            }
+            if (monster.echo && now >= monster.echo.end) {
+                const echo = monster.echo;
+                monster.echo = null;
+                const distance = Math.hypot(this.scene.position.x - echo.x, this.scene.position.y - echo.y);
+                this.spellEffects.push({ kind: 'seismic_detonation', x: echo.x, y: echo.y, radius: echo.radius, start: now, duration: 500 });
+                if (distance >= echo.inner && distance <= echo.radius) this.takeMonsterHit(monster, echo.damage, now);
+                this.triggerShake('medium');
+                return;
+            }
+            if (now >= monster.nextTrialAt && !monster.attackEndsAt) {
+                this.startMalakorTrial(monster, now);
+                return;
+            }
+        }
         if (now < monster.stunUntil || !monster.alert
             || !inZone(monster.template.zone, this.scene.position.x, this.scene.position.y)) {
             monster.cancelAttack();
@@ -1422,11 +1547,21 @@ export class TrainingCombat {
             if (outcome === 'travel') return;
 
             if (specialVisual) {
+                if (monster.isBoss) monster.poseRecovery = { ...specialVisual, end: now + 500 };
+                if (monster.isBoss && specialVisual.special === 'seismic_ring') {
+                    monster.echo = {
+                        x: specialVisual.originX, y: specialVisual.originY, inner: specialVisual.radius,
+                        radius: specialVisual.radius + 60, start: now, end: now + 780, damage: Math.round(rawDamage * .8),
+                    };
+                    monster.counterAt = Math.max(monster.counterAt, monster.echo.end + 360);
+                }
                 this.spellEffects?.push?.({
-                    kind: specialVisual.special === 'magma_rift' ? 'magma_detonation' : 'seismic_detonation',
+                    kind: specialVisual.special === 'magma_rift' ? 'magma_detonation'
+                        : specialVisual.special === 'obsidian_cleave' ? 'obsidian_impact' : 'seismic_detonation',
                     x: specialVisual.originX,
                     y: specialVisual.originY,
                     radius: specialVisual.radius ?? 78,
+                    angle: specialVisual.angle,
                     dirX: specialVisual.dirX ?? 1,
                     dirY: specialVisual.dirY ?? 0,
                     riftRange: specialVisual.riftRange ?? 165,
@@ -1449,27 +1584,8 @@ export class TrainingCombat {
                 return;
             }
 
-            const reduction = 1 - (this.stats.damageReduction ?? 0);
-            const taken = Math.max(1, Math.round(rawDamage * reduction));
-            this.health = Math.max(0, this.health - taken);
-            this.impacts.push({
-                x: this.scene.position.x,
-                y: this.scene.position.y - 17,
-                color: 0xf78863,
-                start: now,
-            });
-            if (!specialVisual) {
-                this.triggerShake(monster.isBoss || monster.species === 'dragon' ? 'medium' : 'small');
-            }
-            this.refreshVitals();
-
-            if (this.health === 0) {
-                this.scene.avatar.setTint(0xbb6666);
-                this.finish(`${monster.name} (N.${monster.level}) t’a vaincu. Relève-toi au camp.`);
-                return;
-            }
-
-            this.tell(`${monster.name} t’inflige ${taken} dégâts.`);
+            if (!specialVisual) this.triggerShake(monster.isBoss || monster.species === 'dragon' ? 'medium' : 'small');
+            this.takeMonsterHit(monster, rawDamage, now);
             return;
         }
 
@@ -1487,7 +1603,7 @@ export class TrainingCombat {
      */
     drawEffects(now) {
         const enemyAttacking = this.monsters.some((monster) => monster.isAlive && (
-            (monster.isBoss && monster.phase === 2)
+            (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
             || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
         ));
         this.spellEffects = (this.spellEffects ?? []).filter((fx) => now - fx.start < fx.duration);
@@ -1646,6 +1762,18 @@ export class TrainingCombat {
                 continue;
             }
 
+            if (fx.kind === 'obsidian_impact') {
+                const spread = Math.acos(.35);
+                for (let arc = 0; arc < 3; arc++) {
+                    const reach = fx.radius * (.55 + p * .45 - arc * .11);
+                    this.effect.lineStyle(4 - arc, [0xfff0bb, 0xffa049, 0xf65229][arc], alpha);
+                    this.effect.beginPath();
+                    this.effect.arc(fx.x, fx.y, reach, fx.angle - spread, fx.angle + spread);
+                    this.effect.strokePath();
+                }
+                continue;
+            }
+
             if (fx.kind === 'magma_detonation') {
                 const steps = Math.floor((fx.riftRange ?? 165) / 14);
                 for (let i = 1; i <= steps; i++) {
@@ -1664,20 +1792,119 @@ export class TrainingCombat {
         }
     }
 
+    drawMalakorArc(x, y, angle, radius, progress) {
+        const spread = Math.acos(.35);
+        this.effect.fillStyle(0xf75127, .18 + progress * .2);
+        this.effect.lineStyle(2, 0xffc06b, .9);
+        this.effect.beginPath();
+        this.effect.moveTo(x, y);
+        this.effect.arc(x, y, radius, angle - spread, angle + spread);
+        this.effect.closePath();
+        this.effect.fillPath();
+        this.effect.strokePath();
+    }
+
+    drawMalakorAura(monster, now) {
+        const still = this.scene.motionPreference?.matches;
+        const time = still ? 0 : now;
+        const x = monster.sprite.x;
+        const y = monster.sprite.y;
+        const ignition = monster.trial?.transform && now < monster.trial.beginsAt;
+        const buildup = ignition ? (now - monster.trial.start) / (monster.trial.beginsAt - monster.trial.start) : 1;
+        const heat = Math.max(.1, Math.min(1, buildup));
+        const pulse = .5 + .5 * Math.sin(time / 230);
+        const radius = 29 + 6 * pulse;
+
+        this.effect.fillStyle(0x482025, .32 * heat).fillEllipse(x, y + 2, 124, 58);
+        this.effect.fillStyle(0xe2502d, .17 * heat).fillEllipse(x, y + 2, 92, 40);
+        this.effect.fillStyle(0xff8c42, .14 * heat).fillEllipse(x, y + 2, 62, 26);
+        this.effect.lineStyle(2, 0xc3402d, .46 * heat).strokeEllipse(x, y + 2, radius * 2 + 25, radius + 13);
+        this.effect.lineStyle(1, 0xffbb70, .7 * heat).strokeEllipse(x, y + 2, radius * 2, radius);
+
+        for (let i = 0; i < 12; i++) {
+            const angle = i * Math.PI / 6 + time / 4600;
+            const u = Math.cos(angle);
+            const v = Math.sin(angle) * .48;
+            const runeX = Math.round(x + u * (radius + 7));
+            const runeY = Math.round(y + 2 + v * (radius + 7));
+            this.effect.lineStyle(1, i % 3 ? 0xffa359 : 0xffdda1, (.48 + .2 * pulse) * heat);
+            this.effect.lineBetween(runeX, runeY, runeX + u * 5 - v * 4, runeY + v * 5 + u * 2);
+            this.effect.lineBetween(runeX + u * 4, runeY + v * 4, runeX - v * 5, runeY + u * 3);
+        }
+
+        for (let i = 0; i < 6; i++) {
+            const angle = i * Math.PI / 3 + .18;
+            let previousX = x + Math.cos(angle) * 18;
+            let previousY = y + Math.sin(angle) * 10;
+            for (let segment = 1; segment <= 4; segment++) {
+                const fork = angle + Math.sin(i + segment * 2.3) * .19;
+                const distance = (16 + segment * 11) * (.6 + .4 * heat);
+                const nextX = Math.round(x + Math.cos(fork) * distance);
+                const nextY = Math.round(y + Math.sin(fork) * distance * .53);
+                this.effect.lineStyle(3, 0x341724, .7).lineBetween(previousX, previousY, nextX, nextY);
+                this.effect.lineStyle(1, segment === 1 ? 0xffbd6b : 0xcf5034, (.78 - segment * .1) * heat)
+                    .lineBetween(previousX, previousY, nextX, nextY);
+                previousX = nextX;
+                previousY = nextY;
+            }
+        }
+
+        if (still) return;
+        for (let i = 0; i < 29; i++) {
+            const life = (time / (720 + i % 6 * 85) + i * .271) % 1;
+            const angle = i * 2.39996 + life * .54;
+            const distance = 23 + i % 7 * 5 + life * 14;
+            const px = Math.round(x + Math.cos(angle) * distance);
+            const py = Math.round(y + Math.sin(angle) * distance * .42 - life * (36 + i % 5 * 9));
+            const opacity = (1 - life) * heat;
+            this.effect.fillStyle(i % 4 ? 0xff8c46 : 0xffe6a1, opacity).fillRect(px, py, i % 3 ? 2 : 3, i % 4 ? 3 : 5);
+        }
+    }
+
+    drawMalakorTrial(monster, now) {
+        const { left, top, right, bottom } = monster.template.zone;
+        const x = left * this.tileSize;
+        const y = top * this.tileSize;
+        const width = (right - left + 1) * this.tileSize;
+        const height = (bottom - top + 1) * this.tileSize;
+        const wave = malakorWave(monster.trial, now);
+        this.effect.lineStyle(2, monster.phase === 3 ? 0xffb080 : 0xffd98a, .9).strokeRect(x, y, width, height);
+        if (!wave) {
+            const progress = (now - monster.trial.start) / (monster.trial.beginsAt - monster.trial.start);
+            const radius = 46 + 54 * progress;
+            this.effect.lineStyle(3, 0xffcf85, .9 - .48 * progress)
+                .strokeCircle(monster.sprite.x, monster.sprite.y, radius);
+            return;
+        }
+        this.effect.fillStyle(0x84decb, .09).fillRect(x, y, width, height);
+        for (const [from, to] of wave.danger) {
+            const bounds = wave.vertical ? [from, y, to - from, height] : [x, from, width, to - from];
+            this.effect.fillStyle(wave.impact ? 0xff581e : 0x9b332b, wave.impact ? .58 : .26 + wave.progress * .25);
+            this.effect.fillRect(...bounds);
+            this.effect.lineStyle(2, wave.impact ? 0xffeab0 : 0xff905e, .95).strokeRect(...bounds);
+            const center = (from + to) / 2;
+            for (let step = 18; step < (wave.vertical ? height : width); step += 24) {
+                const offset = Math.sin(step * .18 + wave.index) * 8;
+                const px = wave.vertical ? center + offset : x + step;
+                const py = wave.vertical ? y + step : center + offset;
+                this.effect.fillStyle(wave.impact ? 0xffefad : 0xff9b58, wave.impact ? .95 : .35 + wave.progress * .6)
+                    .fillRect(px - 2, py - 2, wave.impact ? 10 : 4, wave.impact ? 6 : 3);
+            }
+        }
+    }
+
     drawMonsterAttacks(now) {
         for (const monster of this.monsters) {
             if (!monster.isAlive) continue;
 
-            // Aura volcanique permanente en Phase 2 sur Malakor
-            if (monster.isBoss && monster.phase === 2 && !this.scene.motionPreference.matches) {
-                const bx = monster.sprite.x;
-                const by = monster.sprite.y - 16;
-                for (let i = 0; i < 4; i++) {
-                    const a = now / 220 + (i * Math.PI) / 2;
-                    const px = Math.round(bx + Math.cos(a) * 28);
-                    const py = Math.round(by + Math.sin(a) * 16 - ((now / 45 + i * 7) % 14));
-                    this.effect.fillStyle(i % 2 === 0 ? 0xff7b2f : 0xffe08a, 0.75).fillRect(px - 1, py - 1, 3, 3);
-                }
+            if (monster.isBoss && monster.phase === 3) this.drawMalakorAura(monster, now);
+
+            if (monster.trial) this.drawMalakorTrial(monster, now);
+            if (monster.echo) {
+                const { x, y, inner, radius, start, end } = monster.echo;
+                const progress = Math.max(0, Math.min(1, (now - start) / (end - start)));
+                this.effect.lineStyle(radius - inner, 0xdb5128, .22 + .24 * progress).strokeCircle(x, y, (inner + radius) / 2);
+                this.effect.lineStyle(2, 0xffc56c, .88).strokeCircle(x, y, inner).strokeCircle(x, y, radius);
             }
 
             const attack = monster.attackVisual;
@@ -1686,7 +1913,9 @@ export class TrainingCombat {
             // Télégraphies au sol des attaques spéciales
             if (attack.special) {
                 const progress = Math.max(0, Math.min(1, (now - attack.start) / Math.max(1, attack.castEnd - attack.start)));
-                if (attack.special === 'seismic_ring') {
+                if (attack.special === 'obsidian_cleave') {
+                    this.drawMalakorArc(attack.originX, attack.originY, attack.angle, attack.radius, progress);
+                } else if (attack.special === 'seismic_ring') {
                     const r = attack.radius ?? 78;
                     this.effect.fillStyle(0xff4a24, 0.14 + progress * 0.18).fillEllipse(attack.originX, attack.originY, r * 2, r * 2);
                     this.effect.lineStyle(2, 0xff9f43, 0.85).strokeEllipse(attack.originX, attack.originY, r * 2, r * 2);
@@ -1927,9 +2156,7 @@ export class TrainingCombat {
         if (this.targetPhaseLabel) {
             if (target.isBoss) {
                 this.targetPhaseLabel.hidden = false;
-                this.targetPhaseLabel.textContent = target.phase === 2
-                    ? 'Phase 2 · Cataclysme de la Brèche'
-                    : 'Phase 1 · Seigneur d’Obsidienne';
+                this.targetPhaseLabel.textContent = `Phase ${target.phase} · ${malakorPhases[target.phase - 1]} · ${target.trial ? 'ESQUIVE' : '65 % / 25 %'}`;
             } else {
                 this.targetPhaseLabel.hidden = true;
             }

@@ -47,6 +47,8 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 
 ### Combat et équipement
 
+Malakor a 36 000 PV et trois phases. À 65 % et 25 %, la Brèche balaie le Trône par vagues. Traverse les bandes sûres avant de reprendre l’attaque. À 25 %, Malakor adopte la forme Rage et les balayages alternent entre les deux axes.
+
 | Classe / arme | Attaque de base | Portée de base |
 | --- | --- | --- |
 | Guerrier · épée ou croc | Coup en mêlée | 1,5 case |
@@ -64,9 +66,9 @@ Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L�
 
 Le niveau 1 ne donne aucun point. Chaque montée suivante donne trois points de caractéristiques et un point de talent/sort. Le niveau 2 demande 100 XP ; le seuil augmente ensuite de 50 XP par niveau. Les monstres de niveau supérieur accordent davantage d’XP. Dans les Terres dévastées, un diablotin N.22 rapporte 676 XP et un garde N.35 en rapporte 1 638.
 
-Chaque défaite donne un objet : potion de vie 47 %, potion de ressource 30 %, arme rare 15 %, arme épique 5 %, Écaille de Saphyr 2 %, Cœur de flamme bleue 1 %. Les armes sont adaptées à la classe : Lame des saules / Croc de Saphyr pour le Guerrier, Bâton des saules / Sceptre de Saphyr pour le Mage. Écailles et cœurs sont des matériaux, non équipables. Les potions rendent 20 PV ou 15 points de ressource.
+Chaque défaite donne un objet : potion de vie 47 %, potion de ressource 30 %, arme rare 15 %, arme épique 5 %, Écaille de Saphyr 2 %, Cœur de flamme bleue 1 %. Les armes sont adaptées à la classe : Lame des saules / Croc de Saphyr pour le Guerrier, Bâton des saules / Sceptre de Saphyr pour le Mage. Écailles et cœurs sont des matériaux, non équipables. Les potions rendent 20 PV ou 15 points de ressource. La Citadelle, Malakor, les Remparts et le Cap donnent aussi des coiffes et des gants adaptés à la classe.
 
-Les comptes, personnages et niveau/XP sont en base. Le sac, l’arme équipée, les allocations et la quête restent enregistrés par personnage dans le navigateur. Effacer ce stockage peut donc effacer ces éléments locaux.
+Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipées, les allocations et la quête restent enregistrés par personnage dans le navigateur. Effacer ce stockage peut donc effacer ces éléments locaux.
 
 ## Commandes
 

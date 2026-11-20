@@ -14,7 +14,7 @@ Après mise à jour de la branche suivie, utiliser **Deploy latest commit** si l
 
 Conserver `PORT=8080`, une valeur stable de `APP_SECRET` et `DATABASE_URL` avec l’URL interne PostgreSQL dédiée au service. Garder ces valeurs dans les variables Render, sans publier les identifiants dans Git ou dans les rapports. Le conteneur peut générer un secret de secours au démarrage ; un secret stable évite les changements de session/CSRF lors des redémarrages.
 
-PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les colonnes existantes, sans migration supplémentaire. Sac, arme, allocations et quête restent locaux au navigateur : le stockage Render ne les rend pas persistants en base à lui seul. Vérifier dans Render la durée de validité et les sauvegardes de l’instance PostgreSQL utilisée.
+PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les colonnes existantes, sans migration supplémentaire. Sac, arme, coiffes, gants, allocations et quête restent locaux au navigateur : le stockage Render ne les rend pas persistants en base à lui seul. Vérifier dans Render la durée de validité et les sauvegardes de l’instance PostgreSQL utilisée.
 
 ## Vérifications après déploiement
 
@@ -25,6 +25,7 @@ PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les
 5. Vérifier l’ATH de sauvegarde après une victoire. Si les anciens scripts semblent encore actifs, recharger les ressources puis comparer les fichiers servis au commit déployé.
 6. Suivre le chemin à l’est des montagnes jusqu’aux Terres dévastées. Contrôler les trois bandes de niveau N.21–35 et esquiver un souffle du dragon en quittant sa ligne après le lancement.
 7. Depuis le Trône d’Obsidienne, suivre la chaussée sud puis la route vers l’est jusqu’au Belvédère des Brisants. Vérifier les trois bandes N.41–60 dans l’ATH, les limites des falaises et une esquive circulaire ou linéaire.
+8. Vérifier les seuils de Malakor à 65 % et 25 %, l’apparence de la Rage et les bandes sûres. À la victoire, équiper la pièce reçue dans l’inventaire et contrôler la fiche après rechargement.
 
 Les corrections de combat postérieures à #11 doivent elles aussi être fusionnées et déployées avant d’être visibles en production.
 
