@@ -12,7 +12,7 @@ Après connexion, le joueur crée puis sélectionne son personnage. Symfony vér
 
 `POST /personnages/{id}/progression` exige la session du propriétaire, un jeton CSRF et des valeurs entières bornées. Le niveau doit être compris entre 1 et 9 999 ; l’XP doit rester sous le seuil du niveau. Une mise à jour DQL conditionnelle atomique empêche une requête ancienne de faire régresser niveau/XP. L’entrée dans le jeu restaure ces valeurs depuis la base ; une progression locale plus avancée peut être envoyée ensuite.
 
-La route ne valide pas encore chaque victoire : les valeurs restent proposées par le client. Sac, arme, allocations et quête restent dans `localStorage`, avec une clé propre au personnage. La base n’assure donc pas encore leur restauration sur un autre navigateur. Le champ or existe mais le marchand n’est pas intégré au jeu.
+La route ne valide pas encore chaque victoire : les valeurs restent proposées par le client. Sac, arme, coiffes, gants, allocations et quête restent dans `localStorage`, avec une clé propre au personnage. La base n’assure donc pas encore leur restauration sur un autre navigateur. Le champ or existe mais le marchand n’est pas intégré au jeu.
 
 SQLite sert au développement local et aux tests ; PostgreSQL est utilisé pour la persistance Render. Les colonnes niveau/expérience existent déjà et leur sauvegarde ne demande pas de nouvelle migration. La configuration du moteur et les migrations existantes restent dans `config/` et `migrations/`.
 

@@ -1,3 +1,4 @@
+import { armorBonuses, armorItems, armorSlots } from './armor.js';
 // Barèmes d'expérience, de caractéristiques, de sorts et de régénération
 import { normalizeTrailQuest } from './trail-quest.js';
 
@@ -413,6 +414,7 @@ export function createInitialProgress(startingLevel = 1) {
             heart: 0,
         },
         weapon: 'starter',
+        armor: { head: null, hands: null },
         statPoints: Math.max(0, startingLevel - 1) * statPointsPerLevel,
         spellPoints: Math.max(0, startingLevel - 1) * spellPointsPerLevel,
         allocatedStats: {
@@ -473,9 +475,20 @@ function normalizeProgress(saved) {
         spentSpells = 0;
     }
 
+    const items = { ...saved.items };
+    for (const id of Object.keys(armorItems)) {
+        if (!Number.isSafeInteger(items[id]) || items[id] <= 0) delete items[id];
+    }
+    const armor = Object.fromEntries(Object.keys(armorSlots).map((slot) => {
+        const id = saved.armor?.[slot];
+        return [slot, armorItems[id]?.slot === slot && items[id] > 0 ? id : null];
+    }));
+
     return {
         ...fallback,
         ...saved,
+        items,
+        armor,
         statPoints: statBudget - spentStats,
         spellPoints: spellBudget - spentSpells,
         allocatedStats,
@@ -804,8 +817,9 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const damageReduction = Math.min(0.45, (t.w_defensive_stance ?? 0) * 0.08 + (t.m_ice_armor ?? 0) * 0.05);
     const bonusRangeTiles = (t.m_arcane_blast ?? 0) > 0 ? 0.5 : 0;
 
-    const maxHealth = rules.health + levelsGained * 4 + attributes.vitality.bonus * 4 + talentHealthBonus;
-    const maxMana = rules.mana + levelsGained * 2 + attributes.spirit.bonus * 3 + talentManaBonus;
+    const equipment = armorBonuses(progress, classKey);
+    const maxHealth = equipment.health + rules.health + levelsGained * 4 + attributes.vitality.bonus * 4 + talentHealthBonus;
+    const maxMana = equipment.mana + rules.mana + levelsGained * 2 + attributes.spirit.bonus * 3 + talentManaBonus;
 
     const basicSpellRank = progress.spells?.basic ?? 1;
     const specialSpellRank = progress.spells?.special ?? 1;
@@ -820,14 +834,14 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         + secondaryBonus
         + basicRankBonus
         + talentBasicBonus
-        + weaponBonus;
+        + weaponBonus + equipment.basic;
 
     const rawSpecialDamage = rules.specialDamage
         + levelsGained * 2
         + primaryBonus * 2
         + secondaryBonus
         + specialRankBonus
-        + talentSpecialBonus;
+        + talentSpecialBonus + equipment.special;
     const specialDamage = Math.round(rawSpecialDamage * talentSpecialMultiplier);
 
     const baseRegen = rules.baseManaRegen ?? (classKey === 'mage' ? 1 : 2);
@@ -859,7 +873,7 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         manaRegenPerSec,
         cooldownReduction,
         manaCostReduction,
-        damageReduction,
+        damageReduction: Math.min(.60, damageReduction + equipment.mitigation),
         bonusRangeTiles,
         statPoints: progress.statPoints ?? 0,
         spellPoints: progress.spellPoints ?? 0,

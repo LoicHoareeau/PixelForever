@@ -333,7 +333,7 @@ test('chaque espèce a huit orientations et trente-six images de marche par orie
         }
         monster.startAttack({ x: monster.sprite.x, y: monster.sprite.y - 12 }, 100);
         monster.renderPose(100);
-        assert.equal(monster.sprite.frame.name, 6 * monsterFrames + monsterWalkFrames + 1);
+        assert.equal(monster.sprite.frame.name, monster.isBoss ? 6 * 48 : 6 * monsterFrames + monsterWalkFrames + 1);
     }
 });
 

@@ -1507,3 +1507,33 @@ body.game-fullscreen .masthead {
 }
 
 .pixel-item { image-rendering: pixelated; object-fit: contain; background: none; }
+.armor-icon {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.target-meter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.target-meter meter {
+    width: 100%;
+}
+
+.target-thresholds {
+    display: none;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent 24.5%, #ffe7ad 24.5% 25.5%, transparent 25.5% 64.5%, #ffe7ad 64.5% 65.5%, transparent 65.5%);
+}
+
+.target-hud[data-boss="true"] .target-thresholds {
+    display: block;
+}

@@ -1,3 +1,4 @@
+import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
@@ -60,6 +61,7 @@ import { saveProgress } from './progression.js';
 
         preload() {
             this.skin = world.dataset.skin;
+            this.armorIconPath = assetPath + 'items/';
             this.walkSheet = this.skin + '-walk';
             this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);
@@ -72,6 +74,9 @@ import { saveProgress } from './progression.js';
             }
             for (const [species, { frame }] of Object.entries(monsterArt)) {
                 this.load.spritesheet(species + '-motion', 'monsters/' + species + '.png', { frameWidth: frame, frameHeight: frame });
+            }
+            for (const atlas of ['malakor-actions', 'malakor-rage', 'malakor-rage-actions']) {
+                this.load.spritesheet(atlas, 'monsters/' + atlas + '.png', { frameWidth: malakorFrameSize, frameHeight: malakorFrameSize });
             }
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });

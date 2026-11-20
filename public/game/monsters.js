@@ -1,3 +1,4 @@
+import { malakorActions, malakorActionFrames, malakorFrameSize, malakorThresholds } from './malakor.js';
 // Espèces, patrouilles et combat des monstres.
 import { inZone, zones } from './exploration.js';
 import { monsterArt, monsterFrames, monsterWalkFrames } from './monster-art.js';
@@ -130,7 +131,8 @@ export const monsterTemplates = {
         aggroRange: 136,
         zone: zones.breach_lord,
         specials: {
-            seismic_ring: { label: 'Onde sismique', range: 128, radius: 78, windupMs: 950, damage: 390 },
+            obsidian_cleave: { label: 'Clivage d’obsidienne', range: 64, radius: 72, windupMs: 680, damage: 295 },
+            seismic_ring: { label: 'Onde sismique', range: 100, radius: 88, windupMs: 1220, damage: 385 },
             magma_rift: { label: 'Faille de magma', range: 165, halfWidth: 16, windupMs: 850, damage: 360 },
         },
         patrolCells: [
@@ -140,7 +142,7 @@ export const monsterTemplates = {
         respawnMs: 30000,
         statsForLevel() {
             return {
-                maxHealth: 18500,
+                maxHealth: 36000,
                 damage: 295,
                 patrolSpeed: 24,
                 chaseSpeed: 76,
@@ -193,6 +195,7 @@ export class Monster {
         this.template = monsterTemplates[species];
         this.isBoss = Boolean(this.template.isBoss);
         const artSpecies = this.template.art ?? species;
+        this.motionTexture = artSpecies + '-motion';
         this.art = monsterArt[artSpecies];
         this.specials = Object.keys(this.template.specials ?? {});
         this.tileSize = tileSize;
@@ -300,6 +303,10 @@ export class Monster {
         this.home = index;
         this.patrolIndex = Math.max(0, this.patrol.indexOf(index));
         this.phase = 1;
+        this.trial = null;
+        this.nextTrialAt = Infinity;
+        this.poseRecovery = null;
+        this.echo = null;
         this.attackCounter = 0;
         this.alert = false;
         this.cancelAttack();
@@ -331,6 +338,7 @@ export class Monster {
 
     hide() {
         this.cancelAttack();
+        this.echo = this.trial = null;
         this.alert = false;
         this.counterAt = Infinity;
         this.sprite.clearTint().setVisible(false);
@@ -361,16 +369,21 @@ export class Monster {
     }
 
     nextSpecial() {
-        const count = this.isBoss && this.phase === 1 ? 1 : this.specials.length;
-        return this.specials[this.attackCounter % (count + 1) - 1];
+        if (this.isBoss) {
+            const count = this.phase === 1 ? 2 : this.specials.length;
+            return this.specials[this.attackCounter % count];
+        }
+        return this.specials[this.attackCounter % (this.specials.length + 1) - 1];
     }
 
     checkBossPhase() {
-        if (this.isBoss && this.phase === 1 && this.health > 0 && this.health <= this.maxHealth * 0.55) {
-            this.phase = 2;
-            return true;
-        }
-        return false;
+        if (!this.isBoss || this.phase === 3 || this.health <= 0) return false;
+        if (this.health > this.maxHealth * malakorThresholds[this.phase - 1]) return false;
+        this.phase++;
+        this.attackCounter = 0;
+        this.stunUntil = 0;
+        this.slowUntil = 0;
+        return true;
     }
 
     attackDamage() {
@@ -378,9 +391,7 @@ export class Monster {
     }
 
     currentAttackIntervalMs() {
-        return this.isBoss && this.phase === 2
-            ? Math.round(this.stats.attackIntervalMs * 0.85)
-            : this.stats.attackIntervalMs;
+        return this.isBoss ? [1900, 1750, 1580][this.phase - 1] : this.stats.attackIntervalMs;
     }
 
     canAttack(player) {
@@ -406,6 +417,12 @@ export class Monster {
     hitTestSpecial(player) {
         const visual = this.attackVisual;
         if (!visual) return false;
+        if (visual.special === 'obsidian_cleave') {
+            const dx = player.x - visual.originX;
+            const dy = player.y - visual.originY;
+            const distance = Math.hypot(dx, dy);
+            return distance <= visual.radius && dx * visual.dirX + dy * visual.dirY >= distance * .35;
+        }
         if (visual.special === 'seismic_ring') {
             return Math.hypot(player.x - visual.originX, player.y - visual.originY) <= visual.radius;
         }
@@ -427,20 +444,21 @@ export class Monster {
         if (this.specials.length) this.attackCounter++;
         if (special) {
             const config = this.template.specials[special];
-            const castEnd = now + config.windupMs;
+            const castEnd = now + config.windupMs - (this.isBoss && this.phase === 3 ? 90 : 0);
             this.attackEndsAt = castEnd;
             this.attackVisual = {
                 start: now, castEnd, end: castEnd,
                 x: this.sprite.x, y: this.sprite.y - 24,
                 originX: this.sprite.x, originY: this.sprite.y,
                 dirX: Math.cos(angle), dirY: Math.sin(angle),
-                radius: config.radius,
-                riftRange: config.range,
-                halfWidth: config.halfWidth,
+                radius: config.radius && config.radius + (this.isBoss && this.phase === 3 ? 16 : 0),
+                riftRange: config.range + (this.isBoss && this.phase === 3 ? 28 : 0),
+                halfWidth: config.halfWidth && config.halfWidth + (this.isBoss && this.phase === 3 ? 6 : 0),
                 angle,
                 special,
                 label: config.label,
-                damage: config.damage ?? Math.round(this.stats.damage * config.damageScale),
+                damage: this.isBoss ? Math.round(config.damage * [1, 1.25, 1.85][this.phase - 1])
+                    : Math.round(this.stats.damage * config.damageScale),
             };
             this.sprite.setTint(this.template.tint ?? (special === 'seismic_ring' ? 0xff9a44 : 0xff6b38));
             return;
@@ -520,13 +538,50 @@ export class Monster {
         } else if (moving) {
             pose = 1 + Math.floor(this.walkDistance / this.art.stride * monsterWalkFrames) % monsterWalkFrames;
         }
-        const frame = this.facing * monsterFrames + pose;
-        if (this.sprite.frame.name !== frame) this.sprite.setFrame(frame);
+        let texture = this.motionTexture;
+        let frame = this.facing * monsterFrames + pose;
+        if (this.isBoss) {
+            const enraged = this.phase === 3;
+            if (enraged) texture = 'malakor-rage';
+            const visual = now < this.attackEndsAt ? this.attackVisual : (now < this.poseRecovery?.end ? this.poseRecovery : null);
+            const transforming = this.trial?.transform && now < this.trial.beginsAt;
+            const action = transforming ? 'transform' : (this.trial ? 'seismic_ring' : visual?.special);
+            const actionIndex = malakorActions.indexOf(action);
+            if (actionIndex >= 0) {
+                texture = enraged ? 'malakor-rage-actions' : 'malakor-actions';
+                let step = 3;
+                if (transforming) {
+                    const duration = this.trial.beginsAt - this.trial.start;
+                    step = Math.min(11, Math.floor((now - this.trial.start) * 12 / duration));
+                } else if (this.trial) {
+                    step = 2 + Math.floor((now - this.trial.start) / 105) % 4;
+                } else if (now < visual.castEnd) {
+                    step = Math.min(5, Math.floor(6 * (now - visual.start) / (visual.castEnd - visual.start)));
+                } else {
+                    step = 6 + Math.min(5, Math.floor(6 * (now - visual.castEnd) / 500));
+                }
+                frame = (this.facing * malakorActions.length + actionIndex) * malakorActionFrames + Math.max(0, step);
+            }
+            const size = texture === 'breach_lord-motion' ? this.art.frame : malakorFrameSize;
+            this.sprite.setOrigin(.5, (size - 16) / size);
+            if (this.sprite.input?.hitArea) {
+                const width = this.art.width;
+                const height = this.art.height;
+                Object.assign(this.sprite.input.hitArea, { x: (size - width) / 2, y: size - height - 16, width, height: height + 8 });
+            }
+        }
+        if (this.sprite.texture.key !== texture) this.sprite.setTexture(texture, frame);
+        else if (this.sprite.frame.name !== frame) this.sprite.setFrame(frame);
         this.sprite.setDepth(this.sprite.y);
     }
 
     update(now, delta, player) {
         if (!this.sprite.visible) return;
+
+        if (this.isBoss && this.alert && !inZone(this.template.zone, player.x, player.y)) {
+            this.place(this.patrol[0], this.level);
+            return;
+        }
 
         if (this.alert && !inZone(this.template.zone, player.x, player.y)) {
             this.alert = false;
@@ -542,7 +597,7 @@ export class Monster {
             return;
         }
 
-        if (now < this.attackEndsAt) {
+        if (now < this.attackEndsAt || this.trial || now < (this.poseRecovery?.end ?? 0)) {
             this.renderPose(now);
             this.syncOverlays();
             return;
