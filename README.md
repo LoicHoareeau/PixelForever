@@ -34,7 +34,7 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre [l’accueil du Val-des-Saules](http://127.0.0.1:8000), puis crée un compte ou connecte-toi. Dans **Tes personnages**, crée un Guerrier ou un Mage et choisis **Jouer** pour apparaître sur la place du **Bastion de Braise**, une ville sûre. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
+Crée un compte ou connecte-toi, puis choisis l’une des cinq classes dans **Tes personnages**. Clique sur **Jouer** pour apparaître au **Bastion de Braise**, une ville sûre. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. [PixelForever en local](http://127.0.0.1:8000)
 
 ## Vérifications locales
 
@@ -48,7 +48,7 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 
 ## Version jouable actuelle
 
-- Deux classes : Guerrier (Lina) et Mage (Noé). Leurs apparences et animations de marche sont conservées.
+- Cinq classes jouables, avec le Guerrier en armure, le Mage, le Démoniste, le Voleur et le Chasseur.
 - Carte plein écran de 256 × 252 tuiles de 16 px, caméra suiveuse et zoom ×1 sur les écrans usuels. Les falaises délimitent le littoral.
 - Sangliers N.1–5, squelettes N.5–10 et dragons N.10–20. À l’est des montagnes, le chemin traverse les Terres dévastées (N.21–35) et rejoint Malakor (N.40). Au sud du Trône d’Obsidienne, une route côtière relie le Marais des Scories, les Remparts de Basalte et le Cap du Gouffre (N.41–60).
 - Le cimetière mêle pavés usés, mausolées sculptés, stèles moussues et saules à lichen. Les Terres dévastées alternent cendre striée, basalte, arbres calcinés et arches incandescentes. Les textures se fondent dans le terrain voisin.
@@ -63,12 +63,17 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 
 | Classe / arme | Attaque de base | Portée de base |
 | --- | --- | --- |
-| Guerrier · épée ou croc | Coup en mêlée | 1,5 case |
+| Guerrier · épée, croc ou Hache de fer | Coup en mêlée | 1,5 case |
 | Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 7,5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 1,5 case |
+| Démoniste · Grimoire | Trait d’ombre | 7 cases |
+| Voleur · Dagues | Coup de dague | 1,5 case |
+| Chasseur · Arc | Flèche rapide | 8 cases |
 | Mains nues | Coup de poing | 1,5 case |
 
-L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes.
+L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes. [Règles des classes et des talents](docs/GAME_DESIGN.md)
+
+Le Démoniste combine Corruption instantanée, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité pour leurs dagues et leur arc. Le Guerrier peut investir en Défense et équiper la Hache de fer depuis le sac. Son arme apparaît en main et la hache joue une frappe avec un croissant incandescent. [Effets visuels](docs/VFX.md)
 
 Les sorts de zone du Mage se lancent également à distance : Tourbillon de feu et Nova de givre sont centrés sur la cible sélectionnée, pas sur le mage. L’arme équipée ne réduit la portée d’aucun sort.
 
@@ -78,16 +83,16 @@ Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L�
 
 Le niveau 1 ne donne aucun point. Chaque montée suivante donne trois points de caractéristiques et un point de talent/sort. Le niveau 2 demande 100 XP ; le seuil augmente ensuite de 50 XP par niveau. Les monstres de niveau supérieur accordent davantage d’XP. Dans les Terres dévastées, un diablotin N.22 rapporte 676 XP et un garde N.35 en rapporte 1 638.
 
-Chaque défaite donne un objet : potion de vie 47 %, potion de ressource 30 %, arme rare 15 %, arme épique 5 %, Écaille de Saphyr 2 %, Cœur de flamme bleue 1 %. Les armes sont adaptées à la classe : Lame des saules / Croc de Saphyr pour le Guerrier, Bâton des saules / Sceptre de Saphyr pour le Mage. Écailles et cœurs sont des matériaux, non équipables. Les potions rendent 20 PV ou 15 points de ressource. La Citadelle, Malakor, les Remparts et le Cap donnent aussi des coiffes et des gants adaptés à la classe.
+Chaque victoire donne un objet selon un tirage qui réserve 47 % à la vie, 30 % à la ressource, 15 % à une arme rare, 5 % à une arme épique, 2 % à l’Écaille de Saphyr et 1 % au Cœur de flamme bleue. Le type d’arme dépend de la classe. Écailles et cœurs sont des matériaux. Les potions rendent 20 PV ou 15 points de ressource. La Citadelle, Malakor, les Remparts et le Cap donnent aussi des coiffes et des gants adaptés à la classe.
 
 Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipées, les allocations et la quête restent enregistrés par personnage dans le navigateur. Effacer ce stockage peut donc effacer ces éléments locaux.
 
 ## Commandes
 
-Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence principale, `3`–`6` sorts de talents débloqués, `R` potion de vie, `F` potion de ressource, `C` fiche, `T` talents, `I` inventaire, `E` dialogue du PNJ à proximité. Les touches d’action utilisent les positions physiques de la rangée supérieure, sans Maj sur AZERTY. Le clic sélectionne un monstre.
+Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence principale, `3`–`9` techniques disponibles selon la classe, `R` potion de vie, `F` potion de ressource, `C` fiche, `T` talents, `I` inventaire, `E` dialogue du PNJ à proximité. Les touches d’action utilisent les positions physiques de la rangée supérieure, sans Maj sur AZERTY. Le clic sélectionne un monstre.
 
 ## Périmètre restant
 
 Le monde partagé/WebSocket, le combat validé par serveur, le marchand, la vente, l’équipement secondaire et la sauvegarde serveur du sac/talents/quêtes ne sont pas encore intégrés. Le modèle PHP `Character`/`Blob` conserve des règles de prototype historiques testées séparément.
 
-Les règles détaillées figurent dans le [game design](docs/GAME_DESIGN.md), l’affichage et les contrôles dans le [front-end](docs/FRONTEND.md), la persistance dans le [back-end](docs/BACKEND.md). Le [guide Render](docs/DEPLOIEMENT.md) distingue fusion Git et déploiement.
+Documentation du projet · [Game design](docs/GAME_DESIGN.md) · [Front-end](docs/FRONTEND.md) · [Back-end](docs/BACKEND.md) · [VFX](docs/VFX.md) · [Déploiement](docs/DEPLOIEMENT.md)

@@ -216,8 +216,8 @@ test('les deux récompenses de Malakor équipent des emplacements indépendants 
     assert.equal(toggleArmor(progress, 'mage', head.id), false);
     assert.equal(armorBonuses(progress, 'mage').health, 0);
     assert.equal(progress.armor.hands, hands.id);
-    for (const id of Object.keys(armorItems)) {
-        const png = readFileSync(new URL(`../public/game/val-des-saules/items/${id}.png`, import.meta.url));
+    for (const piece of Object.values(armorItems)) {
+        const png = readFileSync(new URL(`../public/game/val-des-saules/items/${piece.icon ?? piece.id}.png`, import.meta.url));
         assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [32, 32]);
     }
 });

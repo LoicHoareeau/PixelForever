@@ -10,16 +10,23 @@
             {{ form_row(form.name) }}
             <fieldset class="class-picker"{% if form.class.vars.errors|length %} aria-describedby="{{ form.class.vars.id }}_errors"{% endif %}>
                 <legend>Classe</legend>
+                {% set profiles = {
+                    warrior: 'Mêlée, armes lourdes et protection',
+                    mage: 'Feu, givre et arcanes',
+                    warlock: 'Malédictions, drains et démons',
+                    rogue: 'Dagues, poisons et mobilité',
+                    hunter: 'Arc, pièges et faucon'
+                } %}
                 <div class="class-grid">
                     {% for choice in form.class %}
                         {% set class = choice.vars.value %}
                         <label class="class-choice {{ class }}">
                             {{ form_widget(choice) }}
-                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class == 'warrior' ? 'lina' : 'noe' }}/south.png"
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class == 'mage' ? 'noe' : class }}/south.png"
                                  width="48" height="48" alt="">
                             <span>
                                 <strong>{{ choice.vars.label }}</strong>
-                                <small>{{ class == 'warrior' ? 'Combat au corps à corps' : 'Sorts à distance' }}</small>
+                                <small>{{ profiles[class] }}</small>
                             </span>
                         </label>
                     {% endfor %}

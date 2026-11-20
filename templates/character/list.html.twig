@@ -19,10 +19,10 @@
         {% if characters is empty %}
             <div class="val-empty">
                 <div class="val-empty-art" aria-hidden="true">
-                    <img src="{{ app.request.basePath }}/game/val-des-saules/lina/south.png" width="96" height="96" alt="">
+                    <img src="{{ app.request.basePath }}/game/val-des-saules/warrior/south.png" width="96" height="96" alt="">
                     <img src="{{ app.request.basePath }}/game/val-des-saules/noe/south.png" width="96" height="96" alt="">
                 </div>
-                <p>Crée ton premier Guerrier ou Mage pour commencer.</p>
+                <p>Crée ton premier personnage pour commencer.</p>
                 <a class="button" href="{{ path('character_create') }}">Créer mon premier personnage</a>
             </div>
         {% else %}
@@ -35,7 +35,7 @@
                     <li class="val-character {{ class.value }}{% if active %} val-character-active{% endif %}">
                         <div class="val-portrait" aria-hidden="true">
                             <span class="val-pedestal"></span>
-                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.skin }}/south.png"
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.value == 'warrior' ? 'warrior' : class.skin }}/south.png"
                                  width="144" height="144" alt="">
                         </div>
                         <div class="val-character-info">
@@ -44,12 +44,14 @@
                                 {% if active %}<span class="val-active-label">Actif</span>{% endif %}
                             </p>
                             <h2>{{ character.name }}</h2>
-                            <p class="val-character-resources">{{ class.maxHealth }} PV · {{ class.maxMana }} {{ class.value == 'warrior' ? 'énergie' : 'mana' }} de base</p>
+                            <p class="val-character-resources">{{ class.maxHealth }} PV · {{ class.maxMana }} {{ class.resourceName|lower }} de base</p>
                             <dl class="val-class-stats" aria-label="Caractéristiques de base">
                                 <div><dt><abbr title="Force">FOR</abbr></dt><dd>{{ stats.strength }}</dd></div>
                                 <div><dt><abbr title="Intelligence">INT</abbr></dt><dd>{{ stats.intelligence }}</dd></div>
                                 <div><dt><abbr title="Vitalité">VIT</abbr></dt><dd>{{ stats.vitality }}</dd></div>
                                 <div><dt><abbr title="Esprit">ESP</abbr></dt><dd>{{ stats.spirit }}</dd></div>
+                                {% if stats.dexterity is defined %}<div><dt><abbr title="Dextérité">DEX</abbr></dt><dd>{{ stats.dexterity }}</dd></div>{% endif %}
+                                {% if stats.defense is defined %}<div><dt><abbr title="Défense">DÉF</abbr></dt><dd>{{ stats.defense }}</dd></div>{% endif %}
                             </dl>
                             <form method="post" action="{{ path('character_select', {id: character.id}) }}">
                                 <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">

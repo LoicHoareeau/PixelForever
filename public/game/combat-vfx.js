@@ -8,6 +8,10 @@ const rows = [
     'steel_slash', 'gilded_spin', 'arcane_stream', 'ward',
     'rift_glints',
 ];
+const classRows = [
+    'axe_swing', 'dagger', 'arrow', 'arrow_hit', 'arrow_volley', 'trap', 'curse', 'summon',
+    'shadow_bolt', 'chaos', 'imp_flare', 'bulwark', 'venom', 'drain',
+];
 
 const infernoPalette = [0x742027, 0xbf321e, 0xf76026, 0xffa745, 0xffe092, 0xfff3d8];
 const infernoLayers = [1, .88, .73, .59, .47, .38];
@@ -89,7 +93,8 @@ export function drawInfernoBeam(layer, wave, x, y, from, to, length, rage, still
 }
 
 export function vfxFrame(kind, progress) {
-    return rows.indexOf(kind) * vfxFrames
+    const worldRow = rows.indexOf(kind);
+    return (worldRow === -1 ? classRows.indexOf(kind) : worldRow) * vfxFrames
         + Math.max(0, Math.min(vfxFrames - 1, Math.floor(progress * vfxFrames)));
 }
 
@@ -106,9 +111,14 @@ export function createCombatVfx(scene, depth) {
             const margin = vfxFrameSize * scale * Math.max(1, stretch) / 2;
             if (x + margin < view.x || x - margin > view.right
                 || y + margin < view.y || y - margin > view.bottom || used >= 80) return;
-            if (used === pool.length) pool.push(scene.add.image(x, y, 'combat-vfx').setDepth(depth));
             const frame = vfxFrame(kind, progress);
-            pool[used++].setVisible(true).setPosition(Math.round(x), Math.round(y)).setFrame(frame)
+            if (frame < 0) return;
+            const texture = classRows.includes(kind) ? 'class-vfx' : 'combat-vfx';
+            if (used === pool.length) pool.push(scene.add.image(x, y, texture).setDepth(depth));
+            const sprite = pool[used++];
+            if (sprite.texture.key !== texture) sprite.setTexture(texture, frame);
+            else sprite.setFrame(frame);
+            sprite.setVisible(true).setPosition(Math.round(x), Math.round(y))
                 .setScale(scale * stretch, scale).setRotation(angle).setAlpha(Math.max(0, Math.min(1, alpha)));
         },
     };

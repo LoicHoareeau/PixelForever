@@ -43,6 +43,9 @@ import { saveProgress } from './progression.js';
         Digit4: 'talent-1',
         Digit5: 'talent-2',
         Digit6: 'talent-3',
+        Digit7: 'talent-4',
+        Digit8: 'talent-5',
+        Digit9: 'talent-6',
     };
     const potions = { KeyR: 'health', KeyF: 'mana' };
     const vectors = { north: [0, -1], west: [-1, 0], south: [0, 1], east: [1, 0] };
@@ -61,6 +64,7 @@ import { saveProgress } from './progression.js';
 
         preload() {
             this.skin = world.dataset.skin;
+            const art = this.skin === 'lina' ? 'warrior' : this.skin;
             this.armorIconPath = assetPath + 'items/';
             this.walkSheet = this.skin + '-walk';
             this.attackSheet = this.skin + '-attack';
@@ -80,13 +84,16 @@ import { saveProgress } from './progression.js';
                 this.load.spritesheet(atlas, 'monsters/' + atlas + '.png', { frameWidth: malakorFrameSize, frameHeight: malakorFrameSize });
             }
             this.load.spritesheet('combat-vfx', 'combat-vfx.png', { frameWidth: vfxFrameSize, frameHeight: vfxFrameSize });
+            this.load.spritesheet('class-vfx', 'class-vfx.png', { frameWidth: vfxFrameSize, frameHeight: vfxFrameSize });
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             baseTiles.forEach((tile, index) => this.load.image(tile, 'terrain-' + (index + 1) + '.png'));
-            directions.forEach(direction => this.load.image(this.skin + '-' + direction, this.skin + '/' + direction + '.png'));
-            this.load.spritesheet(this.walkSheet, this.skin + '/walk.png', { frameWidth: 48, frameHeight: 48 });
-            const attackSize = this.skin === 'lina' ? 64 : 68;
-            this.load.spritesheet(this.attackSheet, this.skin + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
+            directions.forEach(direction => this.load.image(this.skin + '-' + direction, art + '/' + direction + '.png'));
+            this.load.spritesheet(this.walkSheet, art + '/walk.png', { frameWidth: 48, frameHeight: 48 });
+            const attackSize = this.skin === 'noe' ? 68 : 64;
+            this.load.spritesheet(this.attackSheet, art + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
+            this.load.spritesheet('class-gear', 'class-gear.png', { frameWidth: 40, frameHeight: 32 });
+            this.load.spritesheet('class-familiars', 'class-familiars.png', { frameWidth: 32, frameHeight: 32 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
                 status.textContent = 'Un élément de la carte manque. Recharge la page pour réessayer.';
             });
@@ -124,6 +131,10 @@ import { saveProgress } from './progression.js';
             this.position = new Phaser.Math.Vector2(x, y);
             this.facing = facing;
             this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, 0.48).setDepth(3);
+            if (this.skin !== 'noe') {
+                this.weaponSprite = this.add.image(x, y, 'class-gear').setOrigin(.4, .5);
+                this.offHandSprite = this.add.image(x, y, 'class-gear').setOrigin(.4, .5).setVisible(false);
+            }
 
             const monsters = [
                 new Monster(this, 'boar', tileSize, 0),
@@ -624,12 +635,16 @@ import { saveProgress } from './progression.js';
             let flip = false;
             if (gesture) {
                 const facing = gesture.attack.facing;
-                if (facing.startsWith('north') || (this.skin === 'noe' && gesture.attack.ranged)) {
+                if (this.skin !== 'noe') {
+                    texture = this.attackSheet;
+                    frame = directions.indexOf(facing) * 9 + gesture.frame;
+                    origin = 54 / 64;
+                } else if (facing.startsWith('north') || gesture.attack.ranged) {
                     frame = facing + '-' + gesture.pose;
                 } else {
                     texture = this.attackSheet;
                     frame = gesture.frame + (facing === 'south' ? 9 : 0);
-                    origin = this.skin === 'lina' ? 54 / 64 : 57 / 68;
+                    origin = 57 / 68;
                     flip = facing.includes('west');
                 }
             } else if (walking) {
@@ -643,6 +658,43 @@ import { saveProgress } from './progression.js';
             if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
+            if (this.weaponSprite) this.renderArmament(gesture, walking, time);
+        }
+
+        renderArmament(gesture, walking, time) {
+            const { x, y } = this.position;
+            const facing = gesture?.attack.facing ?? this.facing;
+            const heading = directions.indexOf(facing) * Math.PI / 4;
+            const dx = Math.cos(heading);
+            const dy = Math.sin(heading);
+            const style = gesture?.attack.weaponStyle ?? this.combat.weaponStyle;
+            const frame = { sword: 0, axe: 1, daggers: 2, bow: 3, grimoire: 4, shield: 5 }[style];
+            const attackFrame = gesture?.frame ?? 0;
+            const stance = gesture ? [-.12, -.27, -.46, -.68, .36, .73, .45, .21, .03][attackFrame] : 0;
+            const lift = gesture ? [0, 1, 4, 7, 2, -1, -2, -1, 0][attackFrame]
+                : walking ? Math.round(Math.sin(this.walkDistance / 6) * 2) : 0;
+            const back = dy < -.4;
+            const side = dx < -.2 ? -1 : 1;
+            const swing = style === 'axe' ? stance * 1.7 : stance;
+            const angle = ['bow', 'grimoire', 'shield'].includes(style) ? (style === 'bow' && gesture ? dy * .48 : 0)
+                : heading + (gesture ? swing * side : .76 * side);
+            const reach = gesture && attackFrame >= 4 && attackFrame < 8 ? 7 : 3;
+            const handX = Math.round(x + dx * reach + side * 6);
+            const handY = Math.round(y - 18 + dy * 5 - lift);
+            this.weaponSprite.setVisible(frame !== undefined && this.combat.health > 0);
+            if (frame !== undefined) {
+                this.weaponSprite.setFrame(frame).setPosition(handX, handY)
+                    .setRotation(angle).setFlipX(style === 'bow' && side < 0).setDepth(y + (back ? -.2 : .2));
+            }
+            const shield = this.skin === 'lina' && style !== 'shield'
+                && (this.combat.progress.talents?.w_shield_bash || time < (this.combat.guard?.until ?? 0));
+            const dagger = style === 'daggers';
+            this.offHandSprite.setVisible(Boolean((shield || dagger) && this.combat.health > 0));
+            if (shield || dagger) {
+                this.offHandSprite.setFrame(shield ? 5 : 2)
+                    .setPosition(Math.round(x + dx * 2 - side * 8), Math.round(y - 16 + dy * 2 - lift))
+                    .setRotation(dagger ? heading - swing * side : 0).setDepth(y + (back ? -.3 : .1));
+            }
         }
     }
 

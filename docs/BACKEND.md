@@ -18,7 +18,9 @@ SQLite sert au développement local et aux tests ; PostgreSQL est utilisé pour 
 
 ## Règles métier et client
 
-`src/Game/CharacterClass.php` fournit la classe, l’apparence (`lina` pour le Guerrier, `noe` pour le Mage) et les valeurs de départ. `CharacterController` transmet la portée de base (`range`), la portée de sort (`specialRange`) et le multiplicateur de dégâts de baguette (`wandDamageMultiplier`). `progression.js` calcule l’auto-attaque selon l’arme et la progression. `combat.js` applique la portée des sorts indépendamment de l’arme équipée.
+`src/Game/CharacterClass.php` fournit les cinq classes, leurs apparences, leurs ressources et leurs valeurs de départ. Les nouvelles classes utilisent la colonne texte existante de Doctrine. La hache équipée et les points de Dextérité et de Défense suivent la sauvegarde locale. `CharacterController` transmet la portée de base (`range`), la portée de sort (`specialRange`) et le multiplicateur de dégâts de baguette (`wandDamageMultiplier`). `progression.js` calcule l’auto-attaque selon l’arme et la progression. `combat.js` applique la portée des sorts du Mage indépendamment de l’arme équipée.
+
+Les dégâts périodiques, la canalisation et les familiers sont résolus côté navigateur. Le familier actif et sa cible sont temporaires. Les talents qui débloquent les invocations sont conservés dans la sauvegarde locale avec les autres talents. [Règles des classes](GAME_DESIGN.md#classes-et-attaques) · [Logique des techniques](../public/game/class-combat.js)
 
 `src/Game/Character.php`, `Blob.php`, `Item.php` et `TrailQuest.php` conservent un prototype métier PHP historique (Blob, vente, objets simples). Ce modèle n’est pas le moteur exécuté par Phaser : son `EmberStaff` et sa table de butin ne doivent pas être pris pour le catalogue actuel du navigateur. Ne pas modifier ses anciennes règles sans vérifier ses tests et ses utilisateurs.
 
@@ -38,4 +40,4 @@ Pour un monde partagé, le serveur devra valider déplacement, portée, recharge
 
 Le futur catalogue persistant pourra ajouter définitions d’objets, entrées d’inventaire, emplacements d’équipement, définitions de monstres et de quêtes. La vente devra vérifier propriété, quantité, état équipé et proximité du marchand avant retrait de l’objet et crédit d’or dans une même transaction. Ces tables et fonctions ne sont pas encore implémentées.
 
-Voir le [front-end](FRONTEND.md), le [game design](GAME_DESIGN.md) et le [déploiement](DEPLOIEMENT.md).
+Voir aussi [Front-end](FRONTEND.md) · [Game design](GAME_DESIGN.md) · [VFX](VFX.md) · [Déploiement](DEPLOIEMENT.md)

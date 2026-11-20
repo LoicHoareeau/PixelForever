@@ -131,8 +131,9 @@ try {
     check($alice->get('selected_character') === $rolandId, 'La sélection de Roland doit rester active.');
     $warriorPage = visit($alice, 'GET', '/personnages/jeu', 200);
     $warriorRules = json_decode(htmlValue($warriorPage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
-    check(htmlValue($warriorPage, '//div[@id="world"]/@data-skin') === 'lina', 'La guerrière doit utiliser les animations d’épée de Lina.');
-    check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/lina/south.png'), 'Le portrait de la guerrière doit correspondre à son sprite.');
+    check(htmlValue($warriorPage, '//div[@id="world"]/@data-skin') === 'lina', 'Les personnages Guerrier existants doivent conserver leur identifiant.');
+    check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/warrior/south.png'), 'Le portrait du Guerrier doit utiliser son nouvel atlas.');
+    check(str_contains($warriorPage->getContent(), 'data-weapon="axe"') && isset($warriorRules['baseStats']['defense']), 'Le Guerrier voit sa hache et la Défense.');
     check($warriorRules['classKey'] === 'warrior' && !$warriorRules['ranged'] && $warriorRules['range'] === 1.5, 'La guerrière doit combattre au corps à corps.');
     check($warriorRules['specialManaCost'] === 10 && $warriorRules['baseManaRegen'] == 2.0 && $warriorRules['specialCastMs'] === 0, 'Le barème d’énergie et d’attaque de la guerrière doit rester intact.');
     check($warriorRules['resourceName'] === 'Énergie' && $warriorRules['specialName'] === 'Attaque chargée', 'La guerrière doit conserver son énergie et ses compétences de mêlée.');
@@ -166,6 +167,14 @@ try {
     check($mageRules['loot']['rare']['icon'] === 'staff' && $mageRules['loot']['epic']['icon'] === 'wand', 'Les armes du mage doivent distinguer bâton et baguette.');
     visit($bob, 'POST', "/personnages/$rolandId/selection", 404, ['_token' => $selectionToken]);
     check($bob->get('selected_character') === $bobSelection, 'Le refus doit préserver la sélection de Bob.');
+    foreach (['warlock' => 'Morgane', 'rogue' => 'Lys', 'hunter' => 'Arden'] as $class => $name) {
+        createCharacter($bob, $name, $class);
+        $game = visit($bob, 'GET', '/personnages/jeu', 200);
+        $rules = json_decode(htmlValue($game, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+        check($class === $rules['classKey'] && $class === htmlValue($game, '//div[@id="world"]/@data-skin'), 'La nouvelle classe doit accéder à son apparence.');
+        check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Les nouvelles classes conservent un butin valide.');
+        check(isset($rules['baseStats']['dexterity']) === ($class !== 'warlock'), 'La Dextérité est réservée au Voleur et au Chasseur.');
+    }
 
     $progressPath = $warriorRules['progressUrl'];
     $progressData = ['_token' => $warriorRules['progressToken'], 'level' => 3, 'xp' => 77];

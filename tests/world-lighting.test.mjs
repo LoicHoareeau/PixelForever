@@ -72,6 +72,14 @@ test('les cycles animés des sorts et du boss ont une rangée distincte dans l�
     }
 });
 
+test('les VFX de classes occupent un atlas séparé compatible avec une texture de 4096 px', () => {
+    const png = readFileSync(new URL('../public/game/val-des-saules/class-vfx.png', import.meta.url));
+    const kinds = ['axe_swing', 'dagger', 'arrow', 'arrow_hit', 'arrow_volley', 'trap', 'curse', 'summon',
+        'shadow_bolt', 'chaos', 'imp_flare', 'bulwark', 'venom', 'drain'];
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [2048, 1792]);
+    for (const [row, kind] of kinds.entries()) assert.equal(vfxFrame(kind, 0), row * vfxFrames);
+});
+
 test('la Taillade joue autour du Guerrier et la Déflagration relie la cible au lanceur', () => {
     const combat = Object.create(TrainingCombat.prototype);
     const draws = [];

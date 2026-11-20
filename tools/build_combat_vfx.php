@@ -7,6 +7,7 @@ const FRAMES = 16;
 const HOT = [0x6e2339, 0xd04024, 0xff722f, 0xffbb55, 0xfff1b6];
 const ICE = [0x243b6f, 0x3d74b4, 0x69cef3, 0xa9ecff, 0xedffff];
 const ARCANE = [0x38204f, 0x7047a3, 0xa864e1, 0xd5a4ff, 0xffedff];
+const CLASS_EFFECTS = ['axe_swing','dagger','arrow','arrow_hit','arrow_volley','trap','curse','summon','shadow_bolt','chaos','imp_flare','bulwark','venom','drain'];
 
 function canvas(int $width, int $height): GdImage
 {
@@ -487,9 +488,132 @@ function airCurrent(GdImage $image, string $kind, float $p): void
     }
 }
 
+function classEffect(GdImage $image, string $kind, float $p): void
+{
+    $gold = [0x63363b, 0xa96b3d, 0xefab4c, 0xffd587, 0xffffda];
+    $jade = [0x243b36, 0x506440, 0x8aa955, 0xcce276, 0xf5ffc2];
+    $steel = [0x24374e, 0x527194, 0x86afc7, 0xb6dbe8, 0xf4ffff];
+    $violet = [0x2a1a38, 0x69286f, 0xab4eb7, 0xdc79f0, 0xffcdf4];
+    $end = 1 - ease(($p - .43) / .57);
+
+    if ($kind === 'axe_swing' || $kind === 'dagger' || $kind === 'bulwark') {
+        $axe = $kind === 'axe_swing';
+        $guard = $kind === 'bulwark';
+        $colors = $axe ? $gold : $steel;
+        $swing = $guard ? -.96 : -1.20 + $p * .90;
+        $size = $axe ? 49 : ($guard ? 41 : 33);
+        $width = ($axe ? 12 : 8) * (.55 + .45 * sin(M_PI * min(1, $p + .10)));
+        if ($p < .82) {
+            ribbon($image, $swing, $size + $p * 5, $axe ? 2.21 : 1.84, $width, $colors, $p);
+            ribbon($image, $swing + ($guard ? .08 : .25), $size - 12, 1.56, $width * .53,
+                $axe ? HOT : $violet, $p, .83);
+            if (!$axe && !$guard) ribbon($image, -1.02 - $p*.72, $size + 12, .79, 4.4, $steel, $p, .81);
+        }
+        for ($i = 0; $i < ($axe ? 23 : 15); $i++) {
+            $a = fmod($i * 2.39996, 2 * M_PI);
+            $x = 80 + $p * ($i % 8) * 3.4 + cos($a) * (11 + $p * 17);
+            $y = 65 + sin($a) * (5 + $p * 38);
+            jewel($image, $x, $y, 2 + (1 - $p) * (2 + $i % 8), $a, array_map(
+                static fn ($color) => colorAt($color, $end * .91), $i % 2 ? $gold : $colors));
+        }
+        return;
+    }
+
+    if ($kind === 'arrow' || $kind === 'shadow_bolt') {
+        $arrow = $kind === 'arrow';
+        $colors = $arrow ? $gold : $violet;
+        $pulse = .75 + .25 * sin($p * 2 * M_PI);
+        for ($i = 0; $i < 8; $i++) {
+            $trail = 42 - fmod($i * 7 + $p * 16, 44);
+            $y = 64 + ($i % 2 ? 1 : -1) * (2 + $i % 4 * 3);
+            imagefilledrectangle($image, (int) $trail, $y, (int) $trail + 13 + $i % 4 * 3, $y + 1,
+                colorAt(($arrow ? $jade : $violet)[$i % 4], $pulse * (.54 + $i % 3 * .13)));
+        }
+        if ($arrow) {
+            poly($image, [40,63,72,61,69,55,88,64,69,73,72,67,40,66,32,72,35,64,32,57], $gold[1]);
+            poly($image, [42,63,74,63,72,58,85,64,72,70,75,66,42,65], $gold[4]);
+            poly($image, [36,59,45,64,36,69,38,64], $jade[3]);
+        } else {
+            jewel($image, 67, 64, 16 * $pulse, 0, $violet);
+            jewel($image, 70, 63, 6, 0, HOT);
+            ribbon($image, $p * 2.1, 19, 2.8, 4, $violet, $p);
+        }
+        return;
+    }
+
+    if ($kind === 'arrow_hit' || $kind === 'arrow_volley' || $kind === 'trap') {
+        $trap = $kind === 'trap';
+        $many = $kind === 'arrow_volley';
+        $fan = $many || $trap;
+        $colors = $trap ? $jade : $gold;
+        $impact = min(1, $p * 6);
+        ring($image, min(1, $p * 1.22), $colors, .32);
+        for ($i = 0; $i < ($many ? 11 : 7); $i++) {
+            $spread = $i * 2.39996;
+            $radius = $fan ? 11 + $i % 4 * 9 : 2 + $p * (13 + $i * 2);
+            $x = 64 + cos($spread) * $radius;
+            $y = 66 + sin($spread) * $radius * .55 - 7 * $p;
+            if ($trap) {
+                jewel($image, $x, $y, (15 + $i % 3 * 11) * $impact * $end, -M_PI / 2 + cos($spread) * .35,
+                    array_map(static fn ($c) => colorAt($c, $end), $jade));
+            } else {
+                jewel($image, $x, $y, (6 + $i % 4 * 5) * $end, $fan ? 1.11 : $spread,
+                    array_map(static fn ($c) => colorAt($c, $end), $colors));
+            }
+        }
+        embers($image, $p, $colors, 15, $fan ? 1.1 : .88);
+        return;
+    }
+
+    if ($kind === 'drain') {
+        $tide = .8 + .2 * cos($p * 2 * M_PI);
+        for ($i = 0; $i < 3; $i++) {
+            $line = static fn ($t) => [7 + 113 * $t, 64 + sin($t * 11 + $p * M_PI * 2 + $i * 2.09) * (3 + 7 * sin($t * M_PI))];
+            $thickness = static fn ($t) => 2 + 2.6 * sin($t * M_PI) ** 2;
+            energyStroke($image, $line, $thickness, $i === 1 ? HOT : $violet, $tide);
+        }
+        for ($i = 0; $i < 5; $i++) {
+            $x = 11 + (1 - fmod($p + $i / 5, 1)) * 104;
+            jewel($image, $x, 64 + cos($x * .14) * 9, 5 + $i % 3, M_PI, $violet);
+        }
+        return;
+    }
+
+    $colors = match ($kind) { 'venom' => $jade, 'imp_flare' => HOT, default => $violet };
+    $summon = $kind === 'summon';
+    $chaos = $kind === 'chaos';
+    $open = ease($p / .27) * $end;
+    $radius = $summon ? 42 : ($chaos ? 31 : 23);
+    if ($open > .045) {
+        bloom($image, 64, 64, $radius * 2.2, $radius * 1.9, $colors[1], $open * .68);
+        ring($image, min(1, .18 + $p * .7), $colors, $summon ? .39 : .54);
+        for ($i = 0; $i < 8; $i++) {
+            $angle = $i * M_PI / 4 + $p * 1.7;
+            $x = 64 + cos($angle) * $radius * $open;
+            $y = 73 + sin($angle) * $radius * .54;
+            $height = ($summon ? 29 + $i % 3 * 10 : 9 + $i % 3 * 6) * $open;
+            tongue($image, $x, $y, 2.4 + 3.2 * $open, $height, cos($angle) * 7,
+                array_map(static fn ($color) => colorAt($color, .92 * $end), $colors));
+            if (!$summon) jewel($image, $x, $y - $height - 3, 4.5, $angle, $colors);
+        }
+        if ($chaos) ribbon($image, -$p * 5, 29, 4.2, 9, HOT, $p);
+        if ($summon) {
+            for ($i = 0; $i < 3; $i++) {
+                $angle = $i * 2.094 + $p;
+                jewel($image, 64 + cos($angle) * 37, 65 + sin($angle) * 22, 7 * $open, $angle, $violet);
+            }
+        }
+    }
+    embers($image, $p, $colors, $summon ? 29 : 16, $summon ? 1.13 : .88);
+}
+
 function drawFrame(string $kind, int $frame): GdImage
 {
     $image = canvas(CELL, CELL);
+    if (in_array($kind, CLASS_EFFECTS, true)) {
+        classEffect($image, $kind, $frame / (FRAMES - 1));
+        return $image;
+    }
     if (in_array($kind, ['mist', 'marsh_wisp', 'pollen', 'snow', 'ash', 'cinders', 'rift_glints'], true)) {
         airCurrent($image, $kind, $frame / FRAMES);
         return $image;
@@ -581,10 +705,12 @@ function drawFrame(string $kind, int $frame): GdImage
 }
 
 $kinds = ['firebolt','arcane','frostbolt','vortex','frost','arcane_burst','seismic','flame','magma','fire_burst','slash','rune','rage_aura','rage_ignition','mist','marsh_wisp','pollen','snow','ash','cinders','steel_slash','gilded_spin','arcane_stream','ward','rift_glints'];
-$atlas = canvas(CELL * FRAMES, CELL * count($kinds));
-foreach ($kinds as $row => $kind) {
-    for ($frame = 0; $frame < FRAMES; $frame++) {
-        imagecopy($atlas, drawFrame($kind, $frame), CELL * $frame, CELL * $row, 0, 0, CELL, CELL);
+foreach (['combat-vfx' => $kinds, 'class-vfx' => CLASS_EFFECTS] as $name => $rows) {
+    $atlas = canvas(CELL * FRAMES, CELL * count($rows));
+    foreach ($rows as $row => $kind) {
+        for ($frame = 0; $frame < FRAMES; $frame++) {
+            imagecopy($atlas, drawFrame($kind, $frame), CELL * $frame, CELL * $row, 0, 0, CELL, CELL);
+        }
     }
+    imagepng($atlas, dirname(__DIR__) . '/public/game/val-des-saules/' . $name . '.png', 8);
 }
-imagepng($atlas, dirname(__DIR__) . '/public/game/val-des-saules/combat-vfx.png', 8);

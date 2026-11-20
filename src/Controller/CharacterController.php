@@ -128,7 +128,13 @@ final class CharacterController extends AbstractController
         }
 
         $class = $character->getClass();
-        $warrior = $class === CharacterClass::Warrior;
+        [$basic, $special, $weapon, $basicIcon, $specialIcon, $rareName, $epicName, $rareIcon, $epicIcon, $usage] = match ($class) {
+            CharacterClass::Warrior => ['Coup d’épée', 'Attaque chargée', 'Épée de fer', 'sword', 'charge', 'Lame des saules', 'Croc de Saphyr', 'blade', 'fang', 'Corps à corps'],
+            CharacterClass::Mage => ['Trait arcanique', 'Boule de feu', 'Baguette de braise', 'bolt', 'fire', 'Bâton des saules', 'Sceptre de Saphyr', 'staff', 'wand', 'Corps à corps'],
+            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Grimoire de cendres', 'bolt', 'rune', 'Codex des saules', 'Codex de Saphyr', 'grimoire', 'grimoire', 'Grimoire · à distance'],
+            CharacterClass::Rogue => ['Coup de dague', 'Entaille venimeuse', 'Dagues de fer', 'sword', 'charge', 'Dagues des saules', 'Dagues de Saphyr', 'daggers', 'daggers', 'Dagues · corps à corps'],
+            CharacterClass::Hunter => ['Flèche rapide', 'Tir perforant', 'Arc de frêne', 'bolt', 'charge', 'Arc des saules', 'Arc de Saphyr', 'bow', 'bow', 'Arc · à distance'],
+        };
 
         return $this->render('game/play.html.twig', [
             'character' => $character,
@@ -136,15 +142,18 @@ final class CharacterController extends AbstractController
                 'classKey' => $class->value,
                 'health' => $class->maxHealth(),
                 'mana' => $class->maxMana(),
-                'resourceName' => $class === CharacterClass::Warrior ? 'Énergie' : 'Mana',
+                'resourceName' => $class->resourceName(),
                 'range' => $class->attackRange(),
-                'specialRange' => $warrior ? $class->attackRange() : 15.0,
+                'specialRange' => $class === CharacterClass::Mage ? 15.0 : $class->attackRange(),
                 'wandDamageMultiplier' => 0.5,
-                'ranged' => $class === CharacterClass::Mage,
+                'ranged' => $class->attackRange() > 1.5,
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),
-                'basicName' => $class === CharacterClass::Warrior ? 'Coup d’épée' : 'Trait arcanique',
-                'specialName' => $class === CharacterClass::Warrior ? 'Attaque chargée' : 'Boule de feu',
+                'basicName' => $basic,
+                'specialName' => $special,
+                'weaponName' => $weapon,
+                'basicIcon' => $basicIcon,
+                'specialIcon' => $specialIcon,
                 'specialManaCost' => $class->specialManaCost(),
                 'specialCastMs' => $class->specialCastMs(),
                 'cooldownMs' => Character::ATTACK_COOLDOWN_MS,
@@ -174,25 +183,29 @@ final class CharacterController extends AbstractController
                         'rarity' => 'Commun',
                     ],
                     'mana' => [
-                        'name' => $warrior ? 'Potion d’énergie' : 'Potion de mana',
+                        'name' => match ($class->resourceName()) {
+                            'Énergie' => 'Potion d’énergie',
+                            'Concentration' => 'Potion de concentration',
+                            default => 'Potion de mana',
+                        },
                         'chance' => 30,
                         'rarity' => 'Commun',
                     ],
                     'rare' => [
-                        'name' => $warrior ? 'Lame des saules' : 'Bâton des saules',
+                        'name' => $rareName,
                         'chance' => 15,
                         'rarity' => 'Rare',
                         'bonus' => 7,
-                        'icon' => $warrior ? 'blade' : 'staff',
-                        'usage' => $warrior ? 'Corps à corps' : 'Bâton · corps à corps',
+                        'icon' => $rareIcon,
+                        'usage' => $class === CharacterClass::Mage ? 'Bâton · corps à corps' : $usage,
                     ],
                     'epic' => [
-                        'name' => $warrior ? 'Croc de Saphyr' : 'Sceptre de Saphyr',
+                        'name' => $epicName,
                         'chance' => 5,
                         'rarity' => 'Épique',
                         'bonus' => 11,
-                        'icon' => $warrior ? 'fang' : 'wand',
-                        'usage' => $warrior ? 'Corps à corps' : 'Baguette · à distance',
+                        'icon' => $epicIcon,
+                        'usage' => $class === CharacterClass::Mage ? 'Baguette · à distance' : $usage,
                     ],
                 ],
             ],

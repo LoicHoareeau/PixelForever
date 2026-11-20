@@ -219,7 +219,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         cache: { json: { get: () => [[]] } },
         add: {
             ellipse: () => ({ setDepth() { return this; }, setPosition() { return this; } }),
-            image: () => ({ setOrigin() { return this; }, setScale() { return this; }, setDepth() { return this; }, setInteractive() { return this; }, on() {}, texture: { key: '' }, frame: { name: '' }, setFlipX() { return this; }, setPosition() { return this; }, setTexture() { return this; } }),
+            image: () => ({ setOrigin() { return this; }, setScale() { return this; }, setDepth() { return this; }, setInteractive() { return this; }, on() {}, texture: { key: '' }, frame: { name: '' }, setFlipX() { return this; }, setPosition() { return this; }, setTexture() { return this; }, setVisible() { return this; } }),
             text: () => ({ setOrigin() { return this; }, setDepth() { return this; }, setInteractive() { return this; }, on() {}, setText() { return this; }, setColor() { return this; }, setVisible() { return this; } }),
         },
         time: { now: 100, addEvent() {} },
