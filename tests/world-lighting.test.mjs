@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { vfxFrame, vfxFrameSize, vfxFrames } from '../public/game/combat-vfx.js';
+import { TrainingCombat } from '../public/game/combat.js';
 import { columns, rows, tileSize, zones } from '../public/game/exploration.js';
 import { combatLights, lightingViewport, writeAmbientColor } from '../public/game/world-lighting.js';
 
@@ -60,13 +61,32 @@ test('les sorts illuminent leur impact et la Rage conserve un halo stable en mou
 
 test('les cycles animés des sorts et du boss ont une rangée distincte dans l’atlas', () => {
     const png = readFileSync(new URL('../public/game/val-des-saules/combat-vfx.png', import.meta.url));
-    const kinds = ['firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst', 'seismic', 'flame', 'magma', 'fire_burst', 'slash', 'rune', 'rage_aura', 'rage_ignition', 'mist', 'marsh_wisp', 'pollen', 'snow', 'ash', 'cinders'];
+    const kinds = ['firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst', 'seismic', 'flame', 'magma', 'fire_burst', 'slash', 'rune', 'rage_aura', 'rage_ignition', 'mist', 'marsh_wisp', 'pollen', 'snow', 'ash', 'cinders', 'steel_slash', 'gilded_spin', 'arcane_stream', 'ward'];
     assert.equal(png.toString('ascii', 12, 16), 'IHDR');
     assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)],
         [vfxFrameSize * vfxFrames, vfxFrameSize * kinds.length]);
     for (const [row, kind] of kinds.entries()) {
         assert.equal(vfxFrame(kind, -.1), row * vfxFrames);
-        assert.equal(vfxFrame(kind, .5), row * vfxFrames + 6);
+        assert.equal(vfxFrame(kind, .5), row * vfxFrames + vfxFrames / 2);
         assert.equal(vfxFrame(kind, 1.1), (row + 1) * vfxFrames - 1);
     }
+});
+
+test('la Taillade joue autour du Guerrier et la Déflagration relie la cible au lanceur', () => {
+    const combat = Object.create(TrainingCombat.prototype);
+    const draws = [];
+    Object.assign(combat, {
+        scene: { motionPreference: { matches: false } },
+        vfx: { play(...args) { draws.push(args); } },
+        spellEffects: [
+            { kind: 'cleave', x: 36, y: 62, radius: 38, start: 0, duration: 500 },
+            { kind: 'arcane_beam', x: 25, y: 35, targetX: 167, targetY: 141, start: 0, duration: 500 },
+        ],
+    });
+    combat.drawSpellEffects(160);
+    assert.deepEqual(draws.map(([kind]) => kind), ['gilded_spin', 'arcane_stream', 'arcane_burst']);
+    assert.deepEqual(draws[0].slice(1, 3), [36, 64]);
+    assert.deepEqual(draws[1].slice(1, 3), [96, 88]);
+    assert.ok(draws[1][7] > 1, 'le rayon atteint les cibles lointaines');
+    assert.deepEqual(draws[2].slice(1, 3), [167, 141]);
 });

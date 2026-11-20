@@ -32,7 +32,7 @@ Noé ne doit pas utiliser sa planche « Frappe à la lanterne » pour un tir ou 
 
 Les archives PixelLab actuelles proposent uniquement « Frappe à la lanterne » (Noé) et « Coup de marteau » (Lina) pour les frappes. Elles ne contiennent pas de planche d’incantation dédiée : ne pas présenter ces exports comme des animations magiques complètes.
 
-`public/game/val-des-saules/combat-vfx.png` regroupe des cycles de 12 images de 128 × 128 px. Les projectiles, tourbillons, cristaux de givre et colonnes de feu ont des sprites distincts. Malakor dispose d’un arc de clivage, d’une onde de débris, de failles de magma et de deux cycles d’effets autour du corps pour l’embrasement et la Rage. Les repères de sol restent indépendants de ces sprites. `combat-vfx.js` réutilise les objets d’affichage. Générer l’atlas avec GD via `php tools/build_combat_vfx.php`.
+`public/game/val-des-saules/combat-vfx.png` regroupe 24 cycles de 16 images de 128 × 128 px, effets d’ambiance compris. La Boule de feu associe un noyau en rotation, une traînée et un impact. Le Tourbillon superpose les bandes avant et arrière d’une double hélice. La Nova fait jaillir des cristaux facettés, la Déflagration déploie un rayon violet vers la cible et la Taillade tourne autour du Guerrier en blanc et or. Les attaques légères, le bâton et le bouclier ont des impacts adaptés à leur geste. Malakor dispose d’un large arc de clivage, d’un anneau de roche soulevée, de colonnes de magma et de deux cycles d’effets autour du corps pour l’embrasement et la Rage. Les repères de sol restent indépendants de ces sprites. `combat-vfx.js` réutilise les objets d’affichage. Générer l’atlas avec GD via `php tools/build_combat_vfx.php`.
 
 ## Monstres et PNJ
 

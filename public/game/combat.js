@@ -1671,7 +1671,7 @@ export class TrainingCombat {
             const y = attack.y + (target.sprite.y - 12 - attack.y) * travel;
             const angle = Math.atan2(target.sprite.y - 12 - attack.y, target.sprite.x - attack.x);
             const released = elapsed >= attack.castMs;
-            const size = attack.special ? .66 : .37;
+            const size = attack.special ? .84 : .43;
             this.vfx?.play(attack.special ? 'firebolt' : 'arcane', x, y,
                 still ? .4 : (elapsed % 220) / 220, released ? size : size * .44, angle, released ? .94 : .78);
         } else {
@@ -1698,26 +1698,32 @@ export class TrainingCombat {
                 const dx = fx.targetX - fx.x;
                 const dy = fx.targetY - fx.y;
                 const angle = Math.atan2(dy, dx);
-                for (let index = 0; index < 3; index++) {
-                    const travel = still ? .8 : 1.45 * progress - index * .15;
-                    if (travel < 0 || travel > 1) continue;
-                    this.vfx.play('arcane', fx.x + dx * travel, fx.y + dy * travel, pose, .47 - index * .07, angle, alpha);
+                const extension = still ? 1 : Math.min(1, .12 + progress * 3.6);
+                const width = .90;
+                if (progress < .8) {
+                    this.vfx.play('arcane_stream', fx.x + dx * extension / 2, fx.y + dy * extension / 2,
+                        pose, width, angle, alpha, Math.max(.15, Math.hypot(dx, dy) * extension / (116 * width)));
                 }
-                if (progress > .18 || still) this.vfx.play('arcane_burst', fx.targetX, fx.targetY, pose, .69, 0, alpha);
+                if (extension === 1) this.vfx.play('arcane_burst', fx.targetX, fx.targetY, pose, .86, 0, alpha);
                 break;
             }
             case 'fire_whirl':
-                this.vfx.play('vortex', fx.x, fx.y + 5, pose, radius / 46, 0, alpha);
+                this.vfx.play('vortex', fx.x, fx.y - 25, pose, radius / 39, 0, alpha);
                 break;
             case 'frost_nova':
+                this.vfx.play('frost', fx.x, fx.y - 6, pose, radius / 41, 0, alpha);
+                break;
             case 'shield_wave':
-                this.vfx.play('frost', fx.x, fx.y + 5, pose, radius / 43, 0, alpha);
+                this.vfx.play('ward', fx.x, fx.y, pose, radius / 36, 0, alpha);
+                break;
+            case 'cleave':
+                this.vfx.play('gilded_spin', fx.x, fx.y + 2, pose, radius / 32, 0, alpha);
                 break;
             case 'fire_wall':
-                this.vfx.play('flame', fx.x, fx.y - 16, pose, radius / 28, 0, alpha);
+                this.vfx.play('flame', fx.x, fx.y - 18, pose, radius / 47, 0, alpha, 1.10);
                 break;
             case 'obsidian_impact':
-                this.vfx.play('slash', fx.x, fx.y - 5, pose, radius / 48, fx.angle, alpha);
+                this.vfx.play('slash', fx.x, fx.y - 5, pose, radius / 42, fx.angle, alpha);
                 if (progress > .12) {
                     this.vfx.play('slash', fx.x, fx.y - 9, still ? .42 : Math.max(0, progress - .12),
                         radius / 55, fx.angle + .18, alpha * .44);
@@ -1726,22 +1732,20 @@ export class TrainingCombat {
             case 'magma_detonation':
                 for (let offset = 12; offset <= fx.riftRange; offset += 21) {
                     const local = still ? .42 : Math.max(.06, progress - offset / fx.riftRange * .18);
-                    this.vfx.play('magma', fx.x + fx.dirX * offset, fx.y + fx.dirY * offset - 14,
-                        local, .73 + offset / fx.riftRange * .15, 0, alpha);
+                    const scale = .68 + (offset % 4) * .09;
+                    this.vfx.play('magma', fx.x + fx.dirX * offset, fx.y + fx.dirY * offset - 30 * scale,
+                        local, scale, 0, alpha);
                 }
                 break;
             case 'seismic_detonation':
             case 'engage_slam':
-                this.vfx.play('seismic', fx.x, fx.y, pose, radius / 46, 0, alpha);
-                if (fx.kind === 'seismic_detonation' && progress < .46) {
-                    this.vfx.play('fire_burst', fx.x, fx.y - 18, still ? .42 : progress * 1.6, .65, 0, alpha * .68);
-                }
+                this.vfx.play('seismic', fx.x, fx.y - radius / 4, pose, radius / 43, 0, alpha);
                 break;
             case 'fireball_burst':
-                this.vfx.play('fire_burst', fx.x, fx.y - 9, pose, .92, 0, alpha);
+                this.vfx.play('fire_burst', fx.x, fx.y - 18, pose, 1.03, 0, alpha);
                 break;
             case 'heavy_slash':
-                this.vfx.play('fire_burst', fx.x, fx.y - 3, pose, .51, 0, alpha);
+                this.vfx.play('ward', fx.x, fx.y, pose, .43, 0, alpha * .85);
                 break;
             case 'berserk_aura':
                 this.vfx.play('rune', fx.x, fx.y + 4, pose, .86, 0, alpha);
@@ -1774,7 +1778,7 @@ export class TrainingCombat {
         const radius = 29 + 6 * pulse;
 
         this.vfx?.play(ignition ? 'rage_ignition' : 'rage_aura', x, y - 30,
-            still ? .42 : (ignition ? heat : (time % 1700) / 1700), ignition ? 1.28 : 1.18,
+            still ? .42 : (ignition ? heat : (time % 1700) / 1700), ignition ? 1.49 : 1.22,
             0, ignition ? Math.sin(heat * Math.PI) * .82 : .54);
 
         this.effect.fillStyle(0x482025, .32 * heat).fillEllipse(x, y + 2, 124, 58);
@@ -1862,7 +1866,8 @@ export class TrainingCombat {
                     const px = wave.vertical ? center + offset : x + step;
                     const py = wave.vertical ? y + step : center + offset;
                     const pose = this.scene.motionPreference.matches ? .42 : wave.impactProgress + offset * .013;
-                    this.vfx?.play('magma', px, py - 18, pose, .89 + offset * .021, 0, .92);
+                    const scale = .91 + offset * .019;
+                    this.vfx?.play('magma', px, py - 28 * scale, pose, scale, 0, .92);
                 }
             }
         }
@@ -1944,11 +1949,17 @@ export class TrainingCombat {
     }
 
     drawMelee(attack, progress, windingUp) {
-        if (windingUp) return;
         const x = this.scene.position.x + Math.cos(attack.angle) * 4;
         const y = this.scene.position.y - 17;
-        this.vfx?.play(attack.armed ? 'slash' : 'fire_burst', x, y,
-            this.scene.motionPreference.matches ? .4 : progress, attack.special ? .75 : .47, attack.angle, 1 - progress * .7);
+        const blade = attack.armed && !attack.staff;
+        if (windingUp && (!blade || !attack.special || progress < .34)) return;
+        if (windingUp) {
+            this.vfx?.play('rune', x + Math.cos(attack.angle) * 7, y + 3, progress, .35, 0, .39);
+            return;
+        }
+        const kind = blade ? (attack.special ? 'slash' : 'steel_slash') : 'ward';
+        this.vfx?.play(kind, x, y, this.scene.motionPreference.matches ? .4 : progress,
+            attack.special ? .91 : .54, attack.angle, 1 - progress * .55);
     }
 
     attackPose(now) {
