@@ -24,7 +24,7 @@ import { recordTrailQuestDefeat } from './trail-quest.js';
 import { createProgressSync } from './progress-sync.js';
 
 const impactMs = 210;
-const recoveryMs = 140;
+const recoveryMs = 210;
 
 const sparks = [
     [-10, -3],
@@ -314,7 +314,8 @@ export class TrainingCombat {
 
         const berserkMult = now < this.berserkUntil ? 1.4 : 1;
         const baseDmg = special ? this.stats.specialDamage : this.basicWeapon.damage;
-        const duration = ranged ? (special ? 380 : 250) : (special ? 480 : 140);
+        const castMs = ranged ? (special ? 210 : 180) : 0;
+        const duration = ranged ? (special ? 380 : 330) : (special ? 480 : 140);
         const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
 
         const attack = {
@@ -331,7 +332,7 @@ export class TrainingCombat {
             facing: this.scene.facing,
             start: now,
             end: now + duration,
-            castMs: special ? 105 : 55,
+            castMs,
             x: this.scene.position.x + Math.cos(angle) * 7,
             y: this.scene.position.y - 20 + Math.sin(angle) * 4,
         };
@@ -481,6 +482,12 @@ export class TrainingCombat {
             start: now,
             end: now + durationMs,
         });
+        if (slotKey !== 'basic' && slotKey !== 'special') {
+            this.attackVisual = {
+                start: now, end: now + 210, castMs: 180,
+                ranged: this.ranged, facing: this.scene.facing,
+            };
+        }
     }
 
     /**

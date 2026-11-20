@@ -1,78 +1,55 @@
 # PixelForever · Front-end
 
-PixelForever se joue dans un navigateur. Le premier parcours va de l’inscription à l’exploration d’une carte pixel art. Les écrans de compte et de personnage utilisent Twig. Phaser affiche la carte et les sprites dans un canvas, avec une interface HTML pour les formulaires, les panneaux et les commandes.
+État au 20 novembre 2026. Twig affiche les écrans de compte/personnage et l’ATH ; Phaser 3.90.0 affiche le monde dans un canvas. `public/game/world.js` relie déplacements, caméra, sprites, commandes et dialogues ; `combat.js` applique les attaques et effets ; `progression.js` calcule les bonus, armes, talents et sauvegardes locales.
 
-Dans **Mes personnages**, le bouton **Jouer** envoie la sélection à Symfony. Symfony vérifie que le personnage appartient au compte connecté, puis ouvre **Val-des-Saules**. Le joueur se déplace avec les flèches, ZQSD, WASD ou les boutons de direction. L’eau et les bords de la carte bloquent le déplacement.
+## Carte et ressources visuelles
 
-Phaser 3.90.0 charge les tuiles et les sprites des exports PixelLab depuis `public/game/val-des-saules/`. La carte de 168 × 120 tuiles conserve la clairière originale et prolonge son chemin jusqu’au cimetière, puis aux montagnes. La caméra suit le personnage et reste dans les limites du monde. La vue reste en plein écran avec un zoom ×1, notamment en 1920 × 1080 et 2560 × 1440 ; il augmente seulement si nécessaire pour couvrir un écran plus grand que le monde. Les montagnes sont assez éloignées pour garder les dragons hors du champ de départ en 1920 × 1080. L’ATH reste fixe. La cabane, les saules, les tombes et les rochers sont dessinés sur la même grille de pixels que le terrain. Les planches `lina/walk.png` et `noe/walk.png` reprennent les cycles `Marche` des exports PixelLab, avec huit images par direction. La distance parcourue cadence les images.
+La carte de 168 × 120 tuiles de 16 px couvre la clairière, le cimetière et les montagnes. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` ; zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté seulement si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. Les falaises de quatre cases et l’eau bloquent le déplacement.
 
-Des falaises rocheuses irrégulières de deux à trois cases bordent le monde. Elles bloquent les déplacements ; les chemins entre les trois zones restent ouverts.
+`public/game/val-des-saules/` contient les ressources : atlas détaillés `environment-detailed.png` (saules, cabane, rochers, falaises) et `ground-detailed.png` (herbe, chemin, cimetière, montagne), sprites PixelLab de sanglier/squelette dans huit directions et six icônes d’objets. Les raccords de chemin réutilisent les masques du terrain original. Le sol est composé une seule fois ; les ondulations et lumières sont actualisées séparément.
 
-La guerrière utilise Lina et ses animations d’épée, le mage utilise Noé et ses animations d’incantation. La classe fournit la même apparence au portrait et à Phaser. Les compétences, les talents et les ressources suivent la classe : mêlée et énergie pour la guerrière, sorts à distance et mana pour le mage. Des pancartes en bois dans le décor indiquent le cimetière.
+Le Guerrier utilise Lina et le Mage Noé ; les portraits suivent la même règle PHP `CharacterClass::skin()`. Les planches de marche existantes sont conservées. Les images du personnage ne doivent pas être redessinées lors des retouches de décor.
 
-L’habitante du hameau utilise `quest_early.png` près du départ. Le clic ou la touche `E` à proximité ouvre un dialogue accessible au clavier. Elle propose **Sécuriser le sentier** : vaincre trois sangliers après avoir accepté la quête, puis lui parler à nouveau pour recevoir deux potions de vie, une seule fois. Un `!` doré indique une quête disponible ; un `?` gris une quête en cours ; un `?` doré une quête prête à rendre. Le marqueur disparaît après la remise. L’ATH donne aussi l’état et le compteur, sans dépendre seulement de la couleur. La quête est sauvegardée par personnage dans le navigateur, avec la progression existante ; les anciennes sauvegardes démarrent avec la quête disponible.
+## Combat, équipement et animations
 
-Les sangliers de niveau 1–2 patrouillent au plus près du départ. Leurs congénères de niveau 2–4 puis 4–5 ont des patrouilles plus éloignées. Les squelettes de niveau 5–10 occupent le cimetière et Saphyr de niveau 10–20 reste dans les montagnes. Patrouilles, poursuites et réapparitions sont limitées à la zone de chaque espèce. Quitter la zone met fin à la poursuite.
+L’épée et le croc frappent à 1,5 case. Le Mage commence avec la Baguette de braise : projectile à cinq cases. Son Sceptre de Saphyr se comporte comme une baguette ; le Bâton des saules frappe au contact à 1,5 case. Sans arme, les deux classes frappent au poing à 1,5 case. L’auto-attaque est gratuite. Boule de feu garde sa portée de sort quand un bâton est équipé.
 
-Les monstres proches engagent le joueur et répètent une auto-attaque ciblée à leur propre cadence : coup au contact pour sangliers et squelettes, projectile pour le dragon. Une courte préparation précède l’impact. Portée, obstacles, étourdissement, mort et sortie de zone empêchent un impact invalide. Les attaques des monstres ne dessinent plus de cercle de dégâts.
+L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
-La difficulté augmente avec les PV, les dégâts et la cadence. Pour les sangliers, les niveaux 1 et 2 donnent respectivement 52 PV / 6 dégâts et 74 PV / 8 dégâts ; le niveau 5 atteint 236 PV / 26 dégâts. Les squelettes passent de 260 PV / 26 dégâts au niveau 5 à 610 PV / 56 dégâts au niveau 10. Les dragons passent de 800 PV / 60 dégâts au niveau 10 à 2 500 PV / 160 dégâts au niveau 20. La réduction de dégâts du personnage continue de s’appliquer.
+Noé ne doit pas utiliser sa planche « Frappe à la lanterne » pour un tir ou une incantation : les poses orientées existantes servent au geste magique, et les effets dessinent le projectile. Le bâton peut utiliser la frappe de contact. Préparation et récupération permettent de lire le cycle à 30 FPS ; les sorts de talents déclenchent aussi un geste. Les directions nord utilisent des poses dérivées du sprite au lieu d’une frappe tournée dans le mauvais sens.
 
-Les tests `node --test tests/exploration.test.mjs tests/progression.test.mjs tests/trail-quest.test.mjs tests/progress-sync.test.mjs` vérifient les chemins entre zones avec leurs obstacles, les falaises, le dézoom, les monstres, la difficulté, la progression, les talents et les états de quête. Ils couvrent aussi le niveau 1 sans points, la reprise depuis la base, les sauvegardes anciennes, les réponses réseau désordonnées et les nouvelles tentatives après erreur. Le test PHP des comptes vérifie l’enregistrement puis la restauration du niveau/XP dans une nouvelle session et le refus des accès étrangers ou des données invalides.
+## Monstres et PNJ
 
-L’ATH affiche la vie, l’XP et l’énergie du Guerrier ou le mana du Mage, avec leur régénération automatique par seconde. Le Guerrier frappe en mêlée jusqu’à 1,5 case. Les attaques du Mage portent jusqu’à 5 cases. La barre du bas donne accès aux attaques (`1` et `2`), aux potions (`3` et `4`), à la fiche de personnage et de caractéristiques (`C`) et au sac (`I`).
+Les sangliers N.1–2 commencent au plus près du départ ; d’autres patrouilles N.2–4 et N.4–5 sont plus loin. Squelettes N.5–10 au cimetière, dragons N.10–20 dans les montagnes. Les monstres engagent à proximité et leurs déplacements restent dans leur zone. Préparation, recharge, portée, obstacles, étourdissement et mort contrôlent leurs impacts ciblés. Ils n’utilisent plus de cercle de dégâts.
 
-Une victoire donne l’XP de l’espèce et du niveau du monstre, plus un objet tiré au sort. Les chances sont de 50 % pour une potion de vie, 30 % pour une potion de ressource, 15 % pour l’arme rare et 5 % pour l’arme épique. Le niveau 2 demande 100 XP, puis chaque niveau suivant demande 50 XP de plus. Le niveau 1 ne donne aucun point de caractéristique ou de talent. À partir du niveau 2, chaque montée donne `+3` caractéristiques et `+1` talent/sort, en plus de la croissance naturelle de classe. Les anciens bonus gratuits sont retirés au chargement ; si leur dépense dépassait le nouveau budget, les allocations concernées sont réinitialisées et les points réellement gagnés rendus disponibles, sans perte de niveau, d’XP ou d’objets.
+`quest_early.png` représente l’habitante du hameau. Le clic, `E` ou le bouton de quête à proximité ouvre un dialogue au clavier. La quête demande trois sangliers après acceptation et récompense deux potions de vie au retour, une seule fois. Le marqueur est `!` doré, puis `?` gris, puis `?` doré, puis caché ; le texte donne aussi l’état. La quête reste locale au personnage.
 
-Le niveau et l’XP sont enregistrés en base après une victoire et rechargés à la connexion. L’ATH affiche le résultat de l’enregistrement. En cas d’échec réseau, la dernière progression reste en cache et une nouvelle tentative a lieu toutes les cinq secondes, au retour du réseau et en quittant la page. Les requêtes anciennes ne peuvent pas diminuer le niveau/XP en base. La croissance naturelle reste calculée depuis le niveau 1, même après reconnexion à un niveau supérieur. Le sac, les allocations de caractéristiques/talents et les quêtes restent sauvegardés par personnage dans ce navigateur.
+## Interface et commandes par défaut
 
-## Écrans
+La fiche joueur est en haut à gauche, la cible en haut au centre, les accès rapides en haut à droite. La barre d’XP et les actions restent en bas. Les fenêtres Fiche, Talents et Inventaire utilisent des dialogues HTML. L’inventaire montre les quantités, les icônes réelles et les boutons d’équipement ; les matériaux n’ont pas de bouton d’équipement.
 
-| Écran | Actions principales |
+| Action | Touches physiques / commande |
 | --- | --- |
-| Inscription | Renseigner un pseudo, un e-mail et un mot de passe. Afficher les erreurs près du champ concerné. |
-| Connexion | Se connecter avec son e-mail et son mot de passe. |
-| Personnages | Voir les personnages du compte et leur niveau, sélectionner celui à jouer ou en créer un. |
-| Création | Choisir Guerrier ou Mage, voir leur style de combat et saisir le nom du personnage. |
-| Monde | Explorer, sélectionner une cible, lancer des sorts, consulter l’inventaire et les quêtes, parler aux PNJ et vendre de l’équipement. |
+| Déplacement | Flèches, ZQSD (AZERTY), WASD (QWERTY), commandes tactiles |
+| Sélection d’un monstre | Clic |
+| Attaque de base / compétence principale | `1` / `2` |
+| Sorts de talents débloqués | `3` à `6` |
+| Potions de vie / ressource | `R` / `F` |
+| Fiche / talents / inventaire | `C` / `T` / `I` |
+| Parler au PNJ à proximité | `E` ou clic |
 
-## Interface de jeu
+Les positions physiques utilisent `KeyboardEvent.code` : sur AZERTY, les touches `&`, `é`, `"`, `'`, `(`, `-` activent respectivement les actions 1–6 sans Maj. Les raccourcis sont suspendus pendant la saisie et lorsque les dialogues l’exigent. Le menu de réaffectation des touches n’est pas encore implémenté.
 
-- **En haut à gauche**, afficher le nom du personnage, son niveau et ses barres de vie et de mana. Afficher la cible et ses PV quand elle est sélectionnée.
-- **En bas**, afficher la barre d’XP et six emplacements d’action. Chaque emplacement indique son raccourci, son temps de recharge et la raison d’une indisponibilité, par exemple « Requiert un bouclier ».
-- **Dans l’inventaire**, afficher les équipements portés, les objets possédés et le solde d’or. La fiche d’un objet montre son nom, sa rareté en toutes lettres, sa classe requise et son prix de revente, le cas échéant.
-- **Chez le marchand**, indiquer l’objet et le montant de la vente. Actualiser l’inventaire et l’or après confirmation du serveur.
-- **Dans le journal**, afficher l’objectif, la progression et le PNJ à retrouver quand la quête peut être rendue.
+## Progression et sauvegardes
 
-Le monde donne le ton visuel. Le hameau se reconnaît à ses lumières chaudes, la forêt à ses verts et les ruines à leurs pierres froides. Les panneaux utilisent un fond sombre et des libellés lisibles. La couleur des raretés accompagne un libellé. Les éléments interactifs gardent un focus clavier visible et les effets d’interface respectent la préférence de réduction des animations.
+Aucun point au N.1 ; chaque montée suivante donne +3 caractéristiques et +1 talent/sort. Les sauvegardes anciennes sont normalisées sans supprimer niveau, XP ou objets valides. Les prérequis et budgets restent contrôlés après chargement. Les anciennes sauvegardes de sac sans écaille/cœur reçoivent ces compteurs à zéro.
 
-## Commandes par défaut
+Les victoires donnent l’XP du monstre et un tirage : vie 47 %, ressource 30 %, arme rare 15 %, arme épique 5 %, écaille 2 %, cœur 1 %. L’équipement rare/épique dépend de la classe ; ses bonus sont +7/+11 dégâts de base. La base restaure niveau/XP ; le navigateur conserve sac, arme, allocations et quête. `progress-sync.js` envoie les nouvelles valeurs avec CSRF, ne confirme pas une réponse trop ancienne et retente après erreur. L’ATH indique l’état réseau.
 
-| Action | AZERTY français | QWERTY |
-| --- | --- | --- |
-| Monter, aller à gauche, descendre, aller à droite | `Z` `Q` `S` `D` | `W` `A` `S` `D` |
-| Sélectionner une cible ou interagir avec un PNJ à portée | Clic principal | Clic principal |
-| Attaque de base, sans coût en mana ni en énergie | `&` | `1` |
-| Premier sort du profil d’arme | `é` | `2` |
-| Deuxième sort | `"` | `3` |
-| Troisième sort | `'` | `4` |
-| Potion de vie | `(` | `5` |
-| Potion de mana | `-` | `6` |
+## Vérifications
 
-Dans **Options → Commandes**, le joueur peut réaffecter chaque direction et chaque touche d’action. Il peut aussi choisir les flèches pour se déplacer. Le menu affiche la touche affectée, signale les conflits entre actions et permet de restaurer les valeurs par défaut. La barre d’actions affiche les nouveaux raccourcis dès leur modification. Le navigateur conserve les réglages entre deux visites.
+`node --test tests/*.test.mjs` couvre chemins, obstacles, caméra, monstres, difficulté, quête, sauvegardes, armes et animation. `combat-animation.test.mjs` exécute notamment le vrai rendu de `world.js` avec des objets d’affichage de test et vérifie l’absence de frappe de contact pour un tir magique. Le test PHP `composer test:accounts` couvre les comptes, classes, icônes et niveau/XP.
 
-Le client associe des actions nommées aux positions physiques des touches via `KeyboardEvent.code`. Les déplacements utilisent les touches maintenues. Une pression sur une touche d’action déclenche une demande, sans répétition automatique du clavier. Les raccourcis de jeu sont suspendus pendant la saisie ou la modification d’une touche. Les sorts de zone peuvent demander un clic sur le sol après activation.
+Vérifier en navigateur : baguette à distance, bâton au contact, Boule de feu au bâton, mana à zéro, recharge, cible hors de portée, équipement, talents, déplacement/caméra, quête et reconnexion. Le monde partagé, le marchand et la sauvegarde serveur du sac restent à développer.
 
-## Animations de combat
-
-- Animer le personnage dans sa direction de combat pour chaque attaque de base et chaque sort. Utiliser le geste propre à l’arme équipée. Les différentes animations à produire figurent dans le [game design](GAME_DESIGN.md#animations-à-produire).
-- Donner un retour visible à chaque étape utile au joueur, comme la préparation d’un coup chargé, le départ d’un projectile, l’impact d’une attaque ou la durée restante d’un effet au sol.
-- Afficher les animations des autres joueurs à partir des événements de combat du serveur. Le serveur confirme les impacts et les dégâts. Les sprites et les effets les représentent à l’écran.
-
-## État du client et connexion
-
-Le client charge la carte et les sprites, envoie les commandes et interpole les déplacements entre deux mises à jour du serveur. Le HUD affiche les valeurs confirmées par le serveur pour l’XP, l’or et l’inventaire. Si la connexion est interrompue, l’interface indique la reconnexion en cours, suspend les actions et recharge l’état confirmé après reconnexion.
-
-La première démonstration doit permettre à deux joueurs de se voir dans le hameau, de se déplacer sur la même carte, de combattre le même monstre et de voir chacun son butin et sa progression.
-
-Voir aussi le [back-end](BACKEND.md) et le [game design](GAME_DESIGN.md).
+Voir le [game design](GAME_DESIGN.md) et le [back-end](BACKEND.md).

@@ -507,7 +507,7 @@ import { saveProgress } from './progression.js';
             let flip = false;
             if (gesture) {
                 const facing = gesture.attack.facing;
-                if (facing.startsWith('north')) {
+                if (facing.startsWith('north') || (this.skin === 'noe' && gesture.attack.ranged)) {
                     frame = facing + '-' + gesture.pose;
                 } else {
                     texture = this.attackSheet;
