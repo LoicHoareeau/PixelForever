@@ -1,4 +1,4 @@
-import { zones } from './exploration.js';
+import { frontierZones, wastelandZones, zones } from './exploration.js';
 
 // ---------------------------------------------------------------------------
 // Configuration des gradients organiques entre biomes
@@ -21,9 +21,13 @@ export const biomeFadeConfig = {
         reach: 184,
         warp: 48,
         seedOffset: 47,
-        zones: [zones.imp, zones.hound, zones.fiend, zones.breach_lord],
+        zones: wastelandZones,
     },
 };
+
+const frontierFades = frontierZones.map((zone, index) => [
+    [zone], 176, 48, 61 + index * 13,
+]);
 
 export const maxBiomeReach = 240;
 
@@ -109,7 +113,7 @@ function rawBiomeWeight(regionZones, x, y, tileSize, reach, warpAmp, seedOffset)
 // ---------------------------------------------------------------------------
 
 /**
- * Écrit les poids normalisés [clearing, cemetery, mountain, wasteland] dans `out`
+ * Écrit les poids normalisés de la clairière aux trois secteurs côtiers dans `out`
  * sans aucune allocation pour le traitement pixel par pixel des sols.
  */
 export function writeBiomeWeights(x, y, tileSize, out) {
@@ -141,29 +145,36 @@ export function writeBiomeWeights(x, y, tileSize, out) {
         biomeFadeConfig.wasteland.seedOffset,
     );
 
-    const sum = cem + mnt + ash;
-    if (sum > 1) {
-        out[0] = 0;
-        out[1] = cem / sum;
-        out[2] = mnt / sum;
-        out[3] = ash / sum;
-        return;
+    let frontierSum = 0;
+    let frontierPeak = 0;
+    for (let index = 0; index < frontierFades.length; index++) {
+        const [region, reach, warp, seed] = frontierFades[index];
+        const weight = rawBiomeWeight(region, x, y, tileSize, reach, warp, seed);
+        out[4 + index] = weight;
+        frontierSum += weight;
+        frontierPeak = Math.max(frontierPeak, weight);
     }
-
-    out[0] = 1 - sum;
-    out[1] = cem;
-    out[2] = mnt;
-    out[3] = ash;
+    const previous = 1 - frontierPeak;
+    const sum = (cem + mnt + ash) * previous + frontierSum;
+    const divisor = Math.max(1, sum);
+    out[0] = Math.max(0, 1 - sum);
+    out[1] = cem * previous / divisor;
+    out[2] = mnt * previous / divisor;
+    out[3] = ash * previous / divisor;
+    for (let index = 4; index < out.length; index++) out[index] /= divisor;
 }
 
 export function biomeWeights(x, y, tileSize = 16) {
-    const weights = new Float32Array(4);
+    const weights = new Float32Array(7);
     writeBiomeWeights(x, y, tileSize, weights);
     return {
         clearing: weights[0],
         cemetery: weights[1],
         mountain: weights[2],
         wasteland: weights[3],
+        saltMarsh: weights[4],
+        basaltRamparts: weights[5],
+        riftCape: weights[6],
     };
 }
 
@@ -177,7 +188,8 @@ export function tileHasNonClearingBiome(tileX, tileY, tileSize = 16) {
 
     return distanceToRegion(biomeFadeConfig.cemetery.zones, centerX, centerY, tileSize) <= threshold
         || distanceToRegion(biomeFadeConfig.mountain.zones, centerX, centerY, tileSize) <= threshold
-        || distanceToRegion(biomeFadeConfig.wasteland.zones, centerX, centerY, tileSize) <= threshold;
+        || distanceToRegion(biomeFadeConfig.wasteland.zones, centerX, centerY, tileSize) <= threshold
+        || distanceToRegion(frontierZones, centerX, centerY, tileSize) <= threshold;
 }
 
 /**
@@ -185,6 +197,9 @@ export function tileHasNonClearingBiome(tileX, tileY, tileSize = 16) {
  */
 export function transitionZoneLabel(x, y, tileSize = 16) {
     const weights = biomeWeights(x, y, tileSize);
+    if (weights.saltMarsh + weights.basaltRamparts + weights.riftCape >= 0.25) {
+        return 'Sentier des Falaises';
+    }
     if (weights.wasteland >= 0.25) {
         return 'Marches calcinées';
     }

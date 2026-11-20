@@ -3,6 +3,8 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { TrainingCombat, selectNextTarget } from '../public/game/combat.js';
+import { CameraFeel } from '../public/game/camera-feel.js';
+import { frontierSpecies } from '../public/game/exploration.js';
 
 function fakeMonster(name, x, y, alive = true) {
     return {
@@ -113,6 +115,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     class MockTrainingCombat {
         constructor() {
             this.progressSync = { flush() {} };
+            this.progress = { trailQuest: {} };
             this.statButtons = [];
             this.spellButtons = [];
             this.potionButtons = [];
@@ -178,6 +181,8 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         Monster: class {},
         monsterArt: {},
         buildTerrain: () => [[33]],
+        CameraFeel,
+        frontierSpecies,
         cameraZoom: () => 1,
         coastalLookouts: [],
         columns: 224,
@@ -206,7 +211,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         load: { totalFailed: 0 },
         cache: { json: { get: () => [[]] } },
         add: {
-            ellipse: () => ({ setDepth() { return this; } }),
+            ellipse: () => ({ setDepth() { return this; }, setPosition() { return this; } }),
             image: () => ({ setOrigin() { return this; }, setScale() { return this; }, setDepth() { return this; }, setInteractive() { return this; }, on() {}, texture: { key: '' }, frame: { name: '' }, setFlipX() { return this; }, setPosition() { return this; }, setTexture() { return this; } }),
             text: () => ({ setOrigin() { return this; }, setDepth() { return this; }, setInteractive() { return this; }, on() {}, setText() { return this; }, setColor() { return this; }, setVisible() { return this; } }),
         },

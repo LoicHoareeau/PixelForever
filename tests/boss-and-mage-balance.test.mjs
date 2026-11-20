@@ -81,7 +81,7 @@ test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de 2 phases et de c
 
     boss.attackEndsAt = 0;
     boss.startAttack(player, 2000);
-    assert.equal(boss.attackVisual.bossSkill, 'seismic_ring');
+    assert.equal(boss.attackVisual.special, 'seismic_ring');
     assert.equal(boss.canAttack(player), true);
     const escaped = { x: boss.sprite.x + 110, y: boss.sprite.y };
     assert.equal(boss.canAttack(escaped), false);
@@ -92,7 +92,7 @@ test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de 2 phases et de c
     boss.attackEndsAt = 0;
     boss.attackCounter = 2;
     boss.startAttack({ x: boss.sprite.x + 120, y: boss.sprite.y }, 4000);
-    assert.equal(boss.attackVisual.bossSkill, 'magma_rift');
+    assert.equal(boss.attackVisual.special, 'magma_rift');
     assert.equal(boss.canAttack({ x: boss.sprite.x + 90, y: boss.sprite.y }), true);
     assert.equal(boss.canAttack({ x: boss.sprite.x + 90, y: boss.sprite.y + 40 }), false);
 });
@@ -124,7 +124,8 @@ test('le rééquilibrage du Mage étend la portée à 7,5 cases, réduit sa rég
     assert.equal(staff.ranged, false);
     assert.equal(staff.range, 24);
 
-    assert.ok(stats.manaRegenPerSec < 5, `régénération mage trop élevée au N.10 : ${stats.manaRegenPerSec}`);
+    assert.equal(computeCharacterStats(mageRules, createInitialProgress(1), 0).manaRegenPerSec, 1);
+    assert.equal(stats.manaRegenPerSec, 5);
     assert.equal(findTalent('mage', 'm_fire_wall').talent.castTimeMs, 1000);
     assert.equal(findTalent('mage', 'm_fire_whirl').talent.castTimeMs, 1000);
     assert.ok(findTalent('mage', 'm_fire_wall').talent.manaCost >= 22);

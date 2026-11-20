@@ -1,6 +1,6 @@
 export const tileSize = 16;
 export const columns = 256;
-export const rows = 192;
+export const rows = 252;
 export const cliffTile = 35;
 export const seaTile = 36;
 export const questNpc = { x: 224, y: 190, range: 48 };
@@ -17,13 +17,22 @@ export const zones = {
     hound: { name: 'Terres dévastées · Plaine calcinée (N.25–30)', left: 196, top: 118, right: 236, bottom: 168 },
     fiend: { name: 'Terres dévastées · Citadelle (N.30–35)', left: 142, top: 126, right: 192, bottom: 168 },
     breach_lord: { name: 'Trône d’Obsidienne · Boss N.40', left: 82, top: 142, right: 132, bottom: 174 },
+    salt_hound: { name: 'Marais des Scories · N.41–47', left: 78, top: 190, right: 122, bottom: 229 },
+    ash_sentinel: { name: 'Remparts de Basalte · N.48–54', left: 135, top: 194, right: 175, bottom: 235 },
+    rift_guardian: { name: 'Cap du Gouffre · N.55–60', left: 188, top: 192, right: 235, bottom: 237 },
 };
+
+export const frontierSpecies = ['salt_hound', 'ash_sentinel', 'rift_guardian'];
+export const wastelandZones = [zones.imp, zones.hound, zones.fiend, zones.breach_lord];
+export const frontierZones = frontierSpecies.map((species) => zones[species]);
+const volcanicZones = [...wastelandZones, ...frontierZones];
 
 export const coastalLookouts = [
     { name: 'Cap des Saules · Belvédère marin', left: 20, top: 44, right: 38, bottom: 58, centerCell: [28, 55] },
     { name: 'Baie Émeraude · Belvédère Sud', left: 96, top: 93, right: 114, bottom: 122, centerCell: [104, 119] },
     { name: 'Baie de Saphyr · Belvédère Nord-Est', left: 158, top: 44, right: 176, bottom: 71, centerCell: [167, 47] },
     { name: 'Cap d’Obsidienne · Falaises Sud', left: 160, top: 158, right: 174, bottom: 168, centerCell: [167, 165] },
+    { name: 'Cap du Gouffre · Belvédère des Brisants', left: 205, top: 233, right: 216, bottom: 240, centerCell: [211, 239] },
 ];
 
 export function isCoastBorderTile(tile) {
@@ -31,10 +40,7 @@ export function isCoastBorderTile(tile) {
 }
 
 export function inWasteland(x, y) {
-    return inZone(zones.imp, x, y)
-        || inZone(zones.hound, x, y)
-        || inZone(zones.fiend, x, y)
-        || inZone(zones.breach_lord, x, y);
+    return volcanicZones.some((zone) => inZone(zone, x, y));
 }
 
 export function inZone(zone, x, y) {
@@ -102,10 +108,17 @@ export function buildTerrain(clearing) {
     // Chaussée d'obsidienne vers l'arène du Boss N.40
     road(104, 156, 167, 158);
     road(102, 155, 106, 160);
+    const frontierRoads = [
+        { left: 103, top: 160, right: 105, bottom: 216 },
+        { left: 103, top: 214, right: 212, bottom: 216 },
+        { left: 210, top: 214, right: 212, bottom: 239 },
+    ];
+    for (const { left, top, right, bottom } of frontierRoads) road(left, top, right, bottom);
 
     const protectedAreas = [
         ...Object.values(zones),
         ...coastalLookouts,
+        ...frontierRoads,
         { left: 14, top: 15, right: 104, bottom: 17 },
         { left: 22, top: 18, right: 35, bottom: 56 },
         { left: 100, top: 15, right: 111, bottom: 120 },
@@ -118,12 +131,15 @@ export function buildTerrain(clearing) {
         { left: 102, top: 155, right: 167, bottom: 160 },
     ];
 
-    const isProtected = (x, y) => protectedAreas.some((box) => pointInBox(x, y, box, 4));
+    const isProtected = (x, y) => protectedAreas.some((box) => pointInBox(
+        x, y, box, frontierZones.includes(box) ? 7 + waveNS(x) : 4,
+    ));
 
     const isRawSea = (x, y) => {
         if (x === 0 || y === 0 || x >= columns - 1 || y >= rows - 1) {
             return true;
         }
+        if (y >= 190) return true;
 
         // Littoral Nord et Baie de Saphyr
         if (x <= 58) {
@@ -241,7 +257,10 @@ export const wastelandRuins = [
     // Monolithes en lisière Montagnes -> Terres dévastées
     [193, 84], [194, 104], [158, 119], [179, 120],
     // Piliers périphériques du Trône d'Obsidienne (Boss N.40)
-    [86, 145], [127, 145], [85, 171], [127, 171], [104, 144], [104, 172],
+    [86, 145], [127, 145], [85, 171], [127, 171], [104, 144], [100, 172],
+    [83, 194], [114, 197], [83, 222], [115, 226],
+    [139, 200], [149, 205], [168, 200], [144, 229], [172, 230],
+    [192, 197], [216, 199], [230, 201], [195, 231], [227, 231],
 ];
 
 export const rocks = [

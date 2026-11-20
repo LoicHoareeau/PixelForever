@@ -19,6 +19,19 @@ function demonStats(level) {
     };
 }
 
+function frontierStats(level) {
+    const offset = level - 41;
+    return {
+        maxHealth: 7200 + offset * 240 + offset ** 2 * 8,
+        damage: 252 + offset * 6 + Math.floor(offset ** 2 * 0.14),
+        patrolSpeed: 34,
+        chaseSpeed: 86 + offset,
+        windupMs: 445 - offset * 4,
+        attackIntervalMs: 1300 - offset * 17,
+        xp: 2300 + offset * 85 + offset ** 2 * 3,
+    };
+}
+
 export const monsterTemplates = {
     boar: {
         species: 'boar',
@@ -116,6 +129,10 @@ export const monsterTemplates = {
         attackRange: 38,
         aggroRange: 136,
         zone: zones.breach_lord,
+        specials: {
+            seismic_ring: { label: 'Onde sismique', range: 128, radius: 78, windupMs: 950, damage: 390 },
+            magma_rift: { label: 'Faille de magma', range: 165, halfWidth: 16, windupMs: 850, damage: 360 },
+        },
         patrolCells: [
             [104, 158], [97, 152], [111, 152], [114, 158], [111, 164],
             [97, 164], [94, 158], [104, 150], [104, 166], [99, 158],
@@ -133,6 +150,36 @@ export const monsterTemplates = {
             };
         },
     },
+    salt_hound: {
+        label: 'Molosse des scories', minLevel: 41, maxLevel: 47,
+        art: 'hound', tint: 0x8ad6cb, attackRange: 28, aggroRange: 98,
+        zone: zones.salt_hound, respawnMs: 12500,
+        patrolCells: [[89, 198], [101, 196], [116, 201], [93, 206], [109, 207], [117, 214],
+            [88, 216], [99, 221], [107, 225], [119, 225]],
+        specials: { seismic_ring: { label: 'Remous de scories', range: 60, radius: 60, windupMs: 900, damageScale: 1.35 } },
+        statsForLevel: frontierStats,
+    },
+    ash_sentinel: {
+        label: 'Sentinelle de basalte', minLevel: 48, maxLevel: 54,
+        art: 'fiend', tint: 0xb3a5ef, attackRange: 34, aggroRange: 118,
+        zone: zones.ash_sentinel, respawnMs: 14500,
+        patrolCells: [[140, 198], [152, 199], [163, 203], [171, 208], [142, 212], [154, 212],
+            [166, 216], [137, 225], [153, 229], [170, 231]],
+        specials: { magma_rift: { label: 'Fracture de basalte', range: 128, halfWidth: 14, windupMs: 820, damageScale: 1.45 } },
+        statsForLevel: frontierStats,
+    },
+    rift_guardian: {
+        label: 'Gardien du Gouffre', minLevel: 55, maxLevel: 60,
+        art: 'fiend', tint: 0xfc87c8, attackRange: 38, aggroRange: 138,
+        zone: zones.rift_guardian, respawnMs: 16500,
+        patrolCells: [[193, 200], [206, 196], [224, 198], [229, 208], [199, 208], [213, 207],
+            [228, 217], [196, 223], [211, 224], [220, 232]],
+        specials: {
+            seismic_ring: { label: 'Secousse du Gouffre', range: 82, radius: 82, windupMs: 880, damageScale: 1.45 },
+            magma_rift: { label: 'Faille abyssale', range: 156, halfWidth: 17, windupMs: 780, damageScale: 1.5 },
+        },
+        statsForLevel: frontierStats,
+    },
 };
 
 function randomInt(min, max) {
@@ -145,15 +192,21 @@ export class Monster {
         this.species = species;
         this.template = monsterTemplates[species];
         this.isBoss = Boolean(this.template.isBoss);
-        this.art = monsterArt[species];
+        const artSpecies = this.template.art ?? species;
+        this.art = monsterArt[artSpecies];
+        this.specials = Object.keys(this.template.specials ?? {});
         this.tileSize = tileSize;
         this.columns = scene.terrain[0].length;
         this.cells = scene.monsterCells ??= scene.terrain.flatMap((row, y) => row.map((_, x) => ({
             x: (x + 0.5) * tileSize,
             y: (y + 0.5) * tileSize,
         })));
-        this.walkable = this.cells.map((cell) => inZone(this.template.zone, cell.x, cell.y)
-            && scene.canStand(cell.x, cell.y));
+        const monsterWalkable = scene.monsterWalkable ??= new Map();
+        if (!monsterWalkable.has(species)) {
+            monsterWalkable.set(species, this.cells.map((cell) => inZone(this.template.zone, cell.x, cell.y)
+                && scene.canStand(cell.x, cell.y)));
+        }
+        this.walkable = monsterWalkable.get(species);
         const patrolCells = species === 'boar'
             ? this.template.patrolCells.slice(initialSpawnIndex, initialSpawnIndex + 2)
             : this.template.patrolCells;
@@ -167,7 +220,7 @@ export class Monster {
         }
 
         const { frame, width, height } = this.art;
-        this.sprite = scene.add.image(0, 0, species + '-motion')
+        this.sprite = scene.add.image(0, 0, artSpecies + '-motion')
             .setOrigin(.5, (this.art.frame - 16) / this.art.frame)
             .setInteractive({
                 hitArea: { x: (frame - width) / 2 - 2, y: frame - height - 16, width: width + 4, height: height + 8 },
@@ -299,18 +352,17 @@ export class Monster {
     cancelAttack() {
         this.attackEndsAt = 0;
         this.attackVisual = null;
-        this.sprite.clearTint();
+        this.restoreTint();
     }
 
-    nextBossSkill() {
-        if (!this.isBoss || this.attackCounter === 0) {
-            return 'melee';
-        }
-        if (this.phase === 2) {
-            const slot = this.attackCounter % 3;
-            return slot === 1 ? 'seismic_ring' : (slot === 2 ? 'magma_rift' : 'melee');
-        }
-        return this.attackCounter % 2 === 1 ? 'seismic_ring' : 'melee';
+    restoreTint() {
+        if (this.template.tint) this.sprite.setTint(this.template.tint);
+        else this.sprite.clearTint();
+    }
+
+    nextSpecial() {
+        const count = this.isBoss && this.phase === 1 ? 1 : this.specials.length;
+        return this.specials[this.attackCounter % (count + 1) - 1];
     }
 
     checkBossPhase() {
@@ -337,15 +389,12 @@ export class Monster {
         const dy = player.y - this.sprite.y;
         const distance = Math.hypot(dx, dy);
 
-        // Au moment de résoudre une compétence de boss déjà lancée, tester sa géométrie.
-        if (this.attackVisual?.bossSkill) {
-            return this.hitTestBossSpecial(player);
+        if (this.attackVisual?.special) {
+            return this.hitTestSpecial(player);
         }
 
-        const plannedSkill = this.isBoss ? this.nextBossSkill() : 'melee';
-        const maxRange = plannedSkill === 'magma_rift'
-            ? 165
-            : (plannedSkill === 'seismic_ring' ? 128 : this.template.attackRange);
+        const special = this.attackEndsAt ? undefined : this.nextSpecial();
+        const maxRange = this.template.specials?.[special]?.range ?? this.template.attackRange;
         if (distance > maxRange) return false;
         const steps = Math.max(1, Math.ceil(distance / 4));
         for (let step = 1; step <= steps; step++) {
@@ -354,13 +403,13 @@ export class Monster {
         return true;
     }
 
-    hitTestBossSpecial(player) {
+    hitTestSpecial(player) {
         const visual = this.attackVisual;
         if (!visual) return false;
-        if (visual.bossSkill === 'seismic_ring') {
+        if (visual.special === 'seismic_ring') {
             return Math.hypot(player.x - visual.originX, player.y - visual.originY) <= visual.radius;
         }
-        if (visual.bossSkill === 'magma_rift') {
+        if (visual.special === 'magma_rift') {
             const relX = player.x - visual.originX;
             const relY = player.y - visual.originY;
             const proj = relX * visual.dirX + relY * visual.dirY;
@@ -374,52 +423,27 @@ export class Monster {
         this.face(player.x - this.sprite.x, player.y - this.sprite.y);
         const angle = Math.atan2(player.y - this.sprite.y, player.x - this.sprite.x);
 
-        if (this.isBoss) {
-            const skill = this.nextBossSkill();
-            this.attackCounter++;
-            if (skill === 'seismic_ring') {
-                const castEnd = now + 950;
-                this.attackEndsAt = castEnd;
-                this.attackVisual = {
-                    start: now,
-                    castEnd,
-                    end: castEnd,
-                    x: this.sprite.x,
-                    y: this.sprite.y - 24,
-                    originX: this.sprite.x,
-                    originY: this.sprite.y,
-                    radius: 78,
-                    angle,
-                    bossSkill: 'seismic_ring',
-                    label: 'Onde sismique',
-                    damage: 390,
-                };
-                this.sprite.setTint(0xff9a44);
-                return;
-            }
-            if (skill === 'magma_rift') {
-                const castEnd = now + 850;
-                this.attackEndsAt = castEnd;
-                this.attackVisual = {
-                    start: now,
-                    castEnd,
-                    end: castEnd,
-                    x: this.sprite.x,
-                    y: this.sprite.y - 24,
-                    originX: this.sprite.x,
-                    originY: this.sprite.y,
-                    dirX: Math.cos(angle),
-                    dirY: Math.sin(angle),
-                    riftRange: 165,
-                    halfWidth: 16,
-                    angle,
-                    bossSkill: 'magma_rift',
-                    label: 'Faille de magma',
-                    damage: 360,
-                };
-                this.sprite.setTint(0xff6b38);
-                return;
-            }
+        const special = this.nextSpecial();
+        if (this.specials.length) this.attackCounter++;
+        if (special) {
+            const config = this.template.specials[special];
+            const castEnd = now + config.windupMs;
+            this.attackEndsAt = castEnd;
+            this.attackVisual = {
+                start: now, castEnd, end: castEnd,
+                x: this.sprite.x, y: this.sprite.y - 24,
+                originX: this.sprite.x, originY: this.sprite.y,
+                dirX: Math.cos(angle), dirY: Math.sin(angle),
+                radius: config.radius,
+                riftRange: config.range,
+                halfWidth: config.halfWidth,
+                angle,
+                special,
+                label: config.label,
+                damage: config.damage ?? Math.round(this.stats.damage * config.damageScale),
+            };
+            this.sprite.setTint(this.template.tint ?? (special === 'seismic_ring' ? 0xff9a44 : 0xff6b38));
+            return;
         }
 
         const castEnd = now + this.stats.windupMs;
@@ -524,6 +548,7 @@ export class Monster {
             return;
         }
 
+        this.restoreTint();
         const dx = player.x - this.sprite.x;
         const dy = player.y - this.sprite.y;
         const distance = Math.hypot(dx, dy);

@@ -2,7 +2,7 @@ import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
 import { monsterArt } from './monster-art.js';
-import { buildTerrain, cameraZoom, coastalLookouts, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
+import { buildTerrain, cameraZoom, coastalLookouts, columns, frontierSpecies, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { transitionZoneLabel } from './biome-gradient.js';
 import { CameraFeel } from './camera-feel.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
@@ -153,6 +153,9 @@ import { saveProgress } from './progression.js';
                 new Monster(this, 'fiend', tileSize, 4),
                 new Monster(this, 'fiend', tileSize, 5),
                 new Monster(this, 'breach_lord', tileSize, 0),
+                ...frontierSpecies.flatMap((species) => Array.from({ length: 8 }, (_, index) => (
+                    new Monster(this, species, tileSize, index)
+                ))),
             ];
 
             this.cameraFeel = new CameraFeel();
