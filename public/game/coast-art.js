@@ -1,4 +1,5 @@
 import { cliffTile, seaTile, zones } from './exploration.js';
+import { biomeWeights, distanceToRegion } from './biome-gradient.js';
 
 const wastelandZones = [zones.imp, zones.hound, zones.fiend];
 
@@ -34,16 +35,6 @@ function mixRgb(a, b, t) {
     ];
 }
 
-function distanceToBox(zone, worldX, worldY, tileSize) {
-    return Math.max(
-        0,
-        zone.left * tileSize - worldX,
-        worldX - (zone.right + 1) * tileSize,
-        zone.top * tileSize - worldY,
-        worldY - (zone.bottom + 1) * tileSize,
-    );
-}
-
 // Palettes issues de `coastal-cliff` (tempéré turquoise -> grand large saphir) et côté cendres
 const temperateSeaBands = [
     [78, 182, 180],
@@ -71,18 +62,14 @@ export function ashCoastFactor(worldX, worldY, width, height, tileSize = 16) {
     const px = Math.min(worldX, width - 1);
     const py = Math.min(worldY, height - 1);
 
-    let minDist = Infinity;
-    for (const zone of wastelandZones) {
-        minDist = Math.min(minDist, distanceToBox(zone, px, py, tileSize));
-    }
-
+    const minDist = distanceToRegion(wastelandZones, px, py, tileSize);
     const jitter = (coastNoise(px, py, 36) - 0.5) * 60;
-    const reach = 250 + jitter;
+    const reach = 280 + jitter;
     if (minDist >= reach) {
         return 0;
     }
 
-    return clamp01(1 - Math.max(0, minDist - 72) / Math.max(64, reach - 72));
+    return clamp01(1 - Math.max(0, minDist - 88) / Math.max(64, reach - 88));
 }
 
 /**
@@ -215,10 +202,10 @@ export function drawCoastalFloor(scene, context, terrain, tileSize) {
 
             // 1. Transition douce entre prairie et pelouse côtière rase autour des falaises
             if (tile === 33 && landCliffDistance[ty][tx] <= 3) {
-                const ash = ashCoastFactor(baseWorldX, baseWorldY, width, height, tileSize);
-                if (ash < 0.85) {
+                const { clearing } = biomeWeights(baseWorldX + 8, baseWorldY + 8, tileSize);
+                if (clearing > 0.15) {
                     const dist = landCliffDistance[ty][tx];
-                    const strength = (1 - ash) * clamp01((4 - dist) / 3.0);
+                    const strength = clearing * clamp01((4 - dist) / 3.0);
                     for (let ly = 0; ly < tileSize; ly++) {
                         const wy = baseWorldY + ly;
                         const texRow = (wy % patternSpan) * patternSpan;

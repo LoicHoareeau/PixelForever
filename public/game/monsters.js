@@ -28,7 +28,7 @@ export const monsterTemplates = {
         attackRange: 20,
         aggroRange: 48,
         zone: zones.boar,
-        patrolCells: [[8, 14], [6, 11], [25, 25], [34, 31], [38, 12], [44, 24]],
+        patrolCells: [[8, 14], [6, 11], [16, 31], [31, 36], [38, 12], [47, 22], [44, 35], [53, 39], [37, 8], [51, 10]],
         respawnMs: 4000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 1);
@@ -51,7 +51,7 @@ export const monsterTemplates = {
         attackRange: 24,
         aggroRange: 64,
         zone: zones.skeleton,
-        patrolCells: [[82, 50], [90, 54], [104, 52], [112, 57], [109, 68], [100, 74], [87, 74], [81, 66]],
+        patrolCells: [[87, 55], [116, 54], [91, 83], [118, 84], [85, 68], [122, 68], [97, 60], [110, 60], [97, 78], [114, 79], [89, 73], [122, 74]],
         respawnMs: 5000,
         statsForLevel(level) {
             const offset = Math.max(0, level - 5);
@@ -74,7 +74,7 @@ export const monsterTemplates = {
         attackRange: 88,
         aggroRange: 112,
         zone: zones.dragon,
-        patrolCells: [[138, 74], [146, 77], [160, 74], [166, 82], [164, 95], [156, 102], [143, 101], [137, 92]],
+        patrolCells: [[151, 78], [162, 79], [176, 78], [182, 82], [153, 88], [178, 88], [151, 98], [162, 100], [179, 98], [153, 107], [176, 107]],
         respawnMs: 6500,
         statsForLevel(level) {
             const offset = Math.max(0, level - 10);
@@ -92,19 +92,19 @@ export const monsterTemplates = {
     imp: {
         label: 'Diablotin des cendres', minLevel: 21, maxLevel: 25,
         attackRange: 22, aggroRange: 70, zone: zones.imp, respawnMs: 6000,
-        patrolCells: [[177, 78], [194, 78], [200, 86], [197, 96], [181, 99], [176, 93]],
+        patrolCells: [[205, 81], [225, 81], [231, 89], [208, 91], [228, 100], [206, 103], [223, 109], [234, 102], [212, 84], [214, 107]],
         statsForLevel: demonStats,
     },
     hound: {
         label: 'Molosse infernal', minLevel: 25, maxLevel: 30,
         attackRange: 26, aggroRange: 80, zone: zones.hound, respawnMs: 7000,
-        patrolCells: [[175, 111], [195, 112], [200, 121], [196, 132], [183, 134], [174, 128]],
+        patrolCells: [[203, 124], [224, 124], [230, 134], [204, 136], [226, 147], [206, 150], [214, 131], [228, 152], [201, 145], [221, 138]],
         statsForLevel: demonStats,
     },
     fiend: {
         label: 'Garde de la Brèche', minLevel: 30, maxLevel: 35,
         attackRange: 31, aggroRange: 88, zone: zones.fiend, respawnMs: 8000,
-        patrolCells: [[162, 114], [154, 116], [139, 114], [132, 122], [135, 133], [156, 134], [164, 129]],
+        patrolCells: [[184, 132], [152, 132], [148, 142], [182, 147], [157, 154], [176, 156], [162, 135], [174, 136], [149, 154], [186, 155]],
         statsForLevel: demonStats,
     },
 };

@@ -1,4 +1,5 @@
 import { cliffTile, inWasteland, inZone, rocks, seaTile, zones } from './exploration.js';
+import { biomeWeights } from './biome-gradient.js';
 import { addCoastalProps, animateCoast, drawCoastalFloor } from './coast-art.js';
 import { addCemeteryMist, addRegionalScenery, createScorchedCliff, drawRegionalGround } from './regional-art.js';
 
@@ -86,13 +87,28 @@ export function treePositions(terrain) {
         const tx = Math.floor(x / 16);
         const ty = Math.floor(y / 16);
         const tile = terrain[ty]?.[tx];
-        return tile !== cliffTile
-            && tile !== seaTile
-            && !nearCoastOrCliff(terrain, tx, ty)
-            && !inWasteland(x, y)
-            && !inZone(zones.skeleton, x, y)
-            && !inLookoutCorridor(tx, ty)
-            && !(x > 96 && x < 192 && y > 80 && y < 180);
+        if (
+            tile === cliffTile
+            || tile === seaTile
+            || nearCoastOrCliff(terrain, tx, ty)
+            || inWasteland(x, y)
+            || inZone(zones.skeleton, x, y)
+            || inZone(zones.dragon, x, y)
+            || inLookoutCorridor(tx, ty)
+            || (x > 96 && x < 192 && y > 80 && y < 180)
+        ) {
+            return false;
+        }
+        // Éclaircir progressivement la densité des saules à l'approche des autres biomes
+        const { clearing } = biomeWeights(x, y, 16);
+        if (clearing <= 0.20) {
+            return false;
+        }
+        if (clearing < 0.78) {
+            const roll = ((Math.floor(x) * 19 + Math.floor(y) * 31) % 100) / 100;
+            return roll < (clearing - 0.20) / 0.58;
+        }
+        return true;
     });
 }
 
@@ -120,9 +136,10 @@ function nearBlockedOrRoad(terrain, tx, ty) {
 }
 
 function inLookoutCorridor(tx, ty) {
-    return (tx >= 19 && tx <= 33 && ty >= 40 && ty <= 50)
-        || (tx >= 90 && tx <= 103 && ty >= 82 && ty <= 107)
-        || (tx >= 145 && tx <= 159 && ty >= 43 && ty <= 54);
+    return (tx >= 21 && tx <= 37 && ty >= 45 && ty <= 58)
+        || (tx >= 97 && tx <= 113 && ty >= 94 && ty <= 122)
+        || (tx >= 159 && tx <= 175 && ty >= 45 && ty <= 58)
+        || (tx >= 161 && tx <= 173 && ty >= 159 && ty <= 168);
 }
 
 export function buildClearing(scene, terrain, tileSize, width, height, baseTiles) {
@@ -152,12 +169,10 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     context.imageSmoothingEnabled = false;
     terrain.forEach((row, y) => row.forEach((tile, x) => {
         if (tile < 16 || tile === 34 || tile === cliffTile || tile === seaTile) return;
-        const mountain = inZone(zones.dragon, x * tileSize, y * tileSize);
-        const column = mountain || tile === 32 ? 1 : 0;
-        const rowIndex = mountain ? 1 : 0;
+        const column = tile === 32 ? 1 : 0;
         context.drawImage(ground,
             column * groundCell + (x % 16) * groundCell / 16,
-            rowIndex * groundCell + (y % 16) * groundCell / 16,
+            (y % 16) * groundCell / 16,
             groundCell / 16, groundCell / 16, x * tileSize, y * tileSize, tileSize, tileSize);
         if (tile < 32) {
             maskContext.clearRect(0, 0, tileSize, tileSize);
@@ -175,14 +190,16 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
             patchContext.drawImage(pathMask, 0, 0);
             context.drawImage(pathPatch, x * tileSize, y * tileSize);
         }
-        // Feather path borders with irregular grass clumps, preserving the existing road layout.
-        if (tile === 32) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-            if (terrain[y + dy]?.[x + dx] !== 33) continue;
-            for (let i = 0; i < tileSize; i += 3) {
-                const length = 1 + (x * 13 + y * 7 + i) % 4;
-                context.fillStyle = i % 2 ? '#60712e' : '#7c8a3d';
-                context.fillRect(x * tileSize + (dx ? (dx > 0 ? tileSize - length : 0) : i),
-                    y * tileSize + (dy ? (dy > 0 ? tileSize - length : 0) : i), dx ? length : 2, dy ? length : 2);
+        // Estomper progressivement les touffes d'herbe au bord du chemin hors clairière.
+        if (tile === 32 && biomeWeights(x * tileSize + 8, y * tileSize + 8, tileSize).clearing > 0.55) {
+            for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                if (terrain[y + dy]?.[x + dx] !== 33) continue;
+                for (let i = 0; i < tileSize; i += 3) {
+                    const length = 1 + (x * 13 + y * 7 + i) % 4;
+                    context.fillStyle = i % 2 ? '#60712e' : '#7c8a3d';
+                    context.fillRect(x * tileSize + (dx ? (dx > 0 ? tileSize - length : 0) : i),
+                        y * tileSize + (dy ? (dy > 0 ? tileSize - length : 0) : i), dx ? length : 2, dy ? length : 2);
+                }
             }
         }
     }));
@@ -266,16 +283,16 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     const mist = addCemeteryMist(scene, tileSize);
     for (const [text, column, row] of [
         ['Belvédère marin ↓', 25, 21],
-        ['Cimetière →', 34, 13],
-        ['Cimetière des Saules · N.5–10', 84, 44],
-        ['Baie Émeraude ↓', 97, 83],
-        ['Baie de Saphyr ↑', 153, 55],
-        ['Montagnes ↓', 142, 63],
-        ['Hauts de Saphyr · N.10–20', 135, 68],
-        ['Terres dévastées →', 165, 84],
-        ['Brèche des cendres · N.21–25', 176, 73],
-        ['Plaine calcinée · N.25–30', 173, 107],
-        ['Citadelle de la Brèche · N.30–35', 136, 110],
+        ['Cimetière →', 42, 13],
+        ['Cimetière des Saules · N.5–10', 88, 50],
+        ['Baie Émeraude ↓', 105, 95],
+        ['Baie de Saphyr ↑', 169, 57],
+        ['Montagnes ↓', 155, 67],
+        ['Hauts de Saphyr · N.10–20', 149, 73],
+        ['Terres dévastées →', 190, 92],
+        ['Brèche des cendres · N.21–25', 204, 78],
+        ['Plaine calcinée · N.25–30', 200, 119],
+        ['Citadelle de la Brèche · N.30–35', 150, 128],
     ]) {
         const x = column * tileSize;
         const y = row * tileSize;
