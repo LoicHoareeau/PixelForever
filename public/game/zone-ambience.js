@@ -4,13 +4,13 @@ import { isCoastBorderTile } from './exploration.js';
 
 const spacing = 112;
 const profiles = [
-    { kind: 'pollen', density: .34, alpha: .57, scale: 1.0, drift: 17, cycle: 4000 },
-    { kind: 'mist', density: .83, alpha: .76, scale: 1.07, drift: 21, cycle: 4600 },
-    { kind: 'snow', density: .61, alpha: .66, scale: .97, drift: 26, cycle: 2900 },
-    { kind: 'cinders', density: .72, alpha: .68, scale: .91, drift: 16, cycle: 3200 },
-    { kind: 'marsh_wisp', density: .84, alpha: .69, scale: 1.03, drift: 16, cycle: 4050 },
-    { kind: 'ash', density: .70, alpha: .61, scale: .93, drift: 28, cycle: 3350 },
-    { kind: 'cinders', density: .88, alpha: .78, scale: 1.02, drift: 22, cycle: 2750 },
+    { kind: 'pollen', density: .42, alpha: .63, scale: 1, drift: 13, lift: 8, cycle: 5300 },
+    { kind: 'mist', density: .84, alpha: .86, scale: 1.19, drift: 28, lift: 2, cycle: 6100 },
+    { kind: 'snow', density: .69, alpha: .81, scale: 1.12, drift: 37, lift: 13, cycle: 2850 },
+    { kind: 'cinders', density: .73, alpha: .76, scale: .97, drift: 11, lift: 15, cycle: 2700 },
+    { kind: 'marsh_wisp', density: .83, alpha: .86, scale: 1.12, drift: 10, lift: 5, cycle: 4660 },
+    { kind: 'ash', density: .72, alpha: .72, scale: 1.04, drift: 32, lift: 3, cycle: 3520 },
+    { kind: 'rift_glints', density: .87, alpha: .82, scale: 1.12, drift: 8, lift: 18, cycle: 3240 },
 ];
 
 function hash(x, y, seed) {
@@ -66,7 +66,7 @@ export function createZoneAmbience(scene, tileSize) {
                 const t = still ? phase : (now / profile.cycle + phase) % 1;
                 const sweep = Math.sin(t * Math.PI * 2);
                 const rise = Math.cos(t * Math.PI * 2);
-                sprites.play(profile.kind, x + profile.drift * sweep, y + rise * 5, t,
+                sprites.play(profile.kind, x + profile.drift * sweep, y + rise * profile.lift, t,
                     profile.scale * (.82 + phase * .28), 0, profile.alpha * opacity);
             }
         }

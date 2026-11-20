@@ -1,4 +1,4 @@
-import { malakorActions, malakorActionFrames, malakorFrameSize, malakorThresholds } from './malakor.js';
+import { malakorActions, malakorActionFrames, malakorFrameSize, malakorIgnitionMs, malakorRageProgress, malakorThresholds } from './malakor.js';
 // Espèces, patrouilles et combat des monstres.
 import { inZone, zones } from './exploration.js';
 import { monsterArt, monsterFrames, monsterWalkFrames } from './monster-art.js';
@@ -304,6 +304,7 @@ export class Monster {
         this.patrolIndex = Math.max(0, this.patrol.indexOf(index));
         this.phase = 1;
         this.trial = null;
+        this.rageStartedAt = null;
         this.nextTrialAt = Infinity;
         this.poseRecovery = null;
         this.echo = null;
@@ -544,15 +545,14 @@ export class Monster {
             const enraged = this.phase === 3;
             if (enraged) texture = 'malakor-rage';
             const visual = now < this.attackEndsAt ? this.attackVisual : (now < this.poseRecovery?.end ? this.poseRecovery : null);
-            const transforming = this.trial?.transform && now < this.trial.beginsAt;
-            const action = transforming ? 'transform' : (this.trial ? 'seismic_ring' : visual?.special);
+            const ignition = malakorRageProgress(this.rageStartedAt, now, malakorIgnitionMs);
+            const action = ignition !== null ? 'transform' : (this.trial ? 'seismic_ring' : visual?.special);
             const actionIndex = malakorActions.indexOf(action);
             if (actionIndex >= 0) {
                 texture = enraged ? 'malakor-rage-actions' : 'malakor-actions';
                 let step = 3;
-                if (transforming) {
-                    const duration = this.trial.beginsAt - this.trial.start;
-                    step = Math.min(11, Math.floor((now - this.trial.start) * 12 / duration));
+                if (ignition !== null) {
+                    step = Math.floor(ignition * malakorActionFrames);
                 } else if (this.trial) {
                     step = 2 + Math.floor((now - this.trial.start) / 105) % 4;
                 } else if (now < visual.castEnd) {
@@ -589,6 +589,12 @@ export class Monster {
             this.cancelAttack();
             this.path = this.route(this.home);
             this.destination = null;
+        }
+
+        if (this.isBoss && malakorRageProgress(this.rageStartedAt, now, malakorIgnitionMs) !== null) {
+            this.renderPose(now);
+            this.syncOverlays();
+            return;
         }
 
         if (now < this.stunUntil) {
