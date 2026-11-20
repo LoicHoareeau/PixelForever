@@ -21,7 +21,7 @@ PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les
 1. Comparer le SHA déployé avec celui de la branche suivie ; consulter les journaux de construction et de migration en cas d’échec.
 2. Ouvrir la connexion et accéder à un personnage existant ; vérifier son niveau et son XP après reconnexion.
 3. Vérifier le plein écran, le défilement de caméra, les décors et le chargement des sprites sans erreur.
-4. Vérifier l’arme équipée : Baguette de braise / Sceptre à distance, Bâton des saules au contact, Boule de feu toujours à distance. Contrôler le geste d’incantation, la recharge et le mana.
+4. Vérifier que la Baguette de braise et le Sceptre tirent en mouvement à 7,5 cases avant bonus avec des dégâts réduits, et que le Bâton des saules frappe au contact. Lancer Boule de feu à 15 cases avec le bâton, puis vérifier la recharge, le mana et le remboursement si le Mage se déplace pendant l’incantation.
 5. Vérifier l’ATH de sauvegarde après une victoire. Si les anciens scripts semblent encore actifs, recharger les ressources puis comparer les fichiers servis au commit déployé.
 6. Suivre le chemin à l’est des montagnes jusqu’aux Terres dévastées. Contrôler les trois bandes de niveau N.21–35 et esquiver un souffle du dragon en quittant sa ligne après le lancement.
 7. Depuis le Trône d’Obsidienne, suivre la chaussée sud puis la route vers l’est jusqu’au Belvédère des Brisants. Vérifier les trois bandes N.41–60 dans l’ATH, les limites des falaises et une esquive circulaire ou linéaire.

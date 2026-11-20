@@ -144,7 +144,9 @@ try {
     $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
     check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
     check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
-    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 7.5, 'Le mage doit combattre à distance étendue (7,5 cases).');
+    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 7.5, 'La baguette doit porter à 7,5 cases.');
+    check($mageRules['specialRange'] == 15.0 && $mageRules['wandDamageMultiplier'] == 0.5, 'Le mage doit lancer ses sorts à 15 cases et tirer à demi-puissance à la baguette.');
+    check(htmlValue($magePage, '//*[@data-sheet-basic-damage]') === '6 dégâts', 'La fiche doit afficher les dégâts réduits avant le démarrage du jeu.');
     check($mageRules['specialManaCost'] === 18 && $mageRules['baseManaRegen'] == 1.0 && $mageRules['specialCastMs'] === 1000, 'Le mage doit avoir sa régénération réduite, ses coûts relevés et son cast d’une seconde.');
     check($mageRules['resourceName'] === 'Mana' && $mageRules['specialName'] === 'Boule de feu', 'Le mage doit conserver son mana et ses sorts.');
     foreach ([$warriorRules, $mageRules] as $rules) {

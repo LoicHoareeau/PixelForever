@@ -214,7 +214,7 @@ export const talentTrees = {
                         maxRank: 5,
                         type: 'passive',
                         icon: 'icon-bolt',
-                        description: '+2 dégâts sur Trait de feu par rang.',
+                        description: '+2 dégâts de base par rang sur l’auto-attaque, avant réduction à la baguette.',
                     },
                     {
                         id: 'm_pyroblast',
@@ -760,7 +760,8 @@ export function basicWeaponProfile(rules, progress, stats, tileSize) {
     const range = ranged ? (rules.range + (stats.bonusRangeTiles ?? 0)) * tileSize : 1.5 * tileSize;
     const talents = progress.talents ?? {};
     const damage = wand
-        ? Math.round((stats.basicDamage + (talents.m_wand_focus ?? 0) * 2) * (1 + (talents.m_wand_mastery ?? 0) * .06))
+        ? Math.round((stats.basicDamage * (rules.wandDamageMultiplier ?? 1) + (talents.m_wand_focus ?? 0) * 2)
+            * (1 + (talents.m_wand_mastery ?? 0) * .06))
         : stats.basicDamage;
     return { ranged, range, damage };
 }

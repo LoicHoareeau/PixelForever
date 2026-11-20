@@ -54,11 +54,11 @@ Malakor a 36 000 PV et trois phases. À 65 % et 25 %, la Brèche balaie le Trôn
 | Classe / arme | Attaque de base | Portée de base |
 | --- | --- | --- |
 | Guerrier · épée ou croc | Coup en mêlée | 1,5 case |
-| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 5 cases, plus bonus de talent éventuel |
+| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 7,5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 1,5 case |
 | Mains nues | Coup de poing | 1,5 case |
 
-L’attaque de base ne consomme pas de ressource. Le bâton ne transforme pas les sorts du mage en coups de mêlée : Boule de feu garde sa portée de 5 cases. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent uniquement les auto-attaques à la baguette. La seconde exige la maîtrise et cinq points dans Arcanes.
+L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes.
 
 Les sorts de zone du Mage se lancent également à distance : Tourbillon de feu et Nova de givre sont centrés sur la cible sélectionnée, pas sur le mage. L’arme équipée ne réduit la portée d’aucun sort.
 
