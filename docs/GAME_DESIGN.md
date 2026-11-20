@@ -20,9 +20,11 @@ Créer un Guerrier, un Mage, un Démoniste, un Voleur ou un Chasseur → parler 
 
 Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, la distance (`7,5` cases) et le mana (`1,0/s` de base, régénération par Esprit réduite à `+0,14/s` par point afin d’imposer une vraie gestion du mana). Le portrait et le personnage suivent la même classe.
 
-Le Démoniste choisit entre Affliction, Démonologie et Destruction. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse quatre fois sur 2 s. Le diablotin attaque à distance, la succube ralentit et le marcheur du Vide détourne l’ennemi ordinaire qu’il engage. Le Voleur choisit Assassinat, Combat ou Subterfuge. Le Chasseur choisit Précision, Survie ou Fauconnerie. La Dextérité renforce leurs armes principales. Le Guerrier investit en Défense contre les dégâts physiques et apprend Provocation et Rempart dans Protection.
+Le Démoniste applique Corruption sans incantation. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse toutes les 500 ms pendant 2 s, en rendant des PV selon les dégâts infligés. Se déplacer interrompt l’incantation ou la canalisation. Une pulsation déjà jouée engage le coût et la recharge du drain.
 
-L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer Boule de feu à distance. L’attaque de base reste disponible sans mana ; Attaque chargée coûte 10 d’énergie, tandis que Boule de feu coûte 18 de mana avec une incantation de 1,0 s. Les talents peuvent réduire les coûts et délais. La cadence de base est de 500 ms, avec préparation, effets visuels enrichis, secousses de caméra mesurées et impact ; aucune seconde attaque de base ne part pendant l’attaque en cours.
+Le Démoniste garde une invocation à la fois. Le diablotin, disponible au niveau 1, attaque à distance. La succube ralentit et le marcheur du Vide détourne l’ennemi ordinaire qu’il engage. Malakor continue de viser le joueur. Le faucon du Chasseur attaque les cibles engagées et bénéficie de Marque de proie.
+
+Un Mage au bâton garde la portée de Boule de feu. Tir perforant requiert un arc équipé. L’attaque de base est gratuite. Attaque chargée coûte 10 d’énergie et Boule de feu coûte 18 de mana avec 1 s d’incantation. La cadence de base est de 500 ms et une attaque en cours bloque le lancement d’une autre auto-attaque. Les talents peuvent réduire les coûts et les délais.
 
 Tous les sorts offensifs du Mage ciblent à distance (`7,5` cases avant bonus), quelle que soit son arme. Tourbillon de feu (28 mana, cast 1,0 s) et Nova de givre (20 mana) se déclenchent autour de la cible sélectionnée dans un rayon de 54 px. Mur de feu (22 mana, cast 1,0 s) couvre 38 px autour de la cible à `7,5` cases + 16 px ; Déflagration (15 mana) porte à `9` cases avant bonus. Interrompre une incantation d’une seconde en se déplaçant rembourse le mana. Nova ralentit pendant 2,5 secondes (`0,625 s` sur Malakor). Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste une zone de mêlée du Guerrier, centrée sur lui.
 
@@ -32,20 +34,21 @@ La cible doit être vivante et à portée. Un coup de mêlée revérifie la port
 
 Aucun point au niveau 1. Chaque niveau suivant donne trois points de caractéristiques et un point de talent/sort, avec croissance naturelle de classe. Les rangs de sorts de base et les talents consomment le même budget. La réinitialisation des talents rend les points investis dans les talents. Les prérequis, rangs maximums et points de branche sont vérifiés.
 
-- Guerrier : Armes, Fureur et Protection ; Taillade, Engagement, Berserk et Coup de bouclier sont des compétences actives.
-- Mage : Pyromancie, Arcanes et Givre ; Mur de feu, Tourbillon de feu, Déflagration et Nova de givre sont des compétences actives.
+- **Guerrier** · Armes, Fureur et Protection. La Défense réduit les coups physiques. Protection donne accès à Coup de bouclier, Provocation et Rempart.
+- **Mage** · Pyromancie, Arcanes et Givre. Mur de feu, Tourbillon de feu, Déflagration et Nova de givre sont des compétences actives.
+- **Démoniste** · Affliction, Démonologie et Destruction. Les talents donnent accès à Drain de vie, aux invocations avancées et aux sorts de feu et de chaos.
+- **Voleur** · Assassinat, Combat et Subterfuge. La Dextérité renforce les dagues. Les branches proposent Rupture, Rafale de lames et des techniques d’ombre.
+- **Chasseur** · Précision, Survie et Fauconnerie. La Dextérité renforce l’arc. Les branches proposent Volée, Piège à pointes et des techniques de faucon.
 - Maîtrise des baguettes : cinq rangs de +6 % sur le tir de baguette.
 - Focalisation de la baguette : trois rangs de +2 dégâts avant maîtrise, avec maîtrise apprise et cinq points en Arcanes requis.
 
-Les bonus de baguette ne renforcent ni les coups de bâton, ni les sorts, ni les attaques du Guerrier. Les compétences actives débloquées occupent les emplacements 3 à 6. Leur coût et leur recharge sont propres à chaque compétence.
+Les bonus de baguette s’appliquent aux tirs de baguette. Les techniques actives occupent les touches 3 à 6, jusqu’à 8 pour le Guerrier et 9 pour le Démoniste. Leur coût et leur recharge sont propres à chaque compétence. L’invocation du diablotin occupe la touche 3 dès le niveau 1.
 
 ## Animations de combat
 
 L’auto-attaque à distance et les sorts du Mage utilisent une pose d’incantation orientée et des effets magiques. La planche Noé `attack.png`, issue de « Frappe à la lanterne », sert aux coups de contact et ne doit pas être utilisée pour représenter un tir de baguette. Les poses d’incantation dérivent du sprite existant, sans redessiner le personnage.
 
-Les exports `pixel` vérifiés contiennent « Frappe à la lanterne » pour Noé et « Coup de marteau » pour Lina. Aucun cycle d’incantation dédié n’y est présent. Une future animation magique complète devra utiliser un export dédié, en conservant l’apparence du personnage ; le geste orienté actuel est une adaptation des poses existantes.
-
-La préparation et la fin du geste sont cadencées pour rester lisibles à 30 FPS. Le projectile suit sa propre trajectoire vers la cible. Les compétences de talents déclenchent aussi un geste. Les directions nord utilisent des poses orientées ; les frappes existantes restent disponibles pour le Guerrier et le bâton. Les fichiers Markdown n’interviennent pas dans ce choix à l’exécution : `combat.js` et `world.js` l’appliquent.
+Le Guerrier en armure utilise une planche d’attaque dédiée. L’épée, la hache et le bouclier suivent la main dans les poses de combat. La Hache de fer s’équipe dans l’inventaire et déclenche sa propre animation de frappe. La préparation, le projectile et le retour du geste rendent le déroulement des attaques lisible. [Catalogue des VFX](VFX.md)
 
 ## Monde et monstres
 
@@ -81,7 +84,7 @@ Chaque défaite crédite de l’XP selon l’espèce/niveau et un tirage personn
 | Sentinelles de basalte | 48 | 26 % |
 | Gardiens du Gouffre N.56+ | 56 | 32 % |
 
-Chaque tirage accorde une coiffe ou des gants de la classe jouée. Malakor donne en priorité une pièce encore absente du sac. Les coiffes ajoutent des PV et de la protection au Guerrier ou du mana au Mage. Les gants renforcent les dégâts de base et des compétences.
+Chaque tirage accorde une coiffe ou des gants de la classe jouée. Malakor donne en priorité une pièce encore absente du sac. Les coiffes ajoutent des PV et un bonus de protection ou de ressource selon la classe. Les gants renforcent les dégâts de base et des compétences. [Catalogue des armures](../public/game/armor.js)
 
 ## Persistance et objectifs futurs
 

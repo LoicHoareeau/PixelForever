@@ -4,7 +4,7 @@ Le projet utilise un conteneur PHP 8.2 / Apache. Le `Dockerfile` installe les d�
 
 ## Branche Git et déploiement
 
-Les modifications passent par une branche dédiée et une pull request vers `main`. La PR #10 était un doublon de la refonte déjà intégrée et a été fermée ; la PR #11 (décors détaillés, butin et armes du Mage) a été fusionnée dans `main` au commit `559258d`.
+Les modifications passent par une branche dédiée et une pull request vers `main`. Pour livrer les classes et les VFX, vérifier que le SHA choisi inclut à la fois le code client et ses atlas PNG.
 
 Le paramétrage Render précédemment constaté suivait `codex/deployer-pixelforever`. Vérifier le champ Branch du service avant de déployer : fusionner dans `main` ne met pas à jour une autre branche automatiquement. Si le service suit encore cette branche, la synchroniser par avance rapide avec `main` après vérification de ses changements propres, ou choisir `main` dans Render. Ne pas forcer un push pour masquer une divergence.
 
@@ -25,10 +25,10 @@ PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les
 5. Vérifier l’ATH de sauvegarde après une victoire. Si les anciens scripts semblent encore actifs, recharger les ressources puis comparer les fichiers servis au commit déployé.
 6. Suivre le chemin à l’est des montagnes jusqu’aux Terres dévastées. Contrôler les trois bandes de niveau N.21–35 et esquiver un souffle du dragon en quittant sa ligne après le lancement.
 7. Depuis le Trône d’Obsidienne, suivre la chaussée sud puis la route vers l’est jusqu’au Belvédère des Brisants. Vérifier les trois bandes N.41–60 dans l’ATH, les limites des falaises et une esquive circulaire ou linéaire.
-8. Créer les trois nouvelles classes. Vérifier l’invocation, le drain, un tir et une frappe de dague. Sur le Guerrier, équiper la hache, frapper puis retirer l’arme.
+8. Créer un Démoniste, un Voleur et un Chasseur. Tester le projectile du diablotin, l’aggro du marcheur du Vide et l’interruption du drain. Vérifier un tir d’arc et une frappe de dague. Sur le Guerrier, équiper la hache, frapper puis retirer l’arme.
 9. Vérifier les seuils de Malakor à 65 % et 25 %, la déferlante de la Rage sur toute la carte, le répit avant le premier balayage, la continuité des rayons dans les bandes dangereuses, leur désintégration et la disparition progressive des braises. À la victoire, équiper la pièce reçue dans l’inventaire et contrôler la fiche après rechargement.
 10. Parcourir la clairière et un secteur sombre, puis vérifier que les halos restent centrés en déplaçant la caméra ou en redimensionnant la fenêtre. Vérifier les particules d’ambiance et les sprites d’impact. Contrôler la lisibilité des bandes de Malakor avec et sans mouvement réduit.
 
-Les corrections de combat postérieures à #11 doivent elles aussi être fusionnées et déployées avant d’être visibles en production.
+Contrôler le chargement de `combat-vfx.png`, `class-vfx.png`, `class-gear.png` et `class-familiars.png` dans l’onglet Réseau du navigateur. [Vérifications VFX](VFX.md#vérifications)
 
 Pour PostgreSQL local, suivre le [démarrage Docker](../README.md#lancer-pixelforever-avec-postgresql). La procédure manuelle Render est décrite dans les [déploiements Render](https://render.com/docs/deploys).

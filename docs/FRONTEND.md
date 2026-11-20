@@ -22,17 +22,15 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-L’épée et le croc frappent à 1,5 case. Le Mage commence avec la Baguette de braise : projectile à 7,5 cases (extensible à 8 avec Déflagration) pour compenser une régénération de base réduite (`1,0/s`) et des coûts en mana relevés (`15` à `28` selon les sorts ; Boule de feu `18`). Boule de feu, Mur de feu et Tourbillon de feu demandent `1,0 s` d’incantation (barre de sort dédiée `#cast-bar` annulée avec remboursement si le mage se déplace). Son Sceptre de Saphyr se comporte comme une baguette ; le Bâton des saules frappe au contact à 1,5 case. Sans arme, les personnages frappent au poing à 1,5 case. L’auto-attaque est gratuite. Boule de feu garde sa portée de sort quand un bâton est équipé.
+L’épée, le croc et la Hache de fer frappent à 1,5 case. Le Mage commence avec la Baguette de braise : projectile à 7,5 cases (extensible à 8 avec Déflagration) pour compenser une régénération de base réduite (`1,0/s`) et des coûts en mana relevés (`15` à `28` selon les sorts ; Boule de feu `18`). Boule de feu, Mur de feu et Tourbillon de feu demandent `1,0 s` d’incantation (barre de sort dédiée `#cast-bar` annulée avec remboursement si le mage se déplace). Son Sceptre de Saphyr se comporte comme une baguette ; le Bâton des saules frappe au contact à 1,5 case. Sans arme, les personnages frappent au poing à 1,5 case. L’auto-attaque est gratuite. Boule de feu garde sa portée de sort quand un bâton est équipé.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
-Les quatre sorts de talents du Mage restent utilisables à distance avec un bâton ou sans arme. Tourbillon de feu et Nova de givre visent la cible à cinq cases et touchent les monstres à moins de 54 px de celle-ci, plutôt que ceux autour du mage. Mur de feu et Déflagration gardent leur portée étendue. Les sorts exigent une cible vivante à portée avant toute dépense. Taillade conserve sa zone autour du Guerrier.
+Les quatre sorts de talents du Mage restent utilisables à distance avec un bâton ou sans arme. Tourbillon de feu et Nova de givre visent la cible à 7,5 cases avant bonus et touchent les monstres à moins de 54 px de celle-ci. Mur de feu et Déflagration gardent leur portée étendue. Les sorts exigent une cible vivante à portée avant toute dépense. Taillade conserve sa zone autour du Guerrier.
 
-Noé ne doit pas utiliser sa planche « Frappe à la lanterne » pour un tir ou une incantation : les poses orientées existantes servent au geste magique, et les effets dessinent le projectile. Le bâton peut utiliser la frappe de contact. Préparation et récupération permettent de lire le cycle à 30 FPS ; les sorts de talents déclenchent aussi un geste. Les directions nord utilisent des poses dérivées du sprite au lieu d’une frappe tournée dans le mauvais sens.
+Le Mage utilise des poses orientées pour le tir et l’incantation. Le bâton peut jouer la « Frappe à la lanterne » de Noé au contact. Les directions nord utilisent des poses dérivées du sprite. La préparation et la récupération sont lisibles à 30 FPS.
 
-Les archives PixelLab actuelles proposent uniquement « Frappe à la lanterne » (Noé) et « Coup de marteau » (Lina) pour les frappes. Elles ne contiennent pas de planche d’incantation dédiée : ne pas présenter ces exports comme des animations magiques complètes.
-
-`public/game/val-des-saules/combat-vfx.png` regroupe 25 cycles de 16 images de 128 × 128 px, effets d’ambiance compris. `class-vfx.png` ajoute 14 cycles, dans une seconde texture pour limiter sa hauteur. La Boule de feu associe un noyau en rotation, une traînée et un impact. Le Tourbillon superpose les bandes avant et arrière d’une double hélice. La Nova fait jaillir des cristaux facettés, la Déflagration déploie un rayon violet vers la cible et la Taillade tourne autour du Guerrier en blanc et or. Les attaques légères, le bâton et le bouclier ont des impacts adaptés à leur geste. Malakor dispose d’un large arc de clivage, d’un anneau de roche soulevée, de colonnes de magma et de deux cycles d’effets autour du corps pour l’embrasement et la Rage. La déferlante de Rage occupe une couche sous les repères de combat et teinte temporairement toute la carte. Elle dure 2,55 s et ne comporte aucune collision. Avec mouvement réduit, seule la teinte adoucie s’affiche à cette échelle. Pendant le balayage, `combat-vfx.js` dessine un faisceau continu dans chaque bande dangereuse, avec un anneau d’émission, un cœur blanc-or et un éclat à l’autre bout de l’arène. Le rayon se resserre pendant que des fragments incandescents se dispersent. Les braises s’éteignent en trois secondes. Les repères au sol restent indépendants de ces effets. `combat-vfx.js` réutilise les objets d’affichage. Générer l’atlas avec GD via `php tools/build_combat_vfx.php`.
+Les deux atlas de VFX partagent un pool de sprites. Les effets au sol suivent les coordonnées du combat, tandis que les animations des personnages suivent la direction et l’équipement. [Catalogue, génération et vérifications des VFX](VFX.md)
 
 ## Monstres et PNJ
 
@@ -59,12 +57,12 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | Cibler le monstre vivant le plus proche | `Tab` |
 | Parcourir les cibles en sens inverse | `Maj+Tab` |
 | Attaque de base / compétence principale | `1` / `2` |
-| Sorts de talents débloqués | `3` à `6` |
+| Techniques disponibles | `3` à `6`, jusqu’à `8` pour le Guerrier et `9` pour le Démoniste |
 | Potions de vie / ressource | `R` / `F` |
 | Fiche / talents / inventaire | `C` / `T` / `I` |
 | Parler au PNJ à proximité | `E` ou clic |
 
-Les positions physiques utilisent `KeyboardEvent.code` : sur AZERTY, les touches `&`, `é`, `"`, `'`, `(`, `-` activent respectivement les actions 1–6 sans Maj. Les raccourcis sont suspendus pendant la saisie et lorsque les dialogues l’exigent. Le menu de réaffectation des touches n’est pas encore implémenté.
+Les commandes utilisent `KeyboardEvent.code`. Sur AZERTY, les touches physiques de la rangée des chiffres activent les actions sans Maj. Les raccourcis sont suspendus pendant la saisie et lorsque les dialogues l’exigent.
 
 ## Progression et sauvegardes
 
@@ -76,6 +74,6 @@ Les victoires donnent l’XP du monstre et un tirage : vie 47 %, ressource 30 %,
 
 `node --test tests/*.test.mjs` couvre chemins, obstacles, caméra, monstres, difficulté, quête, sauvegardes, armes et animation. `combat-animation.test.mjs` exécute notamment le vrai rendu de `world.js` avec des objets d’affichage de test et vérifie l’absence de frappe de contact pour un tir magique. Le test PHP `composer test:accounts` couvre les comptes, classes, icônes et niveau/XP.
 
-Vérifier en navigateur : baguette à distance, bâton au contact, Boule de feu au bâton, mana à zéro, recharge, cible hors de portée, équipement, talents, déplacement/caméra, quête et reconnexion. Le monde partagé, le marchand et la sauvegarde serveur du sac restent à développer.
+Vérifier en navigateur la portée des attaques avec l’arme équipée, le coût et la recharge des techniques, les déplacements, la quête et la reconnexion. [Scénarios VFX](VFX.md#vérifications) · [Parcours après déploiement](DEPLOIEMENT.md#vérifications-après-déploiement)
 
 Voir le [game design](GAME_DESIGN.md) et le [back-end](BACKEND.md).

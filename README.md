@@ -24,7 +24,7 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour jouer un Guerrier ou un Mage dans Val-des-Saules. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
+Ouvre le jeu, crée un compte et choisis l’une des cinq classes. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`. [PixelForever en local](http://127.0.0.1:8000)
 
 ## Vérifications locales
 
@@ -53,14 +53,17 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 
 | Classe / arme | Attaque de base | Portée de base |
 | --- | --- | --- |
-| Guerrier · épée ou croc | Coup en mêlée | 1,5 case |
-| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 5 cases, plus bonus de talent éventuel |
+| Guerrier · épée, croc ou Hache de fer | Coup en mêlée | 1,5 case |
+| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 7,5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 1,5 case |
+| Démoniste · Grimoire | Trait d’ombre | 7 cases |
+| Voleur · Dagues | Coup de dague | 1,5 case |
+| Chasseur · Arc | Flèche rapide | 8 cases |
 | Mains nues | Coup de poing | 1,5 case |
 
-L’attaque de base ne consomme pas de ressource. Le bâton ne transforme pas les sorts du mage en coups de mêlée : Boule de feu garde sa portée de 5 cases. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent uniquement les auto-attaques à la baguette. La seconde exige la maîtrise et cinq points dans Arcanes.
+L’attaque de base est gratuite. Boule de feu garde ses 7,5 cases de portée avant bonus, y compris avec un bâton. Maîtrise des baguettes et Focalisation de la baguette renforcent les auto-attaques à la baguette. [Règles des classes et des talents](docs/GAME_DESIGN.md)
 
-Le Démoniste combine des malédictions périodiques, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité, et le Guerrier peut investir en Défense et équiper la hache depuis le sac.
+Le Démoniste combine Corruption instantanée, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité pour leurs dagues et leur arc. Le Guerrier peut investir en Défense et équiper la Hache de fer depuis le sac. Son arme apparaît en main et la hache joue une frappe avec un croissant incandescent. [Effets visuels](docs/VFX.md)
 
 Les sorts de zone du Mage se lancent également à distance : Tourbillon de feu et Nova de givre sont centrés sur la cible sélectionnée, pas sur le mage. L’arme équipée ne réduit la portée d’aucun sort.
 
@@ -70,7 +73,7 @@ Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L�
 
 Le niveau 1 ne donne aucun point. Chaque montée suivante donne trois points de caractéristiques et un point de talent/sort. Le niveau 2 demande 100 XP ; le seuil augmente ensuite de 50 XP par niveau. Les monstres de niveau supérieur accordent davantage d’XP. Dans les Terres dévastées, un diablotin N.22 rapporte 676 XP et un garde N.35 en rapporte 1 638.
 
-Chaque défaite donne un objet : potion de vie 47 %, potion de ressource 30 %, arme rare 15 %, arme épique 5 %, Écaille de Saphyr 2 %, Cœur de flamme bleue 1 %. Les armes sont adaptées à la classe : Lame des saules / Croc de Saphyr pour le Guerrier, Bâton des saules / Sceptre de Saphyr pour le Mage. Écailles et cœurs sont des matériaux, non équipables. Les potions rendent 20 PV ou 15 points de ressource. La Citadelle, Malakor, les Remparts et le Cap donnent aussi des coiffes et des gants adaptés à la classe.
+Chaque victoire donne un objet selon un tirage qui réserve 47 % à la vie, 30 % à la ressource, 15 % à une arme rare, 5 % à une arme épique, 2 % à l’Écaille de Saphyr et 1 % au Cœur de flamme bleue. Le type d’arme dépend de la classe. Écailles et cœurs sont des matériaux. Les potions rendent 20 PV ou 15 points de ressource. La Citadelle, Malakor, les Remparts et le Cap donnent aussi des coiffes et des gants adaptés à la classe.
 
 Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipées, les allocations et la quête restent enregistrés par personnage dans le navigateur. Effacer ce stockage peut donc effacer ces éléments locaux.
 
@@ -82,4 +85,4 @@ Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence pri
 
 Le monde partagé/WebSocket, le combat validé par serveur, le marchand, la vente, l’équipement secondaire et la sauvegarde serveur du sac/talents/quêtes ne sont pas encore intégrés. Le modèle PHP `Character`/`Blob` conserve des règles de prototype historiques testées séparément.
 
-Les règles détaillées figurent dans le [game design](docs/GAME_DESIGN.md), l’affichage et les contrôles dans le [front-end](docs/FRONTEND.md), la persistance dans le [back-end](docs/BACKEND.md). Le [guide Render](docs/DEPLOIEMENT.md) distingue fusion Git et déploiement.
+Documentation du projet · [Game design](docs/GAME_DESIGN.md) · [Front-end](docs/FRONTEND.md) · [Back-end](docs/BACKEND.md) · [VFX](docs/VFX.md) · [Déploiement](docs/DEPLOIEMENT.md)
