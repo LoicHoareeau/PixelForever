@@ -8,6 +8,7 @@ const COLS = 20;
 const BASE_CELL = 128;
 const BASE_POSES = 40;
 const ACTION_POSES = 48;
+const INK = 0x180e1b;
 
 function canvas(int $width, int $height): GdImage
 {
@@ -81,6 +82,57 @@ function flame(GdImage $image, float $x, float $y, float $height, float $lean, i
     }
 }
 
+function wingEdge(GdImage $frame, int $side, int $y): ?int
+{
+    $edge = $side < 0 ? 15 : 112;
+    $limit = $side < 0 ? 55 : 72;
+    while ($side * ($edge - $limit) > 0) {
+        if ((imagecolorat($frame, $edge, $y) >> 24) <= 48) return $edge;
+        $edge -= $side;
+    }
+    return null;
+}
+
+function firelight(GdImage $frame, int $x, int $y, float $power): void
+{
+    $pixel = imagecolorat($frame, $x, $y);
+    $alpha = ($pixel >> 24) & 127;
+    if ($alpha > 80) return;
+    $r = ($pixel >> 16) & 255;
+    $g = ($pixel >> 8) & 255;
+    $b = $pixel & 255;
+    imagesetpixel($frame, $x, $y, ($alpha << 24)
+        | (min(255, $r + (int) (235 * $power)) << 16)
+        | (min(255, $g + (int) (155 * $power)) << 8)
+        | min(255, $b + (int) (64 * $power)));
+}
+
+function lightRelics(GdImage $frame, int $direction, int $step, float $heat): void
+{
+    if ($heat <= .08) return;
+    for ($y = 14; $y < 30; $y++) {
+        for ($x = 49; $x < 79; $x++) {
+            $pulse = .78 + .22 * sin($step * .5 + $x * .46);
+            firelight($frame, $x, $y, $heat * $pulse);
+        }
+    }
+    if ($direction === 6) return;
+    $side = in_array($direction, [3, 4, 5], true) ? -1 : 1;
+    for ($y = 72; $y < 102; $y++) {
+        for ($x = 19; $x < 109; $x++) {
+            $distance = $side * ($x - 64);
+            if ($distance < 23) continue;
+            $pixel = imagecolorat($frame, $x, $y);
+            $r = ($pixel >> 16) & 255;
+            $g = ($pixel >> 8) & 255;
+            $b = $pixel & 255;
+            // Warm insets and the bright original blade edge reflect the heat.
+            if ($r + $g + $b < 152 || ($g > $r * 1.04 && $b > $r * 1.11)) continue;
+            firelight($frame, $x, $y, $heat * min(1, ($distance - 20) / 13));
+        }
+    }
+}
+
 function drawWingFire(GdImage $image, GdImage $frame, int $direction, int $step, float $heat, int $dy): void
 {
     if ($heat <= .08) return;
@@ -89,19 +141,27 @@ function drawWingFire(GdImage $image, GdImage $frame, int $direction, int $step,
         4 => [1],
         default => [-1, 1],
     };
-    // Attach each flame to the actual opaque wing edge of this source frame.
     foreach ($sides as $side) {
+        for ($y = 43; $y <= 93; $y++) {
+            $edge = wingEdge($frame, $side, $y);
+            if ($edge === null) continue;
+            $width = (int) round(6 + 5 * sin(($y - 42) * M_PI / 54));
+            for ($depth = 2; $depth <= $width; $depth++) {
+                $x = $edge - $side * $depth;
+                if ($side * ($x - 64) < 15) break;
+                $vein = sin($y * .25 + $x * .53 + $side * .9) * .5 + .5;
+                $flare = sin($step * .53 + $y * .11) * .14 + .86;
+                $spread = 1 - abs($depth - $width * .45) / max(4, $width);
+                firelight($frame, $x, $y, $heat * $flare * $spread * (.34 + .68 * $vein));
+            }
+        }
         for ($index = 3; $index >= 0; $index--) {
             $y = 47 + $index * 8;
-            $start = $side < 0 ? 15 : 112;
-            $edge = $start;
-            while (($side < 0 ? $edge < 55 : $edge > 72) && (imagecolorat($frame, $edge, $y) >> 24) > 48) {
-                $edge -= $side;
-            }
-            if ($side < 0 ? $edge >= 55 : $edge <= 72) continue;
+            $edge = wingEdge($frame, $side, $y);
+            if ($edge === null) continue;
             $variation = sin($step * .69 + $index * 1.87 + $direction);
-            $height = max(3, (14 + $variation * 5 + ($index % 2) * 3) * $heat);
-            flame($image, 32 + $edge + $side * 3, 64 + $y + $dy, $height, $side * (3 + $index), $step);
+            $height = max(3, (12 + $variation * 5 + ($index % 2) * 3) * $heat);
+            flame($image, 32 + $edge + $side * 2, 64 + $y + $dy, $height, $side * (3 + $index), $step);
         }
     }
 }
@@ -112,6 +172,20 @@ function drawPose(GdImage $source, int $direction, int $pose, int $step, float $
     $frame = sourcePose($source, $direction, $pose);
     drawWingFire($image, $frame, $direction, $step, $heat, $dy);
     lightArmor($frame, $direction, $heat);
+    lightRelics($frame, $direction, $step, $heat);
+    if ($heat > .28) {
+        for ($x = 52; $x <= 76; $x += 4) {
+            for ($y = 14; $y < 26; $y++) {
+                if ((imagecolorat($frame, $x, $y) >> 24) > 65) continue;
+                $height = (3 + ($x + $step * 3) % 5) * $heat;
+                line($image, 32 + $x, 66 + $y + $dy,
+                    32 + $x + sin($x + $step) * 2, 64 + $y + $dy - $height, 0x3bf15c27, 2);
+                line($image, 32 + $x, 65 + $y + $dy, 33 + $x,
+                    64 + $y + $dy - $height * .55, 0xffb35e);
+                break;
+            }
+        }
+    }
     imagecopy($image, $frame, 32, 64 + $dy, 0, 0, BASE_CELL, BASE_CELL);
     // Light on the edge stays close to the original contour.
     if ($heat >= .45) {

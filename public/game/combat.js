@@ -1804,6 +1804,63 @@ export class TrainingCombat {
         this.effect.strokePath();
     }
 
+    drawMalakorAura(monster, now) {
+        const still = this.scene.motionPreference?.matches;
+        const time = still ? 0 : now;
+        const x = monster.sprite.x;
+        const y = monster.sprite.y;
+        const ignition = monster.trial?.transform && now < monster.trial.beginsAt;
+        const buildup = ignition ? (now - monster.trial.start) / (monster.trial.beginsAt - monster.trial.start) : 1;
+        const heat = Math.max(.1, Math.min(1, buildup));
+        const pulse = .5 + .5 * Math.sin(time / 230);
+        const radius = 29 + 6 * pulse;
+
+        this.effect.fillStyle(0x482025, .32 * heat).fillEllipse(x, y + 2, 124, 58);
+        this.effect.fillStyle(0xe2502d, .17 * heat).fillEllipse(x, y + 2, 92, 40);
+        this.effect.fillStyle(0xff8c42, .14 * heat).fillEllipse(x, y + 2, 62, 26);
+        this.effect.lineStyle(2, 0xc3402d, .46 * heat).strokeEllipse(x, y + 2, radius * 2 + 25, radius + 13);
+        this.effect.lineStyle(1, 0xffbb70, .7 * heat).strokeEllipse(x, y + 2, radius * 2, radius);
+
+        for (let i = 0; i < 12; i++) {
+            const angle = i * Math.PI / 6 + time / 4600;
+            const u = Math.cos(angle);
+            const v = Math.sin(angle) * .48;
+            const runeX = Math.round(x + u * (radius + 7));
+            const runeY = Math.round(y + 2 + v * (radius + 7));
+            this.effect.lineStyle(1, i % 3 ? 0xffa359 : 0xffdda1, (.48 + .2 * pulse) * heat);
+            this.effect.lineBetween(runeX, runeY, runeX + u * 5 - v * 4, runeY + v * 5 + u * 2);
+            this.effect.lineBetween(runeX + u * 4, runeY + v * 4, runeX - v * 5, runeY + u * 3);
+        }
+
+        for (let i = 0; i < 6; i++) {
+            const angle = i * Math.PI / 3 + .18;
+            let previousX = x + Math.cos(angle) * 18;
+            let previousY = y + Math.sin(angle) * 10;
+            for (let segment = 1; segment <= 4; segment++) {
+                const fork = angle + Math.sin(i + segment * 2.3) * .19;
+                const distance = (16 + segment * 11) * (.6 + .4 * heat);
+                const nextX = Math.round(x + Math.cos(fork) * distance);
+                const nextY = Math.round(y + Math.sin(fork) * distance * .53);
+                this.effect.lineStyle(3, 0x341724, .7).lineBetween(previousX, previousY, nextX, nextY);
+                this.effect.lineStyle(1, segment === 1 ? 0xffbd6b : 0xcf5034, (.78 - segment * .1) * heat)
+                    .lineBetween(previousX, previousY, nextX, nextY);
+                previousX = nextX;
+                previousY = nextY;
+            }
+        }
+
+        if (still) return;
+        for (let i = 0; i < 29; i++) {
+            const life = (time / (720 + i % 6 * 85) + i * .271) % 1;
+            const angle = i * 2.39996 + life * .54;
+            const distance = 23 + i % 7 * 5 + life * 14;
+            const px = Math.round(x + Math.cos(angle) * distance);
+            const py = Math.round(y + Math.sin(angle) * distance * .42 - life * (36 + i % 5 * 9));
+            const opacity = (1 - life) * heat;
+            this.effect.fillStyle(i % 4 ? 0xff8c46 : 0xffe6a1, opacity).fillRect(px, py, i % 3 ? 2 : 3, i % 4 ? 3 : 5);
+        }
+    }
+
     drawMalakorTrial(monster, now) {
         const { left, top, right, bottom } = monster.template.zone;
         const x = left * this.tileSize;
@@ -1840,17 +1897,7 @@ export class TrainingCombat {
         for (const monster of this.monsters) {
             if (!monster.isAlive) continue;
 
-            // Aura volcanique permanente en Phase 2 sur Malakor
-            if (monster.isBoss && monster.phase === 3 && !this.scene.motionPreference.matches) {
-                const bx = monster.sprite.x;
-                const by = monster.sprite.y - 16;
-                for (let i = 0; i < 4; i++) {
-                    const a = now / 220 + (i * Math.PI) / 2;
-                    const px = Math.round(bx + Math.cos(a) * 28);
-                    const py = Math.round(by + Math.sin(a) * 16 - ((now / 45 + i * 7) % 14));
-                    this.effect.fillStyle(i % 2 === 0 ? 0xff7b2f : 0xffe08a, 0.75).fillRect(px - 1, py - 1, 3, 3);
-                }
-            }
+            if (monster.isBoss && monster.phase === 3) this.drawMalakorAura(monster, now);
 
             if (monster.trial) this.drawMalakorTrial(monster, now);
             if (monster.echo) {
