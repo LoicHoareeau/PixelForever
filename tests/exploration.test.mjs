@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { buildTerrain, cameraZoom, cliffTile, columns, groundWalkable, inZone, questNpc, rocks, rows, tileSize, zones } from '../public/game/exploration.js';
+import {
+    buildTerrain,
+    cameraZoom,
+    cliffTile,
+    coastalLookouts,
+    columns,
+    groundWalkable,
+    inZone,
+    isCoastBorderTile,
+    questNpc,
+    rocks,
+    rows,
+    seaTile,
+    tileSize,
+    zones,
+} from '../public/game/exploration.js';
 import { treePositions } from '../public/game/clearing-art.js';
 import { regionalScenery } from '../public/game/regional-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
@@ -29,17 +44,38 @@ test('les atlas régionaux ont les dimensions de découpe utilisées par Phaser'
     }
 });
 
-test('les quatre rebords rocheux bloquent le passage sur toute leur épaisseur', () => {
+test('les quatre rebords côtiers (mer et falaises) bloquent le passage et bordent la péninsule', () => {
+    let seaCount = 0;
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < columns; x++) {
+            const tile = terrain[y][x];
+            if (tile === seaTile) {
+                seaCount++;
+                // Aucune tuile de mer ne doit toucher directement une tuile marchable sans falaise intermédiaire.
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx >= 0 && nx < columns && ny >= 0 && ny < rows) {
+                            assert.equal(
+                                groundWalkable(terrain, (nx + .5) * tileSize, (ny + .5) * tileSize),
+                                false,
+                                `contact direct terre/mer en ${nx},${ny}`,
+                            );
+                        }
+                    }
+                }
+            }
             if (x >= 2 && y >= 2 && x < columns - 2 && y < rows - 2) continue;
-            assert.equal(terrain[y][x], cliffTile);
+            assert.ok(isCoastBorderTile(tile), `bord non côtier en ${x},${y} : ${tile}`);
             assert.equal(canStand((x + .5) * tileSize, (y + .5) * tileSize), false);
         }
     }
+    assert.ok(seaCount > 500, 'la carte doit comporter de larges zones maritimes');
 });
 
-test('le départ et les patrouilles des terres dévastées sont accessibles malgré les obstacles', () => {
+test('le départ, les belvédères côtiers et les patrouilles sont accessibles malgré les obstacles', () => {
     assert.equal(terrain.length, rows);
     assert.ok(terrain.every(row => row.length === columns));
     assert.ok(canStand(184, 190));
@@ -59,6 +95,9 @@ test('le départ et les patrouilles des terres dévastées sont accessibles malg
                 queue.push(next);
             }
         }
+    }
+    for (const lookout of coastalLookouts) {
+        assert.ok(visited.has(lookout.centerCell.join(',')), `${lookout.name} inaccessible`);
     }
     for (const template of Object.values(monsterTemplates)) {
         for (const [x, y] of template.patrolCells) {

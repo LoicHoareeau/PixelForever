@@ -2,7 +2,7 @@ import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
 import { monsterArt } from './monster-art.js';
-import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
+import { buildTerrain, cameraZoom, coastalLookouts, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
 
@@ -117,16 +117,22 @@ import { saveProgress } from './progression.js';
 
             const monsters = [
                 new Monster(this, 'boar', tileSize, 0),
+                new Monster(this, 'boar', tileSize, 1),
                 new Monster(this, 'boar', tileSize, 2),
                 new Monster(this, 'boar', tileSize, 4),
                 new Monster(this, 'skeleton', tileSize, 0),
                 new Monster(this, 'skeleton', tileSize, 3),
+                new Monster(this, 'skeleton', tileSize, 6),
                 new Monster(this, 'dragon', tileSize, 0),
+                new Monster(this, 'dragon', tileSize, 4),
                 new Monster(this, 'imp', tileSize, 0),
-                new Monster(this, 'imp', tileSize, 3),
+                new Monster(this, 'imp', tileSize, 2),
+                new Monster(this, 'imp', tileSize, 4),
                 new Monster(this, 'hound', tileSize, 0),
-                new Monster(this, 'hound', tileSize, 3),
+                new Monster(this, 'hound', tileSize, 2),
+                new Monster(this, 'hound', tileSize, 4),
                 new Monster(this, 'fiend', tileSize, 0),
+                new Monster(this, 'fiend', tileSize, 2),
                 new Monster(this, 'fiend', tileSize, 5),
             ];
 
@@ -311,6 +317,48 @@ import { saveProgress } from './progression.js';
             });
 
             window.addEventListener('keydown', (event) => {
+                if (event.code !== 'Tab' && event.key !== 'Tab') {
+                    return;
+                }
+                if (event.altKey || event.ctrlKey || event.metaKey) {
+                    return;
+                }
+                const target = event.target;
+                const isEditable = target
+                    && typeof target.matches === 'function'
+                    && (target.isContentEditable || target.matches('input, select, textarea'));
+                if (isEditable) {
+                    return;
+                }
+
+                // Réserver exclusivement Tab au jeu et bloquer la navigation de focus dans la fenêtre.
+                event.preventDefault();
+                event.stopPropagation();
+
+                const modalOpen = inventory.open
+                    || (characterSheet && characterSheet.open)
+                    || (talentDialog && talentDialog.open)
+                    || questDialog.open;
+                if (modalOpen) {
+                    return;
+                }
+
+                const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+                if (activeEl && activeEl !== canvas) {
+                    if (typeof activeEl.blur === 'function') {
+                        activeEl.blur();
+                    }
+                    if (typeof canvas.focus === 'function') {
+                        canvas.focus({ preventScroll: true });
+                    }
+                }
+
+                if (!event.repeat) {
+                    this.combat.cycleTarget(event.shiftKey ? -1 : 1);
+                }
+            }, { capture: true, signal: keyboard.signal });
+
+            window.addEventListener('keydown', (event) => {
                 if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
                     return;
                 }
@@ -445,7 +493,8 @@ import { saveProgress } from './progression.js';
             this.refreshQuest();
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
-            const zone = Object.values(zones).find(zone => inZone(zone, this.position.x, this.position.y));
+            const zone = Object.values(zones).find(z => inZone(z, this.position.x, this.position.y))
+                ?? coastalLookouts.find(lookout => inZone(lookout, this.position.x, this.position.y));
             const label = document.getElementById('current-zone');
             const name = zone?.name ?? 'Sentier des Saules';
             if (label && label.textContent !== name) label.textContent = name;

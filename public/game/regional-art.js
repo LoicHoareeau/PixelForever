@@ -7,22 +7,69 @@ const blendMargin = 44;
 const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
 const propGroups = [
-    { atlas: 'cemetery-scenery', frame: 0, placements: cemeteryRuins,
-        sizes: [51, 80, 60, 58, 69], collision: 22 },
-    { atlas: 'cemetery-scenery', frame: 1, placements: graves,
-        sizes: [25, 33, 29, 27], collision: 14 },
-    { atlas: 'cemetery-scenery', frame: 2, placements: [[73, 51], [78, 54], [93, 57], [73, 66], [81, 73], [93, 70]],
-        sizes: [61, 49, 58, 42, 55], collision: 8 },
-    { atlas: 'cemetery-scenery', frame: 3, placements: [[77, 54], [86, 54], [74, 63], [80, 70], [92, 68], [92, 63]],
-        sizes: [44, 39, 45, 48], collision: 20 },
-    { atlas: 'wasteland-scenery', frame: 0, placements: wastelandRuins,
-        sizes: [56, 47, 68, 54, 59, 48], collision: 22 },
-    { atlas: 'wasteland-scenery', frame: 1, placements: [[147, 88], [156, 87], [161, 97], [146, 105], [162, 107], [140, 105], [122, 106]],
-        sizes: [55, 46, 62, 42], collision: 8 },
-    { atlas: 'wasteland-scenery', frame: 2, placements: [[150, 91], [157, 109], [126, 109]],
-        sizes: [83, 69, 94], collision: 23 },
-    { atlas: 'wasteland-scenery', frame: 3, placements: [[147, 93], [156, 96], [162, 102], [150, 107], [141, 111], [131, 105], [123, 113]],
-        sizes: [38, 32, 41, 26], collision: 12 },
+    {
+        atlas: 'cemetery-scenery',
+        frame: 0,
+        placements: cemeteryRuins,
+        sizes: [51, 80, 60, 58, 69, 64, 56, 72],
+        collision: 22,
+    },
+    {
+        atlas: 'cemetery-scenery',
+        frame: 1,
+        placements: graves,
+        sizes: [25, 33, 29, 27],
+        collision: 14,
+    },
+    {
+        atlas: 'cemetery-scenery',
+        frame: 2,
+        placements: [[79, 47], [89, 47], [117, 50], [79, 72], [99, 78], [117, 75], [88, 58], [103, 58]],
+        sizes: [61, 49, 58, 42, 55],
+        collision: 8,
+    },
+    {
+        atlas: 'cemetery-scenery',
+        frame: 3,
+        placements: [[85, 48], [107, 48], [79, 63], [98, 70], [116, 68], [91, 74]],
+        sizes: [44, 39, 45, 48],
+        collision: 20,
+    },
+    {
+        atlas: 'wasteland-scenery',
+        frame: 0,
+        placements: wastelandRuins,
+        sizes: [56, 47, 68, 54, 59, 48],
+        collision: 22,
+    },
+    {
+        atlas: 'wasteland-scenery',
+        frame: 1,
+        placements: [
+            [180, 75], [198, 74], [203, 83], [194, 92], [176, 83],
+            [181, 109], [201, 115], [192, 126], [173, 119],
+            [158, 112], [134, 112], [130, 135], [151, 131], [167, 125],
+        ],
+        sizes: [55, 46, 62, 42],
+        collision: 8,
+    },
+    {
+        atlas: 'wasteland-scenery',
+        frame: 2,
+        placements: [[189, 80], [193, 118], [161, 126], [139, 126]],
+        sizes: [83, 69, 94, 78],
+        collision: 23,
+    },
+    {
+        atlas: 'wasteland-scenery',
+        frame: 3,
+        placements: [
+            [178, 91], [198, 100], [180, 116], [199, 126], [187, 130],
+            [161, 118], [143, 117], [136, 129], [152, 128],
+        ],
+        sizes: [38, 32, 41, 26],
+        collision: 12,
+    },
 ];
 
 export function regionalScenery(tileSize) {
@@ -118,14 +165,16 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
 
     const cinders = [];
     const fissures = [
-        [[149, 89], [150, 89], [151, 88], [152, 88]],
-        [[158, 90], [157, 92], [158, 93]],
-        [[149, 99], [150, 100], [151, 101]],
-        [[155, 105], [157, 106], [158, 105]],
-        [[159, 110], [158, 111], [160, 113]],
-        [[140, 104], [138, 105], [136, 105]],
-        [[138, 111], [140, 112], [139, 114]],
-        [[126, 110], [128, 111], [127, 113], [128, 114]],
+        [[179, 80], [182, 81], [184, 79]],
+        [[195, 84], [194, 86], [196, 89]],
+        [[181, 95], [183, 96], [186, 98]],
+        [[181, 114], [183, 116], [186, 115]],
+        [[196, 118], [195, 121], [198, 123]],
+        [[178, 130], [180, 132], [182, 133]],
+        [[157, 115], [155, 116], [152, 115]],
+        [[137, 119], [139, 121], [138, 124]],
+        [[151, 135], [153, 136], [155, 138]],
+        [[135, 136], [138, 137], [140, 139]],
     ];
     for (const fissure of fissures) {
         const marks = [];
@@ -199,6 +248,8 @@ export function addCemeteryMist(scene, tileSize) {
     context.fillStyle = glow;
     context.fillRect(0, 0, 80, 80);
     fog.refresh();
-    return [[75, 56], [80, 59], [88, 62], [75, 68], [86, 69], [91, 66]].map(([x, y]) =>
-        scene.add.image((x + .5) * tileSize, (y + .5) * tileSize, fog.key).setDepth(2));
+    return [
+        [81, 50], [87, 54], [103, 52], [112, 57], [83, 68],
+        [91, 72], [102, 71], [113, 74], [87, 63], [108, 63],
+    ].map(([x, y]) => scene.add.image((x + .5) * tileSize, (y + .5) * tileSize, fog.key).setDepth(2));
 }

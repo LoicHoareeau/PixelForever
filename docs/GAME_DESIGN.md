@@ -53,7 +53,7 @@ La préparation et la fin du geste sont cadencées pour rester lisibles à 30 FP
 | Terres dévastées · Plaine calcinée | Molosses infernaux N.25–30 |
 | Terres dévastées · Citadelle de la Brèche | Gardes de la Brèche N.30–35 |
 
-Le monde mesure 2 688 × 1 920 px. La caméra suit le joueur ; l’ATH reste fixe en plein écran. Les falaises de quatre cases bloquent les quatre bords. Les chemins entre zones restent accessibles.
+Le monde mesure 3 584 × 2 560 px (224 × 160 tuiles de 16 px). Il dessine une péninsule bordée par la mer ouverte et une ceinture continue de falaises côtières de trois cases, avec quatre belvédères panoramiques (Cap des Saules, Baie Émeraude, Baie de Saphyr et Cap d’Obsidienne). La caméra suit le joueur ; l’ATH reste fixe en plein écran. La touche `Tab` (`Maj+Tab` en arrière) change exclusivement de cible entre les monstres vivants à proximité sans déplacer le focus dans la fenêtre. Les chemins entre zones et belvédères restent accessibles.
 
 Les monstres engagent à proximité, préparent leur attaque et respectent leur recharge. Sangliers, squelettes et démons frappent au contact. Le dragon fixe sa direction au début de sa préparation de 450 ms et la signale au sol. Son souffle parcourt ensuite la ligne à 142 px/s et blesse une seule fois au contact. Un pas de côté pendant le vol ou un obstacle entre le projectile et le joueur évite l’impact. Étourdir ou tuer le dragon éteint son souffle. Patrouilles, poursuites et réapparitions restent dans le secteur de l’espèce.
 

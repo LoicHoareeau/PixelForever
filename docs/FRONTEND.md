@@ -4,9 +4,9 @@
 
 ## Carte et ressources visuelles
 
-La carte de 168 × 120 tuiles de 16 px couvre la clairière, le cimetière, les montagnes et les Terres dévastées. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. Les falaises de quatre cases et l’eau bloquent le déplacement.
+La carte de 224 × 160 tuiles de 16 px (3 584 × 2 560 px) forme une péninsule côtière élargie qui couvre la clairière et son cap marin au sud-ouest, le cimetière agrandi et son belvédère sur la baie Émeraude, les montagnes face à la baie de Saphyr, et les trois secteurs des Terres dévastées jusqu’aux falaises d’obsidienne. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. La mer ouverte et la ceinture continue de falaises de trois cases bloquent le déplacement.
 
-`public/game/val-des-saules/` contient les atlas `environment-detailed.png` (saules, cabane, rochers, falaises), `ground-detailed.png` (herbe, chemin, terrain pierreux), les sprites PixelLab de sanglier et de squelette dans huit directions et six icônes d’objets. Les raccords des chemins de la clairière réutilisent les masques du terrain original.
+`public/game/val-des-saules/` contient les atlas `environment-detailed.png` (saules, cabane, rochers, falaises), `ground-detailed.png` (herbe, chemin, terrain pierreux, pelouse côtière), les sprites PixelLab de sanglier et de squelette dans huit directions et six icônes d’objets. `coast-art.js` dessine l’herbe rase côtière, les strates rocheuses des falaises, les hauts-fonds, l’écume animée et les îlots rocheux (avec transition vers la mer volcanique au sud-est) sans jamais retourner ni pivoter verticalement les falaises. Les raccords des chemins de la clairière réutilisent les masques du terrain original.
 
 `regional-ground.png` contient quatre matériaux de 256 × 256 px, échantillonnés en coordonnées de monde. `regional-art.js` fond les sols régionaux dans les textures voisines et érode les bords du pavage. `cemetery-scenery.png` contient le mausolée, les stèles, le saule et la grille. `wasteland-scenery.png` contient l’obsidienne, l’arbre calciné, l’arche et les éboulis. Les décors sont triés en profondeur au pied et leur collision se limite à l’emprise au sol. Le sol et les fissures sont composés au chargement. La brume et les braises respectent la préférence de mouvement réduit.
 
@@ -31,17 +31,6 @@ Les sangliers N.1–5 patrouillent dans la clairière, les squelettes N.5–10 a
 Les six planches de `public/game/val-des-saules/monsters/` contiennent huit blocs de deux lignes, dans l’ordre est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est. Chaque bloc contient un repos, 36 images de marche et trois poses d’attaque. `monster-art.js` donne la taille de découpe, l’emprise visuelle et la distance d’un cycle par espèce. La distance parcourue règle le trot du sanglier, la marche saccadée du squelette, les appuis du dragon, les bonds du diablotin, le galop du molosse et la marche lourde du garde. Les images sont ancrées aux pieds pour que le tri en profondeur suive le sol.
 
 `python tools/monster_walk.py <dossier-des-atlas> <dossier-de-sortie> --preview <dossier-d-apercu>` reconstruit les foulées depuis les poses de repos avec Pillow et NumPy. Le script découpe cuisse, tibia et pied, puis calcule la flexion du genou entre l’appui, le décollage et la retombée. Il conserve les images de repos et d’attaque de l’atlas source. Le dossier d’aperçu est facultatif.
-<<<<<<< HEAD
-=======
-
-Les 24 images de marche de chaque espèce sont générées en alpha binaire strict (`tools/build_monster_spritesheets.php`, via `php -d extension=gd tools/build_monster_spritesheets.php`) à partir des poses de repos en articulant les chaînes de membres à deux os, la flexion spinale, la tête, la queue et les ailes selon la mécanique propre à chaque race tout en conservant intacts le repos et les trois attaques :
-- **Sanglier (`boar`, 64 × 64 px, foulée 23)** : trot diagonal à deux temps avec double rebond sec, inertie de hure et battement de queue.
-- **Squelette (`skeleton`, 60 × 60 px, foulée 27)** : marche bipède saccadée à genoux vers l’avant, balancement opposé des bras (avec dague et membres arrière ombrés en profil) et retard du crâne.
-- **Dragon (`dragon`, 96 × 96 px, foulée 49)** : marche lourde à quatre temps latéraux, transfert d’épaules et de bassin, ondulation en S de la queue et suivi secondaire des ailes.
-- **Diablotin (`imp`, 56 × 56 px, foulée 32)** : foulée bondissante digitigrade avec appel fléchi, phase aérienne genoux regroupés et fouet caudal.
-- **Molosse (`hound`, 68 × 68 px, foulée 41)** : galop rotatif de prédateur avec flexion/extension réelle de l’échine, tête stabilisée et queue de contrepoids.
-- **Garde / Fiend (`fiend`, 72 × 72 px, foulée 43)** : marche martiale cuirassée avec transfert latéral de poids sur la jambe d’appui, balancement lourd des bras et tassement de tête cornu à l’impact.
->>>>>>> front/spritesheets-deplacement-anatomie
 
 Le dragon annonce une ligne de tir pendant sa préparation. Le rendu du souffle suit la position réelle du projectile, qui avance par petits pas de collision pour détecter le joueur et le décor même lors d’une image lente.
 
@@ -54,7 +43,8 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | Action | Touches physiques / commande |
 | --- | --- |
 | Déplacement | Flèches, ZQSD (AZERTY), WASD (QWERTY), commandes tactiles |
-| Sélection d’un monstre | Clic |
+| Sélection d’un monstre | Clic sur le monstre |
+| Changer de cible | `Tab` / `Maj+Tab` (réservé au jeu, focus fenêtre bloqué) |
 | Attaque de base / compétence principale | `1` / `2` |
 | Sorts de talents débloqués | `3` à `6` |
 | Potions de vie / ressource | `R` / `F` |
