@@ -1,0 +1,32 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Val-des-Saules{% endblock %}
+{% block body %}
+    <section class="val-hero" aria-labelledby="heading">
+        <div class="val-hero-copy">
+            <p class="val-kicker">Aventure en pixel art</p>
+            <h1 id="heading">Au-delà<br>des saules</h1>
+            <p class="val-lead">Suis les sentiers du Val-des-Saules, relève tes premières quêtes et fais grandir ton Guerrier ou ton Mage.</p>
+            <div class="val-actions">
+                {% if app.user %}
+                    <a class="button" href="{{ path('character_list') }}">Reprendre l’aventure <span aria-hidden="true">→</span></a>
+                {% else %}
+                    <a class="button" href="{{ path('account_register') }}">Créer un compte <span aria-hidden="true">→</span></a>
+                    <a class="button quiet" href="{{ path('account_login') }}">Se connecter</a>
+                {% endif %}
+            </div>
+        </div>
+        {% include 'portal/_scene.html.twig' %}
+    </section>
+    <section class="val-classes" aria-labelledby="val-classes-heading">
+        <h2 id="val-classes-heading">Deux classes à jouer</h2>
+        <div>
+            <img src="{{ app.request.basePath }}/game/val-des-saules/lina/south.png" width="48" height="48" alt="">
+            <span><strong>Guerrier</strong><small>Combat au corps à corps</small></span>
+        </div>
+        <div>
+            <img src="{{ app.request.basePath }}/game/val-des-saules/noe/south.png" width="48" height="48" alt="">
+            <span><strong>Mage</strong><small>Sorts à distance</small></span>
+        </div>
+    </section>
+{% endblock %}

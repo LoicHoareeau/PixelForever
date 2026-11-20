@@ -108,10 +108,18 @@ try {
 
     $alice = new Session(new MockArraySessionStorage());
     $bob = new Session(new MockArraySessionStorage());
+    $home = visit($alice, 'GET', '/', 200);
+    check(htmlValue($home, '//main//a[@href="/inscription"]/@href') === '/inscription', 'L’accueil doit proposer l’inscription.');
+    check(htmlValue($home, '//main//a[@href="/connexion"]/@href') === '/connexion', 'L’accueil doit proposer la connexion.');
     $aliceToken = register($alice, 'Alice', 'alice@example.test');
     $bobToken = register($bob, 'Bob', 'bob@example.test');
     login($alice, 'alice@example.test', $aliceToken);
     login($bob, 'bob@example.test', $bobToken);
+
+    $signedInHome = visit($alice, 'GET', '/', 200);
+    check(htmlValue($signedInHome, '//main//a[@href="/personnages"]/@href') === '/personnages', 'L’accueil doit donner accès aux personnages du joueur connecté.');
+    $emptyList = visit($alice, 'GET', '/personnages', 200);
+    check(htmlValue($emptyList, '//main//a[@href="/personnages/nouveau"]/@href') === '/personnages/nouveau', 'La liste vide doit proposer la création d’un personnage.');
 
     createCharacter($alice, 'Roland', 'warrior');
     $rolandId = $alice->get('selected_character');

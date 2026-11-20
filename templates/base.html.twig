@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#19272e">
+    <meta name="theme-color" content="{% block theme_color %}#19272e{% endblock %}">
     <title>{% block title %}{% endblock %} · PixelForever</title>
     <link rel="stylesheet" href="{{ app.request.basePath }}/pixel.css">
+    {% block stylesheets %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
     <header class="masthead">
@@ -13,12 +14,14 @@
             <span class="brand-mark" aria-hidden="true"></span>
             PixelForever
         </a>
-        {% if app.user %}
-            <form method="post" action="{{ path('account_logout') }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
-                <button class="quiet" type="submit">Se déconnecter</button>
-            </form>
-        {% endif %}
+        {% block masthead_actions %}
+            {% if app.user %}
+                <form method="post" action="{{ path('account_logout') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                    <button class="quiet" type="submit">Se déconnecter</button>
+                </form>
+            {% endif %}
+        {% endblock %}
     </header>
     <main id="main" class="content {% block layout %}{% endblock %}">
         {% for message in app.flashes('success') %}

@@ -2,6 +2,10 @@
 
 État au 20 novembre 2026. Twig affiche les écrans de compte/personnage et l’ATH ; Phaser 3.90.0 affiche le monde dans un canvas. `public/game/world.js` relie déplacements, caméra, sprites, commandes et dialogues ; `combat.js` applique les attaques et effets ; `progression.js` calcule les bonus, armes, talents et sauvegardes locales.
 
+## Accueil et choix du personnage
+
+Twig rend l’accueil public du Val-des-Saules, la connexion, l’inscription et les écrans de personnage. `public/portal/val.css` adapte leur mise en page aux petits écrans. Le diorama 3D de l’accueil et de la connexion est une illustration JPEG. Les cartes des personnages mettent les sprites de jeu sur des socles éclairés et indiquent la classe, le niveau et les caractéristiques de base. **Actif** indique le personnage sélectionné en session.
+
 ## Carte et ressources visuelles
 
 La carte de 256 × 252 tuiles de 16 px (4 096 × 4 032 px) forme une péninsule côtière élargie avec des couloirs tampons entre biomes, couvrant la clairière et son cap marin au sud-ouest, le cimetière agrandi et son belvédère sur la baie Émeraude, les montagnes face à la baie de Saphyr, les Terres dévastées, le Trône d’Obsidienne et la côte méridionale jusqu’au Belvédère des Brisants. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. La mer ouverte et la ceinture continue de falaises de trois cases bloquent le déplacement.

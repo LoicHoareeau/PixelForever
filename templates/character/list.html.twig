@@ -1,38 +1,61 @@
-{% extends 'base.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
 {% block title %}Mes personnages{% endblock %}
 
 {% block body %}
-    <section class="panel" aria-labelledby="heading">
-        <div class="panel-heading">
-            <h1 id="heading">Mes personnages</h1>
-            <a class="button" href="{{ path('character_create') }}">Nouveau personnage</a>
-        </div>
+    <section aria-labelledby="heading">
+        <header class="val-roster-heading">
+            <div>
+                <h1 id="heading">Tes personnages</h1>
+                {% if characters is not empty %}
+                    <p class="val-lead">Choisis qui reprendra les sentiers du Val.</p>
+                {% endif %}
+            </div>
+            {% if characters is not empty %}
+                <a class="button quiet" href="{{ path('character_create') }}"><span aria-hidden="true">+</span> Nouveau personnage</a>
+            {% endif %}
+        </header>
 
         {% if characters is empty %}
-            <p class="empty">Crée ton premier Guerrier ou Mage pour commencer.</p>
+            <div class="val-empty">
+                <div class="val-empty-art" aria-hidden="true">
+                    <img src="{{ app.request.basePath }}/game/val-des-saules/lina/south.png" width="96" height="96" alt="">
+                    <img src="{{ app.request.basePath }}/game/val-des-saules/noe/south.png" width="96" height="96" alt="">
+                </div>
+                <p>Crée ton premier Guerrier ou Mage pour commencer.</p>
+                <a class="button" href="{{ path('character_create') }}">Créer mon premier personnage</a>
+            </div>
         {% else %}
-            <ul class="roster">
+            <ul class="val-roster">
                 {% for character in characters %}
                     {% set class = character.class %}
                     {% set stats = class.baseStats %}
-                    {% set resourceLabel = class.value == 'warrior' ? 'Énergie' : 'Mana' %}
+                    {% set active = character.id == selectedId %}
 
-                    <li class="roster-item {{ class.value }}{% if character.id == selectedId %} selected{% endif %}">
-                        <span class="class-icon" aria-hidden="true">{{ class.value == 'warrior' ? '⚔' : '✦' }}</span>
-                        <div class="character-name">
-                            <strong>{{ character.name }}</strong>
-                            <small>{{ class.label }} · Niveau {{ character.level }}</small>
-                            <small class="character-stats-preview">
-                                Base de classe : {{ class.maxHealth }} PV · {{ class.maxMana }} {{ resourceLabel }} ·
-                                FOR {{ stats.strength }} · INT {{ stats.intelligence }} ·
-                                VIT {{ stats.vitality }} · ESP {{ stats.spirit }}
-                            </small>
+                    <li class="val-character {{ class.value }}{% if active %} val-character-active{% endif %}">
+                        <div class="val-portrait" aria-hidden="true">
+                            <span class="val-pedestal"></span>
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.skin }}/south.png"
+                                 width="144" height="144" alt="">
                         </div>
-                        <form method="post" action="{{ path('character_select', {id: character.id}) }}">
-                            <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">
-                            <button type="submit" aria-label="Jouer avec {{ character.name }}">Jouer</button>
-                        </form>
+                        <div class="val-character-info">
+                            <p class="val-character-meta">
+                                <span>{{ class.label }} · Niveau {{ character.level }}</span>
+                                {% if active %}<span class="val-active-label">Actif</span>{% endif %}
+                            </p>
+                            <h2>{{ character.name }}</h2>
+                            <p class="val-character-resources">{{ class.maxHealth }} PV · {{ class.maxMana }} {{ class.value == 'warrior' ? 'énergie' : 'mana' }} de base</p>
+                            <dl class="val-class-stats" aria-label="Caractéristiques de base">
+                                <div><dt><abbr title="Force">FOR</abbr></dt><dd>{{ stats.strength }}</dd></div>
+                                <div><dt><abbr title="Intelligence">INT</abbr></dt><dd>{{ stats.intelligence }}</dd></div>
+                                <div><dt><abbr title="Vitalité">VIT</abbr></dt><dd>{{ stats.vitality }}</dd></div>
+                                <div><dt><abbr title="Esprit">ESP</abbr></dt><dd>{{ stats.spirit }}</dd></div>
+                            </dl>
+                            <form method="post" action="{{ path('character_select', {id: character.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">
+                                <button type="submit" aria-label="Jouer avec {{ character.name }}">Jouer <span aria-hidden="true">→</span></button>
+                            </form>
+                        </div>
                     </li>
                 {% endfor %}
             </ul>
