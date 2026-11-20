@@ -1,6 +1,6 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
-import { ensureMonsterTextures, Monster } from './monsters.js';
+import { Monster } from './monsters.js';
 import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
@@ -62,6 +62,11 @@ import { saveProgress } from './progression.js';
             this.load.setPath(assetPath);
             this.load.json('terrain', 'terrain.json');
             this.load.image('quest-early', 'quest_early.png');
+            this.load.image('environment-detailed', 'environment-detailed.png');
+            this.load.image('ground-detailed', 'ground-detailed.png');
+            for (const species of ['boar', 'skeleton']) {
+                directions.forEach(direction => this.load.image(species + '-' + direction, species + '/' + direction + '.png'));
+            }
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             baseTiles.forEach((tile, index) => this.load.image(tile, 'terrain-' + (index + 1) + '.png'));
@@ -92,7 +97,6 @@ import { saveProgress } from './progression.js';
             this.obstacles = [];
             this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
-            ensureMonsterTextures(this);
             this.add.ellipse(questNpc.x, questNpc.y - 1, 18, 6, 0x172622, .48).setDepth(3);
             this.npc = this.add.image(questNpc.x, questNpc.y, 'quest-early')
                 .setOrigin(.5, 1).setScale(.75).setDepth(questNpc.y).setInteractive({ useHandCursor: true });

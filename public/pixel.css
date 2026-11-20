@@ -1448,3 +1448,5 @@ body.game-fullscreen .masthead {
         justify-self: end;
     }
 }
+
+.pixel-item { image-rendering: pixelated; object-fit: contain; background: none; }

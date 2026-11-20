@@ -6,7 +6,7 @@
 
 {% block body %}
     {% set warrior = character.class.value == 'warrior' %}
-    {% set weapon = warrior ? 'Épée de fer' : 'Bâton de braise' %}
+    {% set weapon = warrior ? 'Épée de fer' : 'Baguette de braise' %}
     {% set basic = combat.basicName %}
     {% set resource = combat.resourceName|lower %}
     {% set resourcePhrase = warrior ? 'd’énergie' : 'de mana' %}
@@ -340,26 +340,28 @@
                         </button>
                     </li>
                 {% endfor %}
-                {% for type in ['rare', 'epic'] %}
+                {% for type in ['rare', 'epic', 'scale', 'heart'] %}
                     {% set item = combat.loot[type] %}
                     <li>
-                        <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-staff' }}" aria-hidden="true"></span>
+                        <img class="action-icon pixel-item" src="{{ app.request.basePath }}/game/val-des-saules/items/{{ item.icon }}.png" alt="">
                         <div>
                             <strong>{{ item.name }} ×<span data-quantity="{{ type }}">0</span></strong>
                             <small>
                                 <span class="loot-{{ type }}">{{ item.rarity }} · {{ item.chance }} %</span>
-                                · +{{ item.bonus }} dégâts de base
-                                <span data-weapon-state="{{ type }}"></span>
+                                {% if item.bonus is defined %}
+                                    · +{{ item.bonus }} dégâts de base · {{ item.usage }}
+                                    <span data-weapon-state="{{ type }}"></span>
+                                {% else %} · Matériau de butin{% endif %}
                             </small>
                         </div>
-                        <button
+                        {% if item.bonus is defined %}<button
                             type="button"
                             class="quiet"
                             data-weapon="{{ type }}"
                             disabled
                         >
                             Équiper
-                        </button>
+                        </button>{% endif %}
                     </li>
                 {% endfor %}
             </ul>

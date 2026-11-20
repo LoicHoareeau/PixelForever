@@ -163,9 +163,11 @@ final class CharacterController extends AbstractController
                 'specialSpellRankBonus' => Character::SPECIAL_SPELL_RANK_BONUS,
                 'progressKey' => hash('sha256', implode("\0", [$owner->getUserIdentifier(), $character->getId(), $character->getName(), $class->value])),
                 'loot' => [
+                    'scale' => ['name' => 'Écaille de Saphyr', 'chance' => 2, 'rarity' => 'Rare', 'icon' => 'scale'],
+                    'heart' => ['name' => 'Cœur de flamme bleue', 'chance' => 1, 'rarity' => 'Épique', 'icon' => 'heart'],
                     'health' => [
                         'name' => 'Potion de vie',
-                        'chance' => 50,
+                        'chance' => 47,
                         'rarity' => 'Commun',
                     ],
                     'mana' => [
@@ -178,12 +180,16 @@ final class CharacterController extends AbstractController
                         'chance' => 15,
                         'rarity' => 'Rare',
                         'bonus' => 7,
+                        'icon' => $warrior ? 'blade' : 'staff',
+                        'usage' => $warrior ? 'Corps à corps' : 'Bâton · corps à corps',
                     ],
                     'epic' => [
                         'name' => $warrior ? 'Croc de Saphyr' : 'Sceptre de Saphyr',
                         'chance' => 5,
                         'rarity' => 'Épique',
                         'bonus' => 11,
+                        'icon' => $warrior ? 'fang' : 'wand',
+                        'usage' => $warrior ? 'Corps à corps' : 'Baguette · à distance',
                     ],
                 ],
             ],

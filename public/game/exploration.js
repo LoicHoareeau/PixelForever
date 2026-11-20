@@ -34,8 +34,8 @@ export function buildTerrain(clearing) {
     road(132, 62, 134, 94);
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < columns; x++) {
-            const side = 2 + Number(Math.floor(y / 5) % 3 === 1);
-            const cap = 2 + Number(Math.floor(x / 7) % 3 === 1);
+            const side = 4;
+            const cap = 4;
             if (x < side || y < cap || x >= columns - side || y >= rows - cap) terrain[y][x] = cliffTile;
         }
     }

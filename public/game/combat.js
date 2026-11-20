@@ -1,6 +1,7 @@
 import {
     allocateStat,
     awardVictory,
+    basicWeaponProfile,
     canInvestTalent,
     computeCharacterStats,
     findTalent,
@@ -161,6 +162,14 @@ export class TrainingCombat {
         saveProgress(this.progressKey, this.progress);
     }
 
+    get basicWeapon() {
+        return basicWeaponProfile(this.rules, this.progress, this.stats, this.tileSize);
+    }
+
+    get basicRangeLabel() {
+        return numberFormatter.format(this.basicWeapon.range / this.tileSize) + ' cases';
+    }
+
     get range() {
         return (this.rules.range + (this.stats?.bonusRangeTiles ?? 0)) * this.tileSize;
     }
@@ -269,13 +278,15 @@ export class TrainingCombat {
             return;
         }
 
+        const special = kind === 'special';
+        const ranged = special ? this.ranged : this.basicWeapon.ranged;
+        const range = special ? this.range : this.basicWeapon.range;
         const dist = this.distanceTo(target);
-        if (dist > this.range) {
-            this.tell(`${target.name} est hors de portée. Portée : ${this.rangeLabel}.`);
+        if (dist > range) {
+            this.tell(`${target.name} est hors de portée. Portée : ${numberFormatter.format(range / this.tileSize)} cases.`);
             return;
         }
 
-        const special = kind === 'special';
         const manaCost = special
             ? Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))))
             : 0;
@@ -302,17 +313,20 @@ export class TrainingCombat {
         this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
 
         const berserkMult = now < this.berserkUntil ? 1.4 : 1;
-        const baseDmg = special ? this.stats.specialDamage : this.stats.basicDamage;
-        const duration = this.ranged ? (special ? 380 : 250) : (special ? 480 : 140);
+        const baseDmg = special ? this.stats.specialDamage : this.basicWeapon.damage;
+        const duration = ranged ? (special ? 380 : 250) : (special ? 480 : 140);
         const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
 
         const attack = {
             target,
-            color: special ? 0xff942f : (this.ranged ? 0xb5b8ff : 0xffefd0),
+            ranged,
+            range,
+            color: special ? 0xff942f : (ranged ? 0xb5b8ff : 0xffefd0),
             damage: Math.round(baseDmg * berserkMult),
             name: special ? this.rules.specialName : this.basicName,
             special,
             armed: this.equipped,
+            staff: this.classKey === 'mage' && this.progress.weapon === 'rare',
             angle,
             facing: this.scene.facing,
             start: now,
@@ -601,7 +615,7 @@ export class TrainingCombat {
      * Équipe ou retire l'arme sélectionnée et recalcule aussitôt les dégâts du personnage.
      */
     toggleWeapon(weapon) {
-        if (weapon !== 'starter' && !this.progress.items[weapon]) {
+        if (!['starter', 'rare', 'epic'].includes(weapon) || (weapon !== 'starter' && !this.progress.items[weapon])) {
             return 'Cette arme est absente du sac.';
         }
 
@@ -720,12 +734,14 @@ export class TrainingCombat {
 
         this.basicLabel.textContent = this.basicName;
         this.buttons[0].title = this.basicName
-            + ' · ' + this.stats.basicDamage + ' dégâts'
-            + ' · Portée : ' + this.rangeLabel;
+            + ' · ' + this.basicWeapon.damage + ' dégâts'
+            + ' · Portée : ' + this.basicRangeLabel;
     }
 
     get basicName() {
-        return this.equipped || this.ranged ? this.rules.basicName : 'Coup de poing';
+        if (!this.equipped) return 'Coup de poing';
+        if (this.classKey === 'mage') return this.basicWeapon.ranged ? 'Trait de baguette' : 'Coup de bâton';
+        return this.rules.basicName;
     }
 
     get equipped() {
@@ -743,7 +759,7 @@ export class TrainingCombat {
     get equippedWeaponName() {
         const weapon = this.progress.weapon;
         if (weapon === null) return 'Mains nues';
-        if (weapon === 'starter') return this.ranged ? 'Bâton de braise' : 'Épée de fer';
+        if (weapon === 'starter') return this.ranged ? 'Baguette de braise' : 'Épée de fer';
         return this.rules.loot[weapon]?.name ?? 'Aucune';
     }
 
@@ -793,7 +809,7 @@ export class TrainingCombat {
         }
 
         if (this.basicMetaLabel) {
-            this.basicMetaLabel.textContent = 'Rg ' + this.stats.basicSpellRank + ' · ' + this.stats.basicDamage + ' dég.';
+            this.basicMetaLabel.textContent = 'Rg ' + this.stats.basicSpellRank + ' · ' + this.basicWeapon.damage + ' dég.';
         }
 
         if (this.specialMetaLabel) {
@@ -803,8 +819,8 @@ export class TrainingCombat {
 
         this.buttons[0].title = this.basicName
             + ' · Rang ' + this.stats.basicSpellRank
-            + ' · ' + this.stats.basicDamage + ' dégâts'
-            + ' · Portée : ' + this.rangeLabel;
+            + ' · ' + this.basicWeapon.damage + ' dégâts'
+            + ' · Portée : ' + this.basicRangeLabel;
         this.buttons[1].title = this.rules.specialName
             + ' · Rang ' + this.stats.specialSpellRank
             + ' · ' + this.stats.specialDamage + ' dégâts'
@@ -848,9 +864,9 @@ export class TrainingCombat {
         if (this.sheetMaxHealthLabel) this.sheetMaxHealthLabel.textContent = String(this.stats.maxHealth);
         if (this.sheetMaxManaLabel) this.sheetMaxManaLabel.textContent = String(this.stats.maxMana);
         if (this.sheetManaRegenLabel) this.sheetManaRegenLabel.textContent = regenText;
-        if (this.sheetBasicDamageLabel) this.sheetBasicDamageLabel.textContent = this.stats.basicDamage + ' dégâts';
+        if (this.sheetBasicDamageLabel) this.sheetBasicDamageLabel.textContent = this.basicWeapon.damage + ' dégâts';
         if (this.sheetSpecialDamageLabel) this.sheetSpecialDamageLabel.textContent = this.stats.specialDamage + ' dégâts';
-        if (this.sheetRangeLabel) this.sheetRangeLabel.textContent = this.rangeLabel;
+        if (this.sheetRangeLabel) this.sheetRangeLabel.textContent = this.basicRangeLabel;
 
         if (this.statPointsLabel) {
             const count = this.stats.statPoints;
@@ -880,7 +896,7 @@ export class TrainingCombat {
         if (this.spellRanks.basic) this.spellRanks.basic.textContent = 'Rang ' + this.stats.basicSpellRank;
         if (this.spellRanks.special) this.spellRanks.special.textContent = 'Rang ' + this.stats.specialSpellRank;
         if (this.spellDamages.basic) {
-            this.spellDamages.basic.textContent = this.stats.basicDamage + ' dégâts actuels (+' + basicStep + ' par rang)';
+            this.spellDamages.basic.textContent = this.basicWeapon.damage + ' dégâts actuels (+' + basicStep + ' par rang)';
         }
         if (this.spellDamages.special) {
             this.spellDamages.special.textContent = this.stats.specialDamage
@@ -966,6 +982,7 @@ export class TrainingCombat {
                 node.style.gridRow = String(talent.tier + 1);
                 node.style.gridColumn = String(talent.col + 1);
                 node.dataset.talentId = talent.id;
+                node.setAttribute('aria-label', `${talent.name} · ${rank}/${talent.maxRank} · ${talent.description}`);
                 node.innerHTML = `
                     <span class="talent-kind">${talent.type === 'active' ? 'SORT' : 'PASSIF'}</span>
                     <span class="action-icon ${talent.icon}" aria-hidden="true"></span>
@@ -1011,11 +1028,11 @@ export class TrainingCombat {
         if (!target || !target.isAlive) {
             return;
         }
-        if (!this.ranged) {
+        if (!attack.ranged) {
             this.recovery = { ...attack, start: now };
         }
-        if (!this.ranged && this.distanceTo(target) > this.range) {
-            this.tell(`${target.name} est hors de portée. Portée : ${this.rangeLabel}.`);
+        if (!attack.ranged && this.distanceTo(target) > attack.range) {
+            this.tell(`${target.name} est hors de portée. Portée : ${numberFormatter.format(attack.range / this.tileSize)} cases.`);
             return;
         }
 
@@ -1173,7 +1190,7 @@ export class TrainingCombat {
         const attack = this.pending;
         const target = attack.target;
         const progress = Math.max(0, (now - attack.start) / (attack.end - attack.start));
-        if (this.ranged && target) {
+        if (attack.ranged && target) {
             const elapsed = now - attack.start;
             const travel = Math.max(0, (elapsed - attack.castMs) / (attack.end - attack.start - attack.castMs));
             if (elapsed < attack.castMs) {
@@ -1181,7 +1198,7 @@ export class TrainingCombat {
                 attack.y = this.scene.position.y - 20 + Math.sin(attack.angle) * 4;
                 if (attack.armed) {
                     this.effect.fillStyle(0x916b52, 1);
-                    this.strokePixels(attack.x, attack.y + 11, -1.35, 16, 2);
+                    this.strokePixels(attack.x, attack.y + 11, -1.35, attack.staff ? 16 : 9, 2);
                 }
             }
             const dx = target.sprite.x - attack.x;
@@ -1237,12 +1254,12 @@ export class TrainingCombat {
             : (windingUp ? -0.35 - 0.95 * progress : -1.25 + 2.55 * progress));
         const x = this.scene.position.x + Math.cos(attack.angle) * 5;
         const y = this.scene.position.y - 19;
-        const length = attack.armed ? (attack.special ? 21 : 17) : 7;
+        const length = attack.armed ? (attack.staff ? 23 : attack.special ? 21 : 17) : 7;
 
         if (attack.armed) {
-            this.effect.fillStyle(0x443443, 1);
+            this.effect.fillStyle(attack.staff ? 0x573d29 : 0x443443, 1);
             this.strokePixels(x, y, angle, length, 3);
-            this.effect.fillStyle(windingUp ? 0xc2af8d : attack.color, 1);
+            this.effect.fillStyle(attack.staff ? 0xbc8c51 : windingUp ? 0xc2af8d : attack.color, 1);
             this.strokePixels(x, y, angle, length, 1);
         } else {
             this.effect
@@ -1287,7 +1304,7 @@ export class TrainingCombat {
             return null;
         }
 
-        const strike = this.ranged ? attack.start + attack.castMs : attack.end;
+        const strike = attack.ranged ? attack.start + attack.castMs : attack.end;
         if (now >= strike + recoveryMs) {
             return null;
         }
