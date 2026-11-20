@@ -49,6 +49,53 @@ const regenFormatter = new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
 });
+const tabTargetMaxDistance = 560;
+
+/**
+ * Sélectionne la cible vivante suivante à portée autour du joueur par distance croissante.
+ */
+export function selectNextTarget(
+    monsters,
+    playerPosition,
+    currentTarget = null,
+    direction = 1,
+    maxDistance = tabTargetMaxDistance,
+) {
+    if (!Array.isArray(monsters) || !playerPosition) {
+        return null;
+    }
+
+    const candidates = monsters
+        .map((monster, index) => {
+            if (!monster || !monster.isAlive || !monster.sprite) {
+                return null;
+            }
+            const distance = Math.hypot(
+                monster.sprite.x - playerPosition.x,
+                monster.sprite.y - playerPosition.y,
+            );
+            if (distance > maxDistance) {
+                return null;
+            }
+            return { monster, distance, index };
+        })
+        .filter(Boolean)
+        .sort((a, b) => (a.distance - b.distance) || (a.index - b.index))
+        .map((entry) => entry.monster);
+
+    if (candidates.length === 0) {
+        return null;
+    }
+
+    const currentIndex = candidates.indexOf(currentTarget);
+    if (currentIndex === -1) {
+        return direction < 0 ? candidates[candidates.length - 1] : candidates[0];
+    }
+
+    const step = direction < 0 ? -1 : 1;
+    const nextIndex = (currentIndex + step + candidates.length) % candidates.length;
+    return candidates[nextIndex];
+}
 
 /**
  * Gère le combat temps réel multi-monstres, les 6 emplacements de sorts,
@@ -188,6 +235,30 @@ export class TrainingCombat {
         }
     }
 
+    /**
+     * Fait tourner la cible sélectionnée entre les monstres vivants à proximité (Tab / Shift+Tab).
+     */
+    cycleTarget(direction = 1) {
+        if (this.health <= 0) {
+            return null;
+        }
+
+        const next = selectNextTarget(
+            this.monsters,
+            this.scene.position,
+            this.selectedMonster,
+            direction,
+        );
+        if (!next) {
+            this.tell('Aucun ennemi à proximité.');
+            return null;
+        }
+
+        this.selectMonster(next);
+        this.tell(`Cible : ${next.name} (Niv. ${next.level}).`);
+        return next;
+    }
+
     getActiveTarget() {
         if (this.selectedMonster && this.selectedMonster.isAlive) {
             return this.selectedMonster;
@@ -243,7 +314,7 @@ export class TrainingCombat {
         this.refreshInventory();
         this.refreshActionSlots();
         this.updateCooldowns(0);
-        this.tell('Suis le sentier vers le cimetière, les montagnes, puis les Terres dévastées à l’est.');
+        this.tell('Suis le sentier vers le littoral, le cimetière, les montagnes et les Terres dévastées (Tab pour cibler).');
     }
 
     /**

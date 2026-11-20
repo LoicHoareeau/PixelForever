@@ -1,4 +1,5 @@
-import { cliffTile, inWasteland, inZone, rocks, zones } from './exploration.js';
+import { cliffTile, inWasteland, inZone, rocks, seaTile, zones } from './exploration.js';
+import { addCoastalProps, animateCoast, drawCoastalFloor } from './coast-art.js';
 import { addCemeteryMist, addRegionalScenery, createScorchedCliff, drawRegionalGround } from './regional-art.js';
 
 const frameSize = 48;
@@ -63,29 +64,78 @@ function drawLantern(context) {
 
 export function treePositions(terrain) {
     const positions = [...trees];
-    for (let row = 3; row < terrain.length - 2; row += 6) {
-        for (let column = 3; column < terrain[0].length - 2; column += 6) {
+    for (let row = 5; row < terrain.length - 4; row += 6) {
+        for (let column = 5; column < terrain[0].length - 4; column += 6) {
             if (row < 20 && column < 28) continue;
             const seed = (column * 37 + row * 53 + column * row * 7) % 101;
             if (seed % 5 === 0) continue;
             const x = column * 16 + seed % 25 - 12;
             const y = row * 16 + (seed * 7) % 25 - 12;
-            if (terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== 33 || inZone(zones.skeleton, x, y)
-                || inZone(zones.dragon, x, y)) continue;
-            if (terrain[row].slice(column - 1, column + 2).some(tile => tile !== 33)) continue;
+            const tx = Math.floor(x / 16);
+            const ty = Math.floor(y / 16);
+            if (terrain[ty]?.[tx] !== 33 || inZone(zones.skeleton, x, y) || inZone(zones.dragon, x, y)) {
+                continue;
+            }
+            if (nearBlockedOrRoad(terrain, tx, ty)) {
+                continue;
+            }
             positions.push([x, y]);
         }
     }
-    return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile
-        && !inWasteland(x, y) && !inZone(zones.skeleton, x, y)
-        && !(x > 96 && x < 192 && y > 80 && y < 180));
+    return positions.filter(([x, y]) => {
+        const tx = Math.floor(x / 16);
+        const ty = Math.floor(y / 16);
+        const tile = terrain[ty]?.[tx];
+        return tile !== cliffTile
+            && tile !== seaTile
+            && !nearCoastOrCliff(terrain, tx, ty)
+            && !inWasteland(x, y)
+            && !inZone(zones.skeleton, x, y)
+            && !inLookoutCorridor(tx, ty)
+            && !(x > 96 && x < 192 && y > 80 && y < 180);
+    });
+}
+
+function nearCoastOrCliff(terrain, tx, ty) {
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            const neighbor = terrain[ty + dy]?.[tx + dx];
+            if (neighbor === cliffTile || neighbor === seaTile) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function nearBlockedOrRoad(terrain, tx, ty) {
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            if (terrain[ty + dy]?.[tx + dx] !== 33) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function inLookoutCorridor(tx, ty) {
+    return (tx >= 19 && tx <= 33 && ty >= 40 && ty <= 50)
+        || (tx >= 90 && tx <= 103 && ty >= 82 && ty <= 107)
+        || (tx >= 145 && tx <= 159 && ty >= 43 && ty <= 54);
 }
 
 export function buildClearing(scene, terrain, tileSize, width, height, baseTiles) {
     const floor = scene.textures.createCanvas('clearing-floor', width, height);
     const context = floor.getContext();
     terrain.forEach((row, y) => row.forEach((tile, x) => {
-        const key = tile === cliffTile ? 'herbe' : tile < 16 ? 'eau-herbe' : tile < 32 ? 'chemin-herbe' : baseTiles[tile - 32];
+        const key = (tile === cliffTile || tile === seaTile)
+            ? 'herbe'
+            : tile < 16
+                ? 'eau-herbe'
+                : tile < 32
+                    ? 'chemin-herbe'
+                    : baseTiles[tile - 32];
         const frame = scene.textures.getFrame(key, tile < 32 ? tile % 16 : undefined);
         drawFrame(context, frame, x * tileSize, y * tileSize);
     }));
@@ -101,7 +151,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     // Sample a continuous 256px pattern across the map instead of restarting every tile.
     context.imageSmoothingEnabled = false;
     terrain.forEach((row, y) => row.forEach((tile, x) => {
-        if (tile < 16 || tile === 34 || tile === cliffTile) return;
+        if (tile < 16 || tile === 34 || tile === cliffTile || tile === seaTile) return;
         const mountain = inZone(zones.dragon, x * tileSize, y * tileSize);
         const column = mountain || tile === 32 ? 1 : 0;
         const rowIndex = mountain ? 1 : 0;
@@ -165,13 +215,8 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         context.fillRect(px + 2, py - 1, 1, 2);
         context.fillRect(px + 3, py, 1, 1);
     }));
-    const ashCoast = (x, y) => inWasteland(Math.min(x, width - 4 * tileSize - 1), Math.min(y, height - 4 * tileSize - 1));
-    terrain.forEach((row, y) => row.forEach((tile, x) => {
-        if (tile !== cliffTile) return;
-        context.fillStyle = ashCoast(x * tileSize, y * tileSize) ? '#29252f' : '#22676d';
-        context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-    }));
     const cinders = drawRegionalGround(scene, context, terrain, tileSize);
+    const { surfPoints, glints, seaDistance } = drawCoastalFloor(scene, context, terrain, tileSize);
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
 
@@ -190,17 +235,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     sceneryTexture('ranger-cabin', 0, 1, 96);
     sceneryTexture('coastal-cliff', 1, 1, 64);
     createScorchedCliff(scene);
-    // The coastal rocks stay inside the impassable rim and do not cover walkable ground.
-    for (let x = 32; x < width - 32; x += 56) {
-        scene.add.image(x, height, ashCoast(x, height) ? 'scorched-cliff' : 'coastal-cliff')
-            .setOrigin(.5, 1).setDisplaySize(64, 64).setDepth(1);
-        scene.add.image(x, 0, 'coastal-cliff').setOrigin(.5, 0).setFlipY(true).setDepth(1);
-    }
-    for (let y = 32; y < height - 32; y += 56) {
-        scene.add.image(32, y, 'coastal-cliff').setRotation(Math.PI / 2).setDepth(1);
-        scene.add.image(width - 32, y, ashCoast(width, y) ? 'scorched-cliff' : 'coastal-cliff')
-            .setRotation(-Math.PI / 2).setDepth(1);
-    }
+    addCoastalProps(scene, terrain, tileSize, seaDistance);
     const lantern = scene.textures.createCanvas('lantern', 16, 14);
     drawLantern(lantern.getContext());
     lantern.refresh();
@@ -230,14 +265,17 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     addRegionalScenery(scene, shadows, tileSize);
     const mist = addCemeteryMist(scene, tileSize);
     for (const [text, column, row] of [
-        ['Cimetière →', 30, 13],
-        ['Cimetière des Saules · N.5–10', 78, 50],
-        ['Montagnes ↓', 129, 79],
-        ['Hauts de Saphyr · N.10–20', 124, 82],
-        ['Terres dévastées →', 139, 92],
-        ['Brèche des cendres · N.21–25', 151, 85],
-        ['Plaine calcinée · N.25–30', 146, 102],
-        ['Citadelle de la Brèche · N.30–35', 128, 103],
+        ['Belvédère marin ↓', 25, 21],
+        ['Cimetière →', 34, 13],
+        ['Cimetière des Saules · N.5–10', 84, 44],
+        ['Baie Émeraude ↓', 97, 83],
+        ['Baie de Saphyr ↑', 153, 55],
+        ['Montagnes ↓', 142, 63],
+        ['Hauts de Saphyr · N.10–20', 135, 68],
+        ['Terres dévastées →', 165, 84],
+        ['Brèche des cendres · N.21–25', 176, 73],
+        ['Plaine calcinée · N.25–30', 173, 107],
+        ['Citadelle de la Brèche · N.30–35', 136, 110],
     ]) {
         const x = column * tileSize;
         const y = row * tileSize;
@@ -286,5 +324,6 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
             const rise = (frame + seed) % 9;
             ambience.fillStyle(0xf59462, .64 - rise * .06).fillRect(x + Math.floor(rise / 3), y - rise, 1, 1);
         }
+        animateCoast(ambience, frame, surfPoints, glints);
     };
 }

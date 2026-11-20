@@ -4,9 +4,9 @@
 
 ## Carte et ressources visuelles
 
-La carte de 168 × 120 tuiles de 16 px couvre la clairière, le cimetière, les montagnes et les Terres dévastées. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. Les falaises de quatre cases et l’eau bloquent le déplacement.
+La carte de 224 × 160 tuiles de 16 px (3 584 × 2 560 px) forme une péninsule côtière élargie qui couvre la clairière et son cap marin au sud-ouest, le cimetière agrandi et son belvédère sur la baie Émeraude, les montagnes face à la baie de Saphyr, et les trois secteurs des Terres dévastées jusqu’aux falaises d’obsidienne. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. La mer ouverte et la ceinture continue de falaises de trois cases bloquent le déplacement.
 
-`public/game/val-des-saules/` contient les atlas `environment-detailed.png` (saules, cabane, rochers, falaises), `ground-detailed.png` (herbe, chemin, terrain pierreux), les sprites PixelLab de sanglier et de squelette dans huit directions et six icônes d’objets. Les raccords des chemins de la clairière réutilisent les masques du terrain original.
+`public/game/val-des-saules/` contient les atlas `environment-detailed.png` (saules, cabane, rochers, falaises), `ground-detailed.png` (herbe, chemin, terrain pierreux, pelouse côtière), les sprites PixelLab de sanglier et de squelette dans huit directions et six icônes d’objets. `coast-art.js` dessine l’herbe rase côtière, les strates rocheuses des falaises, les hauts-fonds, l’écume animée et les îlots rocheux (avec transition vers la mer volcanique au sud-est) sans jamais retourner ni pivoter verticalement les falaises. Les raccords des chemins de la clairière réutilisent les masques du terrain original.
 
 `regional-ground.png` contient quatre matériaux de 256 × 256 px, échantillonnés en coordonnées de monde. `regional-art.js` fond les sols régionaux dans les textures voisines et érode les bords du pavage. `cemetery-scenery.png` contient le mausolée, les stèles, le saule et la grille. `wasteland-scenery.png` contient l’obsidienne, l’arbre calciné, l’arche et les éboulis. Les décors sont triés en profondeur au pied et leur collision se limite à l’emprise au sol. Le sol et les fissures sont composés au chargement. La brume et les braises respectent la préférence de mouvement réduit.
 
@@ -43,7 +43,8 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | Action | Touches physiques / commande |
 | --- | --- |
 | Déplacement | Flèches, ZQSD (AZERTY), WASD (QWERTY), commandes tactiles |
-| Sélection d’un monstre | Clic |
+| Sélection d’un monstre | Clic sur le monstre |
+| Changer de cible | `Tab` / `Maj+Tab` (réservé au jeu, focus fenêtre bloqué) |
 | Attaque de base / compétence principale | `1` / `2` |
 | Sorts de talents débloqués | `3` à `6` |
 | Potions de vie / ressource | `R` / `F` |
