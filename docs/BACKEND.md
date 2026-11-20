@@ -1,54 +1,41 @@
 # PixelForever · Back-end
 
-Symfony et Doctrine gèrent l’inscription, la connexion, les personnages et la sauvegarde de leur niveau/XP. La sélection est enregistrée dans la session après vérification du propriétaire. `POST /personnages/{id}/progression` vérifie le compte, le jeton CSRF et les bornes du niveau et de l’XP. Une mise à jour conditionnelle atomique empêche une requête ancienne de faire régresser le niveau ou l’XP. L’entrée dans le jeu recharge ces valeurs depuis la base ; un cache local plus avancé peut être repris lors du premier enregistrement. Le combat reste calculé par le client dans ce prototype : cette route ne valide pas encore chaque victoire. Le serveur temps réel et la persistance du reste de la progression restent à intégrer. Le Blob de `src/Game/` sert de référence pour le combat et le butin. Le bestiaire cible figure dans le [game design](GAME_DESIGN.md).
+État au 20 novembre 2026. Symfony et Doctrine gèrent l’inscription, l’authentification par session, les personnages et la sauvegarde de leur niveau/XP. Le combat jouable reste calculé dans le navigateur. Le serveur temps réel et la persistance du reste de la progression sont des travaux futurs.
 
-## Parcours du compte au monde
+## Modèle et parcours actuels
 
-1. Le joueur s’inscrit avec un pseudo, un e-mail et un mot de passe. Le pseudo et l’e-mail sont uniques. Symfony hache le mot de passe.
-2. Le joueur se connecte avec son e-mail et son mot de passe. Symfony ouvre une session et affiche ses personnages.
-3. Le joueur crée un personnage en choisissant un nom et une classe, Guerrier ou Mage. Le serveur initialise sa vie, son mana, son équipement de départ, son niveau, son XP et son or.
-4. Le joueur sélectionne un personnage. Symfony vérifie qu’il appartient au compte connecté et émet un jeton de connexion de courte durée pour le serveur de jeu. Le serveur temps réel associe la connexion à ce personnage.
-5. À la reconnexion, le serveur recharge le niveau, l’XP, l’or, l’inventaire, l’équipement et les quêtes du personnage.
+`User` conserve pseudo et e-mail uniques, avec mot de passe haché. `PlayerCharacter` appartient à un `User` et contient nom, classe (`CharacterClass`), niveau, expérience et or. Les deux seules entités Doctrine actuelles sont dans `src/Entity/`.
 
-## Modèle Doctrine
+Après connexion, le joueur crée puis sélectionne son personnage. Symfony vérifie son propriétaire et conserve la sélection en session. Le bouton Jouer ouvre `CharacterController::play()` qui fournit à Twig les statistiques et le catalogue de butin, puis `world.js` initialise Phaser. Il n’y a pas encore de jeton WebSocket ni de serveur de monde partagé.
 
-| Entité | Relations et données principales |
-| --- | --- |
-| `User` | Pseudo, e-mail, mot de passe haché. Un compte peut posséder plusieurs personnages. |
-| `PlayerCharacter` | `ManyToOne` vers `User`. Nom, classe, niveau, XP et or. |
-| `ItemDefinition` | Catalogue des potions et équipements. Type, rareté, classe requise, emplacement, mains occupées et prix de revente. |
-| `InventoryEntry` | `ManyToOne` vers `Character` et `ItemDefinition`. Une entrée par pièce d’équipement, une quantité pour les consommables empilables. |
-| `EquipmentSlot` | Emplacement d’un personnage associé à une entrée de son inventaire. Unicité par personnage et emplacement. Une même entrée ne peut occuper qu’un emplacement. |
-| `MonsterDefinition` | Famille, niveau, statistiques de base et XP accordée. Plusieurs définitions peuvent représenter des variantes de la même famille. |
-| `LootEntry` | `ManyToOne` vers `MonsterDefinition` et `ItemDefinition`. Porte le poids du tirage de cet objet. |
-| `QuestDefinition` | Donneur de quête, objectif, nombre requis et récompense. |
-| `CharacterQuest` | `ManyToOne` vers `Character` et `QuestDefinition`. Statut et progression. Unicité par couple personnage et quête pour les quêtes non répétables. |
+## Sauvegarde du niveau et de l’XP
 
-Le `ManyToOne` porte la clé étrangère. On ajoute le `OneToMany` inverse quand l’application doit parcourir la collection, par exemple pour l’écran des personnages d’un compte.
+`POST /personnages/{id}/progression` exige la session du propriétaire, un jeton CSRF et des valeurs entières bornées. Le niveau doit être compris entre 1 et 9 999 ; l’XP doit rester sous le seuil du niveau. Une mise à jour DQL conditionnelle atomique empêche une requête ancienne de faire régresser niveau/XP. L’entrée dans le jeu restaure ces valeurs depuis la base ; une progression locale plus avancée peut être envoyée ensuite.
 
-### Classes, types et comportements
+La route ne valide pas encore chaque victoire : les valeurs restent proposées par le client. Sac, arme, allocations et quête restent dans `localStorage`, avec une clé propre au personnage. La base n’assure donc pas encore leur restauration sur un autre navigateur. Le champ or existe mais le marchand n’est pas intégré au jeu.
 
-- `CharacterClass` reste un enum PHP réutilisable. Doctrine le stocke dans une seule table de personnages. Les sorts vérifient la classe et l’équipement au moment de l’utilisation.
-- Les objets partagent le même catalogue. Des enums décrivent le type, la rareté et les emplacements. Une règle métier traite les armes à deux mains et libère la seconde main lorsque nécessaire.
-- Les monstres partagent le même modèle de définition. Les comportements de poursuite, de mêlée ou de souffle du dragon vivent dans le code du serveur de jeu. Une apparition possède son propre identifiant, sa position, ses PV et son état de combat.
+SQLite sert au développement local et aux tests ; PostgreSQL est utilisé pour la persistance Render. Les colonnes niveau/expérience existent déjà et leur sauvegarde ne demande pas de nouvelle migration. La configuration du moteur et les migrations existantes restent dans `config/` et `migrations/`.
 
-## Combat et monde partagé
+## Règles métier et client
 
-- **Symfony** gère les écrans de compte, la session, la sélection du personnage et la persistance des données.
-- **Le serveur de jeu PHP** fait évoluer le monde et communique avec le client via WebSocket. Le client envoie une direction, une cible ou une action demandée. Le serveur détermine la position, la portée, les coûts, les temps de recharge, les dégâts et les résultats de combat. Un client reçoit l’état des entités proches et les événements qui le concernent.
-- **Doctrine** persiste la progression et les opérations durables. La position instantanée des entités, les projectiles et les effets de zone vivent dans le serveur de jeu. Une arme équipée reste liée à son entrée d’inventaire, y compris lorsqu’elle est déséquipée par le passage à une arme à deux mains.
+`src/Game/CharacterClass.php` fournit notamment classe, apparence (`lina` Guerrier / `noe` Mage), statistiques et portée de sort. `CharacterController` transmet les règles au client ; `progression.js` calcule l’auto-attaque selon l’arme. La baguette tire à distance, le bâton frappe au contact ; les sorts du Mage gardent leur portée. Les constantes de départ ne sont pas les valeurs finales d’un personnage ayant progressé.
 
-## Écritures à protéger
+`src/Game/Character.php`, `Blob.php`, `Item.php` et `TrailQuest.php` conservent un prototype métier PHP historique (Blob, vente, objets simples). Ce modèle n’est pas le moteur exécuté par Phaser : son `EmberStaff` et sa table de butin ne doivent pas être pris pour le catalogue actuel du navigateur. Ne pas modifier ses anciennes règles sans vérifier ses tests et ses utilisateurs.
 
-- **Défaite d’un monstre.** Une apparition vaincue ne rapporte son XP, son butin et sa progression de quête qu’une fois par participant. Utiliser un identifiant de défaite stable et une contrainte unique par défaite et personnage. Enregistrer l’attribution et ses effets dans la même transaction.
-- **Vente.** Vérifier la proximité du marchand, le propriétaire de l’objet et son état équipé. Le retrait de l’équipement et l’ajout de l’or se font dans la même transaction.
-- **Récompense de quête.** Vérifier le statut, la proximité du PNJ et l’unicité de la remise. Enregistrer le changement de statut et la récompense ensemble.
+## Contrôles disponibles
 
-## Ordre de réalisation
+```sh
+composer test:accounts
+node --test tests/*.test.mjs
+php bin/console lint:twig templates
+```
 
-1. Inscription, connexion, création et sélection d’un personnage.
-2. Inventaire, équipement, marchand et sauvegarde du solde d’or.
-3. Connexion de deux joueurs au même monde, déplacements et premier combat contre un sanglier.
-4. Récompenses de combat, niveau, quêtes et progression jusqu’au dragon.
+Le parcours PHP utilise une base temporaire : inscription, connexion, création/sélection, refus des accès à un personnage tiers, apparence et classe, catalogue, CSRF, validation des valeurs, sauvegardes anciennes et restauration du niveau/XP dans une nouvelle session. Les tests Node couvrent les règles réellement exécutées par le jeu. L’erreur 404 attendue lors du refus d’accès à un personnage tiers ne signifie pas que la suite échoue.
 
-Voir aussi le [front-end](FRONTEND.md) et le [game design](GAME_DESIGN.md).
+## Évolutions prévues
+
+Pour un monde partagé, le serveur devra valider déplacement, portée, recharge, mana et état vivant, puis attribuer XP/butin/quête une seule fois par défaite et participant. Une transaction et un identifiant de défaite stable devront prévenir les doublons. Le client affichera l’état confirmé par le serveur.
+
+Le futur catalogue persistant pourra ajouter définitions d’objets, entrées d’inventaire, emplacements d’équipement, définitions de monstres et de quêtes. La vente devra vérifier propriété, quantité, état équipé et proximité du marchand avant retrait de l’objet et crédit d’or dans une même transaction. Ces tables et fonctions ne sont pas encore implémentées.
+
+Voir le [front-end](FRONTEND.md), le [game design](GAME_DESIGN.md) et le [déploiement](DEPLOIEMENT.md).

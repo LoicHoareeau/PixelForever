@@ -1,69 +1,71 @@
 # PixelForever · Game design
 
-PixelForever est un **MMORPG en pixel art** jouable dans un navigateur. Les joueurs explorent le même monde et combattent les monstres en temps réel à l’endroit où ils les rencontrent. Le premier parcours part d’un hameau, traverse une forêt, puis mène aux ruines et au repaire du dragon.
+État du prototype au 20 novembre 2026. Ce document décrit les règles jouables ; les objectifs futurs figurent à la fin. Un changement de texte ne modifie pas le moteur JavaScript.
 
 ## Boucle de jeu
 
-Créer un Guerrier ou un Mage et lui donner un nom → accepter une quête → explorer et combattre → gagner de l’XP et du butin → s’équiper ou vendre les doublons → accéder à des combats plus difficiles.
+Créer un Guerrier ou un Mage → parler au PNJ → explorer la clairière, le cimetière et les montagnes → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
 
-Chaque personnage possède son niveau, sa barre d’XP, son inventaire et son or. Le marchand du hameau rachète les équipements non équipés à un prix fixe indiqué sur leur fiche. La vie et le mana sont des ressources de combat. Les deux classes peuvent utiliser les mêmes potions de vie et de mana.
+## Classes et attaques
 
-## Classes, équipement et sorts
-
-| Classe et armes | Sorts | Style de jeu |
+| Classe / équipement | Attaque de base gratuite | Portée |
 | --- | --- | --- |
-| **Guerrier · Épée et bouclier** | **Attaque chargée** avec l’épée, **Coup de bouclier** pour interrompre une attaque interruptible, **Provocation** pour attirer un monstre. | Mêlée et protection des alliés. |
-| **Guerrier · Hache à deux mains** | **Engagement** pour foncer sur la cible, **Taillade** pour frapper plusieurs ennemis proches, **Berserk** pour augmenter temporairement ses dégâts. | Entrée rapide en mêlée et dégâts de zone. |
-| **Mage · Bâton ou baguette et livre d’incantation** | **Boule de feu** sur une cible, **Mur de feu** posé au sol, **Tourbillon de feu** qui brûle une zone. | Dégâts à distance et contrôle de l’espace. |
+| Guerrier · Épée de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 1,5 case |
+| Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 5 cases avant bonus |
+| Mage · Bâton des saules | Coup de bâton | 1,5 case |
+| Arme retirée | Coup de poing | 1,5 case |
 
-L’épée et la baguette occupent la main principale. Le bouclier et le livre d’incantation occupent la seconde main. La hache et le bâton occupent les deux mains. Passer à une arme à deux mains libère la seconde main.
+Le Guerrier utilise Lina, la mêlée et l’énergie. Le Mage utilise Noé et le mana. Le portrait et le personnage suivent la même classe. Les apparences et les planches de marche existantes sont conservées.
 
-| Classe | Armures de départ du catalogue |
+L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer Boule de feu à distance. L’attaque de base reste disponible sans mana ; Boule de feu et Attaque chargée coûtent initialement 10 points de ressource. Les talents peuvent réduire les coûts et délais. La cadence de base est de 500 ms, avec préparation et impact ; aucune seconde attaque de base ne part pendant l’attaque en cours.
+
+Tous les sorts offensifs du Mage ciblent à distance, quelle que soit son arme. Tourbillon de feu et Nova de givre se déclenchent autour de la cible sélectionnée, dans un rayon de 54 px, à cinq cases de portée de lancement avant bonus. Mur de feu couvre 38 px autour de la cible et porte à six cases ; Déflagration porte à 6,5 cases. Nova ralentit pendant 2,5 secondes. Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste une zone de mêlée du Guerrier, centrée sur lui.
+
+La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Une défaite permet de se relever au camp en gardant la progression.
+
+## Talents et progression
+
+Aucun point au niveau 1. Chaque niveau suivant donne trois points de caractéristiques et un point de talent/sort, avec croissance naturelle de classe. Les rangs de sorts de base et les talents consomment le même budget. La réinitialisation des talents rend les points investis dans les talents. Les prérequis, rangs maximums et points de branche sont vérifiés.
+
+- Guerrier : Armes, Fureur et Protection ; Taillade, Engagement, Berserk et Coup de bouclier sont des compétences actives.
+- Mage : Pyromancie, Arcanes et Givre ; Mur de feu, Tourbillon de feu, Déflagration et Nova de givre sont des compétences actives.
+- Maîtrise des baguettes : cinq rangs de +6 % sur le tir de baguette.
+- Focalisation de la baguette : trois rangs de +2 dégâts avant maîtrise, avec maîtrise apprise et cinq points en Arcanes requis.
+
+Les bonus de baguette ne renforcent ni les coups de bâton, ni les sorts, ni les attaques du Guerrier. Les compétences actives débloquées occupent les emplacements 3 à 6. Leur coût et leur recharge sont propres à chaque compétence.
+
+## Animations de combat
+
+L’auto-attaque à distance et les sorts du Mage utilisent une pose d’incantation orientée et des effets magiques. La planche Noé `attack.png`, issue de « Frappe à la lanterne », sert aux coups de contact et ne doit pas être utilisée pour représenter un tir de baguette. Les poses d’incantation dérivent du sprite existant, sans redessiner le personnage.
+
+Les exports `pixel` vérifiés contiennent « Frappe à la lanterne » pour Noé et « Coup de marteau » pour Lina. Aucun cycle d’incantation dédié n’y est présent. Une future animation magique complète devra utiliser un export dédié, en conservant l’apparence du personnage ; le geste orienté actuel est une adaptation des poses existantes.
+
+La préparation et la fin du geste sont cadencées pour rester lisibles à 30 FPS. Le projectile suit sa propre trajectoire vers la cible. Les compétences de talents déclenchent aussi un geste. Les directions nord utilisent des poses orientées ; les frappes existantes restent disponibles pour le Guerrier et le bâton. Les fichiers Markdown n’interviennent pas dans ce choix à l’exécution : `combat.js` et `world.js` l’appliquent.
+
+## Monde et monstres
+
+| Zone | Espèces et niveaux |
 | --- | --- |
-| Guerrier | Heaume, cuirasse et gants en fer |
-| Mage | Capuchon, robe et bottes en tissu |
+| Clairière proche du départ | Sangliers N.1–5 ; premières patrouilles N.1–2, puis N.2–4 et N.4–5 plus loin |
+| Cimetière, indiqué par des pancartes en bois | Squelettes N.5–10 |
+| Montagnes, à l’écart du départ | Dragons N.10–20 |
 
-Le personnage commence avec une arme de base et un premier sort. Le réglage initial proposé débloque les deux autres sorts de son profil aux niveaux 2 et 4. Les prérequis d’arme ou de bouclier continuent de s’appliquer.
+Le monde mesure 2 688 × 1 920 px. La caméra suit le joueur ; l’ATH reste fixe en plein écran. Les falaises de quatre cases bloquent les quatre bords. Les chemins entre zones restent accessibles.
 
-### Attaque de base
+Les monstres engagent à proximité, préparent une auto-attaque et respectent leur recharge. Sangliers et squelettes frappent au contact ; le dragon tire un projectile ciblé. Il n’y a plus de cercle de dégâts pour ces auto-attaques. Sortir de portée, se mettre à couvert, étourdir ou tuer le monstre empêche un impact invalide. Patrouilles, poursuites et réapparitions restent dans la zone de l’espèce.
 
-Dès le niveau 1, chaque Guerrier et chaque Mage dispose d’une attaque de base **sans coût en mana ni en énergie**. Elle reste utilisable quand le mana est à zéro, si la cible est à portée et si le délai entre deux attaques est écoulé. Le Guerrier frappe en mêlée à l’épée ou à la hache. Le Mage tire un projectile simple avec son bâton ou sa baguette. Les compétences conservent leurs propres conditions et temps de recharge.
+Les niveaux 1–2 sont abordables ; PV et dégâts augmentent fortement ensuite. Les sangliers passent de 52 PV / 6 dégâts au N.1 à 236 PV / 26 dégâts au N.5. Les squelettes passent de 260 PV / 26 dégâts au N.5 à 610 PV / 56 dégâts au N.10 ; les dragons de 800 PV / 60 dégâts au N.10 à 2 500 PV / 160 dégâts au N.20. Les valeurs exécutées sont dans `monsters.js`.
 
-### Animations à produire
+## Quête et butin
 
-| Personnage ou équipement | Animations et effets |
-| --- | --- |
-| Guerrier · Épée et bouclier | Coup d’épée de base, préparation et frappe de l’Attaque chargée, impact du Coup de bouclier et geste de Provocation. |
-| Guerrier · Hache à deux mains | Coup de hache de base, ruée d’Engagement, arc de Taillade et activation de Berserk avec un effet visible pendant sa durée. |
-| Mage · Bâton ou baguette et livre d’incantation | Attaque de base avec projectile simple, geste d’incantation, projectile et impact de Boule de feu, apparition et extinction de Mur de feu, rotation et disparition de Tourbillon de feu. |
+L’habitante du hameau propose **Sécuriser le sentier** : accepter, vaincre trois sangliers, puis revenir pour recevoir deux potions de vie une seule fois. `!` doré : disponible ; `?` gris : en cours ; `?` doré : à rendre ; aucun marqueur après remise. Le dialogue donne aussi l’état en texte.
 
-Prévoir les gestes dans les quatre directions de déplacement. Pour un sort à distance, le geste du personnage, le projectile et l’effet d’impact peuvent être joués séparément pour suivre la cible.
+Chaque défaite crédite de l’XP selon l’espèce/niveau et un tirage personnel : vie 47 %, ressource 30 %, arme rare 15 %, arme épique 5 %, écaille 2 %, cœur 1 %. Le catalogue comprend les six objets PixelLab : Lame des saules, Bâton des saules, Croc de Saphyr, Sceptre de Saphyr, Écaille de Saphyr et Cœur de flamme bleue. Les deux derniers sont des matériaux sans usage d’équipement actuel. Le choix des armes dépend de la classe ; la table actuelle est commune aux espèces, sans restriction du matériau au dragon.
 
-## Monde, XP et quêtes
+## Persistance et objectifs futurs
 
-| Zone | Monstres | Quête proposée |
-| --- | --- | --- |
-| Forêt proche du hameau | Sangliers, niveaux 1–2 | **Sécuriser le sentier** · repousser les sangliers pour la garde. |
-| Ruines | Squelettes, niveaux 3–4 | **Les gardiens des ruines** · vaincre les squelettes, puis faire son rapport. |
-| Repaire | Un dragon, niveau 5 | **Le dragon des ruines** · vaincre le boss. |
+Le compte, les personnages, le niveau et l’XP sont en base. Sac, équipement, allocations et quête sont locaux au navigateur. Le niveau 2 demande 100 XP puis les seuils augmentent de 50 par niveau ; le client accepte les niveaux jusqu’à 9 999. Le N.20 du bestiaire n’est pas un plafond du personnage.
 
-Le niveau 5 est le plafond proposé pour la première version. Le journal compte les défaites après acceptation de la quête et indique quand retourner voir le PNJ. En combat partagé, chaque personnage ayant réussi au moins une attaque reçoit l’XP complète du monstre, son tirage de butin et le crédit de sa propre quête active si l’objectif correspond.
+Le monde partagé, la validation serveur des combats, la persistance complète, les marchands, haches, boucliers, livres et armures restent des objectifs. Ils ne doivent pas être présentés comme disponibles dans l’interface actuelle.
 
-Les sangliers et les squelettes réapparaissent après un délai. Dans le prototype, les monstres engagent à proximité et répètent des auto-attaques ciblées : corps à corps pour les sangliers et les squelettes, projectile pour le dragon, avec préparation et recharge. Sortir de portée, se mettre à couvert ou étourdir le monstre peut empêcher l’impact. Les niveaux 1–2 restent abordables ; les PV et les dégâts augmentent ensuite plus fortement, et les monstres de haut niveau nécessitent une progression et des talents adaptés. Un personnage vaincu peut se relever au camp en conservant sa progression et ses objets.
-
-## Butin et raretés
-
-| Rareté | Source proposée |
-| --- | --- |
-| Commun | Sangliers et squelettes |
-| Rare | Squelettes |
-| Épique | Dragon |
-| Légendaire | Dragon, avec une faible chance |
-
-Le tirage est personnel. La table peut donner une potion commune ou un équipement compatible avec le personnage. Le premier prototype crédite le butin directement dans l’inventaire. Les taux de drop, les seuils d’XP et les statistiques précises des objets seront réglés après les premiers combats joués.
-
-## Démonstration cible
-
-Deux joueurs créent un Mage et un Guerrier, se retrouvent au hameau et progressent ensemble jusqu’au dragon. Chacun retrouve après reconnexion le niveau, l’XP, l’or, les objets et les quêtes de son personnage.
-
-Voir aussi le [back-end](BACKEND.md) et le [front-end](FRONTEND.md).
+Voir le [front-end](FRONTEND.md) et le [back-end](BACKEND.md).

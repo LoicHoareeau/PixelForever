@@ -37,3 +37,11 @@ Corrige tout échec lié au changement et relance la vérification avant de publ
 5. Vérifie que le push a réussi. Dans le compte rendu, indique la branche, le commit et les tests effectués.
 
 Les changements passent par une branche dédiée. Ouvre une pull request vers `main` quand le travail doit être intégré.
+
+## 4. Tenir les règles et la documentation cohérentes
+
+Après un changement de comportement, actualise les documents concernés (`README.md`, `docs/GAME_DESIGN.md`, `docs/FRONTEND.md`, `docs/BACKEND.md` et `docs/DEPLOIEMENT.md`). Distingue l’état jouable des objectifs futurs. Ne prends pas les anciennes règles PHP du Blob pour le moteur Phaser actuel.
+
+Pour le combat, vérifier la matrice d’équipement : baguette/Sceptre à distance, bâton au contact, sorts du Mage toujours à leur portée propre. Préserver les apparences et la marche des personnages. Un tir magique ne doit pas sélectionner une planche de frappe de mêlée. Inclure `tests/combat-animation.test.mjs` et `tests/weapons.test.mjs` dans les vérifications, avec les autres tests Node.
+
+Inclure `tests/mage-spells.test.mjs` : tous les sorts offensifs du Mage, y compris Tourbillon de feu et Nova de givre, doivent viser à distance indépendamment de l’arme. Les zones du Mage sont centrées sur sa cible ; Taillade reste centrée sur le Guerrier. Sans cible vivante à portée, conserver mana et recharge.
