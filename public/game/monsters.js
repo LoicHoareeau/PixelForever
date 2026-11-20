@@ -1,8 +1,23 @@
-// Définition des espèces de monstres, génération pixel-art et IA de patrouille/combat
+// Espèces, patrouilles et combat des monstres.
 import { inZone, zones } from './exploration.js';
+import { monsterArt, monsterFrames, monsterWalkFrames } from './monster-art.js';
 
 const stepDirections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-const dragonFrames = 9;
+const breathSpeed = 142;
+const breathRadius = 8;
+
+function demonStats(level) {
+    const offset = level - 21;
+    return {
+        maxHealth: 1760 + offset * 145 + offset ** 2 * 9,
+        damage: 76 + offset * 6 + Math.floor(offset ** 2 * .36),
+        patrolSpeed: 32,
+        chaseSpeed: 78 + offset,
+        windupMs: 420,
+        attackIntervalMs: 1400 - offset * 18,
+        xp: 630 + offset * 44 + offset ** 2 * 2,
+    };
+}
 
 export const monsterTemplates = {
     boar: {
@@ -24,7 +39,7 @@ export const monsterTemplates = {
                 chaseSpeed: 100 + offset * 3,
                 windupMs: 240,
                 attackIntervalMs: 1100 - offset * 40,
-                xp: 30 + level * 12,
+                xp: 30 + level * 12 + (level - 1) ** 2 * 2,
             };
         },
     },
@@ -47,7 +62,7 @@ export const monsterTemplates = {
                 chaseSpeed: 94 + offset * 2,
                 windupMs: 320,
                 attackIntervalMs: 1300 - offset * 40,
-                xp: 60 + level * 14,
+                xp: 66 + level * 15 + (level - 5) ** 2 * 3,
             };
         },
     },
@@ -70,9 +85,27 @@ export const monsterTemplates = {
                 chaseSpeed: 98 + offset * 2,
                 windupMs: 450,
                 attackIntervalMs: 1500 - offset * 30,
-                xp: 120 + level * 18,
+                xp: 108 + level * 20 + Math.round(offset ** 2 * 1.1),
             };
         },
+    },
+    imp: {
+        label: 'Diablotin des cendres', minLevel: 21, maxLevel: 25,
+        attackRange: 22, aggroRange: 70, zone: zones.imp, respawnMs: 6000,
+        patrolCells: [[151, 90], [156, 91], [158, 94], [153, 97], [158, 98]],
+        statsForLevel: demonStats,
+    },
+    hound: {
+        label: 'Molosse infernal', minLevel: 25, maxLevel: 30,
+        attackRange: 26, aggroRange: 80, zone: zones.hound, respawnMs: 7000,
+        patrolCells: [[150, 103], [155, 104], [158, 107], [150, 111], [154, 113], [160, 110]],
+        statsForLevel: demonStats,
+    },
+    fiend: {
+        label: 'Garde de la Brèche', minLevel: 30, maxLevel: 35,
+        attackRange: 31, aggroRange: 88, zone: zones.fiend, respawnMs: 8000,
+        patrolCells: [[140, 106], [137, 111], [133, 105], [129, 108], [124, 112], [131, 113]],
+        statsForLevel: demonStats,
     },
 };
 
@@ -81,14 +114,14 @@ function randomInt(min, max) {
 }
 
 export class Monster {
-    constructor(scene, species, directions, tileSize, initialSpawnIndex = 0) {
+    constructor(scene, species, tileSize, initialSpawnIndex = 0) {
         this.scene = scene;
         this.species = species;
         this.template = monsterTemplates[species];
-        this.directions = directions;
+        this.art = monsterArt[species];
         this.tileSize = tileSize;
         this.columns = scene.terrain[0].length;
-        this.cells = scene.terrain.flatMap((row, y) => row.map((_, x) => ({
+        this.cells = scene.monsterCells ??= scene.terrain.flatMap((row, y) => row.map((_, x) => ({
             x: (x + 0.5) * tileSize,
             y: (y + 0.5) * tileSize,
         })));
@@ -106,22 +139,26 @@ export class Monster {
                 .filter((index) => index >= 0);
         }
 
-        const initialTexture = species === 'dragon'
-            ? 'saphyr-idle'
-            : species + '-south';
-
-        this.sprite = scene.add.image(0, 0, initialTexture).setInteractive({ useHandCursor: true });
+        const { frame, width, height } = this.art;
+        this.sprite = scene.add.image(0, 0, species + '-motion')
+            .setOrigin(.5, (this.art.frame - 16) / this.art.frame)
+            .setInteractive({
+                hitArea: { x: (frame - width) / 2 - 2, y: frame - height - 16, width: width + 4, height: height + 8 },
+                hitAreaCallback: (area, x, y) => x >= area.x && x <= area.x + area.width
+                    && y >= area.y && y <= area.y + area.height,
+                useHandCursor: true,
+            });
         this.shadow = scene.add.ellipse(
             0,
             0,
-            species === 'dragon' ? 27 : 18,
+            this.art.shadow,
             species === 'dragon' ? 9 : 6,
             0x172622,
             0.5,
         ).setDepth(3);
 
         // Anneau de sélection sous le monstre ciblé
-        this.targetRing = scene.add.ellipse(0, 0, species === 'dragon' ? 30 : 20, species === 'dragon' ? 11 : 8)
+        this.targetRing = scene.add.ellipse(0, 0, this.art.shadow + 3, species === 'dragon' ? 11 : 8)
             .setStrokeStyle(1.5, 0xf0c781, 0.95)
             .setDepth(4)
             .setVisible(false);
@@ -227,7 +264,6 @@ export class Monster {
     cancelAttack() {
         this.attackEndsAt = 0;
         this.attackVisual = null;
-        this.breath = null;
         this.sprite.clearTint();
     }
 
@@ -254,10 +290,11 @@ export class Monster {
             angle: Math.atan2(player.y - this.sprite.y, player.x - this.sprite.x),
         };
         if (this.species === 'dragon') {
-            this.breath = {
-                start: now,
-                strike: castEnd,
-                end: this.attackEndsAt,
+            const angle = this.attackVisual.angle;
+            this.attackVisual.projectile = {
+                x: this.sprite.x, y: this.sprite.y,
+                dx: Math.cos(angle), dy: Math.sin(angle),
+                distance: 0, range: this.template.attackRange + 14,
             };
             this.sprite.setTint(0xb0f5ff);
         } else if (this.species === 'boar') {
@@ -265,6 +302,23 @@ export class Monster {
         } else {
             this.sprite.setTint(0xd7e8ff);
         }
+    }
+
+    advanceBreath(now, player) {
+        const attack = this.attackVisual;
+        if (now < attack.castEnd) return 'travel';
+
+        const shot = attack.projectile;
+        const distance = Math.min(shot.range, (now - attack.castEnd) * breathSpeed / 1000);
+        // Small steps keep collision with scenery and the player reliable on slow frames.
+        while (shot.distance < distance) {
+            shot.distance = Math.min(distance, shot.distance + 3);
+            const x = shot.x + shot.dx * shot.distance;
+            const y = shot.y + shot.dy * shot.distance;
+            if (!this.scene.canStand(x, y)) return 'miss';
+            if (Math.hypot(player.x - x, player.y - y) <= breathRadius) return 'hit';
+        }
+        return shot.distance === shot.range ? 'miss' : 'travel';
     }
 
     face(dx, dy) {
@@ -279,9 +333,9 @@ export class Monster {
         if (!this.sprite.visible) return;
         const x = Math.round(this.sprite.x);
         const y = Math.round(this.sprite.y);
-        const headOffset = this.species === 'dragon' ? 24 : 18;
-        this.shadow.setPosition(x, y + (this.species === 'dragon' ? 11 : 7));
-        this.targetRing.setPosition(x, y + (this.species === 'dragon' ? 10 : 6));
+        const headOffset = this.art.height - 3;
+        this.shadow.setPosition(x, y + 7);
+        this.targetRing.setPosition(x, y + 6);
         const overlayDepth = this.scene.terrain.length * this.tileSize + 2;
         this.hpBg.setPosition(x, y - headOffset).setDepth(overlayDepth);
         const ratio = Math.max(0, Math.min(1, this.health / this.maxHealth));
@@ -289,33 +343,19 @@ export class Monster {
         this.nameTag.setPosition(x, y - headOffset - 3).setDepth(overlayDepth + 2);
     }
 
-    renderPose(now) {
-        if (this.species === 'dragon') {
-            if (this.breath && now < this.breath.end) {
-                const { start, strike, end } = this.breath;
-                const frame = now < strike
-                    ? Math.min(3, Math.floor(4 * (now - start) / Math.max(1, strike - start)))
-                    : Math.min(8, 4 + Math.floor(5 * (now - strike) / Math.max(1, end - strike)));
-                const direction = this.directions[this.facing];
-                if (direction.startsWith('north')) {
-                    this.renderDragon('saphyr-idle', this.facing);
-                } else {
-                    this.renderDragon('saphyr-breath', frame + (direction === 'south' ? dragonFrames : 0), direction.includes('west'));
-                }
-                return;
-            }
-            this.breath = null;
-            return;
+    renderPose(now, moving = false) {
+        let pose = 0;
+        if (now < this.attackEndsAt && this.attackVisual) {
+            const { start, castEnd } = this.attackVisual;
+            const preparation = (now - start) / (castEnd - start);
+            const attackPose = preparation < .36 ? 0 : preparation < (this.species === 'dragon' ? 1 : .76) ? 1 : 2;
+            pose = monsterWalkFrames + 1 + attackPose;
+        } else if (moving) {
+            pose = 1 + Math.floor(this.walkDistance / this.art.stride * monsterWalkFrames) % monsterWalkFrames;
         }
-
-        this.sprite.setTexture(this.species + '-' + this.directions[this.facing]).setFlipX(false).setDepth(this.sprite.y);
-    }
-
-    renderDragon(texture, frame, flip = false) {
-        if (this.sprite.texture.key !== texture || this.sprite.frame.name !== frame) {
-            this.sprite.setTexture(texture, frame);
-        }
-        this.sprite.setFlipX(flip).setDepth(this.sprite.y);
+        const frame = this.facing * monsterFrames + pose;
+        if (this.sprite.frame.name !== frame) this.sprite.setFrame(frame);
+        this.sprite.setDepth(this.sprite.y);
     }
 
     update(now, delta, player) {
@@ -340,7 +380,6 @@ export class Monster {
             this.syncOverlays();
             return;
         }
-        this.breath = null;
 
         const dx = player.x - this.sprite.x;
         const dy = player.y - this.sprite.y;
@@ -379,15 +418,7 @@ export class Monster {
             }
         }
 
-        if (this.species === 'dragon') {
-            if (moved) {
-                this.renderDragon('saphyr-walk', this.facing * dragonFrames + Math.floor(this.walkDistance / 5) % dragonFrames);
-            } else {
-                this.renderDragon('saphyr-idle', this.facing);
-            }
-        } else {
-            this.renderPose(now);
-        }
+        this.renderPose(now, moved);
 
         this.syncOverlays();
     }

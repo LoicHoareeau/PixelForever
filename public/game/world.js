@@ -1,6 +1,7 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
+import { monsterArt } from './monster-art.js';
 import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
@@ -64,8 +65,11 @@ import { saveProgress } from './progression.js';
             this.load.image('quest-early', 'quest_early.png');
             this.load.image('environment-detailed', 'environment-detailed.png');
             this.load.image('ground-detailed', 'ground-detailed.png');
-            for (const species of ['boar', 'skeleton']) {
-                directions.forEach(direction => this.load.image(species + '-' + direction, species + '/' + direction + '.png'));
+            for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
+                this.load.image(atlas, atlas + '.png');
+            }
+            for (const [species, { frame }] of Object.entries(monsterArt)) {
+                this.load.spritesheet(species + '-motion', 'monsters/' + species + '.png', { frameWidth: frame, frameHeight: frame });
             }
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
@@ -74,9 +78,6 @@ import { saveProgress } from './progression.js';
             this.load.spritesheet(this.walkSheet, this.skin + '/walk.png', { frameWidth: 48, frameHeight: 48 });
             const attackSize = this.skin === 'lina' ? 64 : 68;
             this.load.spritesheet(this.attackSheet, this.skin + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
-            this.load.spritesheet('saphyr-idle', 'saphyr/idle.png', { frameWidth: 48, frameHeight: 48 });
-            this.load.spritesheet('saphyr-walk', 'saphyr/walk.png', { frameWidth: 68, frameHeight: 68 });
-            this.load.spritesheet('saphyr-breath', 'saphyr/breath.png', { frameWidth: 68, frameHeight: 68 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
                 status.textContent = 'Un élément de la carte manque. Recharge la page pour réessayer.';
             });
@@ -114,14 +115,19 @@ import { saveProgress } from './progression.js';
             this.facing = facing;
             this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, 0.48).setDepth(3);
 
-            // Création des monstres : Sangliers (N.1-5), Squelettes (N.5-10) et Saphyr Dragon (N.10-20)
             const monsters = [
-                new Monster(this, 'boar', directions, tileSize, 0),
-                new Monster(this, 'boar', directions, tileSize, 2),
-                new Monster(this, 'boar', directions, tileSize, 4),
-                new Monster(this, 'skeleton', directions, tileSize, 0),
-                new Monster(this, 'skeleton', directions, tileSize, 3),
-                new Monster(this, 'dragon', directions, tileSize, 0),
+                new Monster(this, 'boar', tileSize, 0),
+                new Monster(this, 'boar', tileSize, 2),
+                new Monster(this, 'boar', tileSize, 4),
+                new Monster(this, 'skeleton', tileSize, 0),
+                new Monster(this, 'skeleton', tileSize, 3),
+                new Monster(this, 'dragon', tileSize, 0),
+                new Monster(this, 'imp', tileSize, 0),
+                new Monster(this, 'imp', tileSize, 3),
+                new Monster(this, 'hound', tileSize, 0),
+                new Monster(this, 'hound', tileSize, 3),
+                new Monster(this, 'fiend', tileSize, 0),
+                new Monster(this, 'fiend', tileSize, 5),
             ];
 
             this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);

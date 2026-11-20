@@ -4,7 +4,7 @@
 
 ## Boucle de jeu
 
-Créer un Guerrier ou un Mage → parler au PNJ → explorer la clairière, le cimetière et les montagnes → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
+Créer un Guerrier ou un Mage → parler au PNJ → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
 
 ## Classes et attaques
 
@@ -49,12 +49,15 @@ La préparation et la fin du geste sont cadencées pour rester lisibles à 30 FP
 | Clairière proche du départ | Sangliers N.1–5 ; premières patrouilles N.1–2, puis N.2–4 et N.4–5 plus loin |
 | Cimetière, indiqué par des pancartes en bois | Squelettes N.5–10 |
 | Montagnes, à l’écart du départ | Dragons N.10–20 |
+| Terres dévastées · Brèche des cendres | Diablotins N.21–25 |
+| Terres dévastées · Plaine calcinée | Molosses infernaux N.25–30 |
+| Terres dévastées · Citadelle de la Brèche | Gardes de la Brèche N.30–35 |
 
 Le monde mesure 2 688 × 1 920 px. La caméra suit le joueur ; l’ATH reste fixe en plein écran. Les falaises de quatre cases bloquent les quatre bords. Les chemins entre zones restent accessibles.
 
-Les monstres engagent à proximité, préparent une auto-attaque et respectent leur recharge. Sangliers et squelettes frappent au contact ; le dragon tire un projectile ciblé. Il n’y a plus de cercle de dégâts pour ces auto-attaques. Sortir de portée, se mettre à couvert, étourdir ou tuer le monstre empêche un impact invalide. Patrouilles, poursuites et réapparitions restent dans la zone de l’espèce.
+Les monstres engagent à proximité, préparent leur attaque et respectent leur recharge. Sangliers, squelettes et démons frappent au contact. Le dragon fixe sa direction au début de sa préparation de 450 ms et la signale au sol. Son souffle parcourt ensuite la ligne à 142 px/s et blesse une seule fois au contact. Un pas de côté pendant le vol ou un obstacle entre le projectile et le joueur évite l’impact. Étourdir ou tuer le dragon éteint son souffle. Patrouilles, poursuites et réapparitions restent dans le secteur de l’espèce.
 
-Les niveaux 1–2 sont abordables ; PV et dégâts augmentent fortement ensuite. Les sangliers passent de 52 PV / 6 dégâts au N.1 à 236 PV / 26 dégâts au N.5. Les squelettes passent de 260 PV / 26 dégâts au N.5 à 610 PV / 56 dégâts au N.10 ; les dragons de 800 PV / 60 dégâts au N.10 à 2 500 PV / 160 dégâts au N.20. Les valeurs exécutées sont dans `monsters.js`.
+Les niveaux 1–2 restent abordables. Un diablotin N.22 a 1 914 PV, inflige 82 dégâts et donne 676 XP. Un molosse N.27 a 2 954 PV, inflige 124 dégâts et donne 966 XP. Le garde N.35 atteint 5 554 PV, 230 dégâts et 1 638 XP. Les valeurs exécutées sont dans `monsters.js`.
 
 ## Quête et butin
 
@@ -64,7 +67,7 @@ Chaque défaite crédite de l’XP selon l’espèce/niveau et un tirage personn
 
 ## Persistance et objectifs futurs
 
-Le compte, les personnages, le niveau et l’XP sont en base. Sac, équipement, allocations et quête sont locaux au navigateur. Le niveau 2 demande 100 XP puis les seuils augmentent de 50 par niveau ; le client accepte les niveaux jusqu’à 9 999. Le N.20 du bestiaire n’est pas un plafond du personnage.
+Le compte, les personnages, le niveau et l’XP sont en base. Sac, équipement, allocations et quête sont locaux au navigateur. Le niveau 2 demande 100 XP puis les seuils augmentent de 50 par niveau. Le bestiaire actuel monte au N.35 et le client accepte des personnages jusqu’au N.9 999.
 
 Le monde partagé, la validation serveur des combats, la persistance complète, les marchands, haches, boucliers, livres et armures restent des objectifs. Ils ne doivent pas être présentés comme disponibles dans l’interface actuelle.
 

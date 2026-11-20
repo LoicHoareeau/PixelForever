@@ -1,4 +1,5 @@
-import { cliffTile, graves, inZone, rocks, zones } from './exploration.js';
+import { cliffTile, inWasteland, inZone, rocks, zones } from './exploration.js';
+import { addCemeteryMist, addRegionalScenery, createScorchedCliff, drawRegionalGround } from './regional-art.js';
 
 const frameSize = 48;
 // Positions are the feet of the tree trunks, so the canopy sorts with actors.
@@ -60,24 +61,6 @@ function drawLantern(context) {
     context.fillRect(10, 6, 2, 2);
 }
 
-function drawGrave(context) {
-    context.fillStyle = '#252a30';
-    context.fillRect(2, 5, 14, 16);
-    context.fillRect(5, 2, 8, 3);
-    context.fillStyle = '#777e7c';
-    context.fillRect(4, 6, 10, 13);
-    context.fillRect(6, 4, 6, 3);
-    context.fillStyle = '#a2a69a';
-    context.fillRect(5, 6, 1, 11);
-    context.fillRect(7, 5, 5, 1);
-    context.fillStyle = '#454c51';
-    context.fillRect(8, 8, 2, 8);
-    context.fillRect(6, 10, 6, 2);
-    context.fillStyle = '#53644d';
-    context.fillRect(1, 20, 16, 3);
-    context.fillRect(3, 18, 3, 3);
-}
-
 export function treePositions(terrain) {
     const positions = [...trees];
     for (let row = 3; row < terrain.length - 2; row += 6) {
@@ -94,6 +77,7 @@ export function treePositions(terrain) {
         }
     }
     return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile
+        && !inWasteland(x, y) && !inZone(zones.skeleton, x, y)
         && !(x > 96 && x < 192 && y > 80 && y < 180));
 }
 
@@ -119,9 +103,8 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     terrain.forEach((row, y) => row.forEach((tile, x) => {
         if (tile < 16 || tile === 34 || tile === cliffTile) return;
         const mountain = inZone(zones.dragon, x * tileSize, y * tileSize);
-        const cemetery = inZone(zones.skeleton, x * tileSize, y * tileSize);
         const column = mountain || tile === 32 ? 1 : 0;
-        const rowIndex = mountain || (cemetery && tile !== 32) ? 1 : 0;
+        const rowIndex = mountain ? 1 : 0;
         context.drawImage(ground,
             column * groundCell + (x % 16) * groundCell / 16,
             rowIndex * groundCell + (y % 16) * groundCell / 16,
@@ -182,11 +165,13 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         context.fillRect(px + 2, py - 1, 1, 2);
         context.fillRect(px + 3, py, 1, 1);
     }));
+    const ashCoast = (x, y) => inWasteland(Math.min(x, width - 4 * tileSize - 1), Math.min(y, height - 4 * tileSize - 1));
     terrain.forEach((row, y) => row.forEach((tile, x) => {
         if (tile !== cliffTile) return;
-        context.fillStyle = '#22676d';
+        context.fillStyle = ashCoast(x * tileSize, y * tileSize) ? '#29252f' : '#22676d';
         context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }));
+    const cinders = drawRegionalGround(scene, context, terrain, tileSize);
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
 
@@ -204,14 +189,17 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     sceneryTexture('mountain-rock', 1, 0, 80);
     sceneryTexture('ranger-cabin', 0, 1, 96);
     sceneryTexture('coastal-cliff', 1, 1, 64);
+    createScorchedCliff(scene);
     // The coastal rocks stay inside the impassable rim and do not cover walkable ground.
     for (let x = 32; x < width - 32; x += 56) {
-        scene.add.image(x, height, 'coastal-cliff').setOrigin(.5, 1).setDisplaySize(64, 64).setDepth(1);
+        scene.add.image(x, height, ashCoast(x, height) ? 'scorched-cliff' : 'coastal-cliff')
+            .setOrigin(.5, 1).setDisplaySize(64, 64).setDepth(1);
         scene.add.image(x, 0, 'coastal-cliff').setOrigin(.5, 0).setFlipY(true).setDepth(1);
     }
     for (let y = 32; y < height - 32; y += 56) {
         scene.add.image(32, y, 'coastal-cliff').setRotation(Math.PI / 2).setDepth(1);
-        scene.add.image(width - 32, y, 'coastal-cliff').setRotation(-Math.PI / 2).setDepth(1);
+        scene.add.image(width - 32, y, ashCoast(width, y) ? 'scorched-cliff' : 'coastal-cliff')
+            .setRotation(-Math.PI / 2).setDepth(1);
     }
     const lantern = scene.textures.createCanvas('lantern', 16, 14);
     drawLantern(lantern.getContext());
@@ -232,29 +220,24 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         scene.obstacles.push(new Phaser.Geom.Rectangle(x - 1, y - 3, 3, 4));
     });
 
-    for (const [key, positions, textureWidth, textureHeight, draw, collisionWidth] of [
-        ['grave', graves, 18, 24, drawGrave, 14],
-        ['mountain-rock', rocks, 80, 80, null, 40],
-    ]) {
-        if (draw) {
-            const texture = scene.textures.createCanvas(key, textureWidth, textureHeight);
-            draw(texture.getContext());
-            texture.refresh();
-        }
-        positions.forEach(([column, row]) => {
-            const x = (column + .5) * tileSize;
-            const y = (row + .5) * tileSize;
-            shadows.fillRect(x - collisionWidth / 2, y - 3, collisionWidth, 6);
-            scene.add.image(x, y, key).setOrigin(.5, 1).setDepth(y);
-            scene.obstacles.push(new Phaser.Geom.Rectangle(x - collisionWidth / 2, y - 7, collisionWidth, 8));
-        });
-    }
-
+    rocks.forEach(([column, row]) => {
+        const x = (column + .5) * tileSize;
+        const y = (row + .5) * tileSize;
+        shadows.fillRect(x - 20, y - 3, 40, 6);
+        scene.add.image(x, y, 'mountain-rock').setOrigin(.5, 1).setDepth(y);
+        scene.obstacles.push(new Phaser.Geom.Rectangle(x - 20, y - 7, 40, 8));
+    });
+    addRegionalScenery(scene, shadows, tileSize);
+    const mist = addCemeteryMist(scene, tileSize);
     for (const [text, column, row] of [
         ['Cimetière →', 30, 13],
-        ['Cimetière des Saules · N.5–10', 75, 54],
+        ['Cimetière des Saules · N.5–10', 78, 50],
         ['Montagnes ↓', 129, 79],
         ['Hauts de Saphyr · N.10–20', 124, 82],
+        ['Terres dévastées →', 139, 92],
+        ['Brèche des cendres · N.21–25', 151, 85],
+        ['Plaine calcinée · N.25–30', 146, 102],
+        ['Citadelle de la Brèche · N.30–35', 128, 103],
     ]) {
         const x = column * tileSize;
         const y = row * tileSize;
@@ -298,5 +281,10 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
             ambience.fillStyle(0xe9984c, .11 + glow * .016).fillRect(x - 7, y - 5, 16, 8);
             ambience.fillStyle(0xffc979, .1).fillRect(x - 4, y - 4, 11, 6);
         });
+        mist.forEach((patch, index) => patch.setAlpha(.55 + .25 * Math.sin((frame + index * 3) / 7)));
+        for (const [x, y, seed] of cinders) {
+            const rise = (frame + seed) % 9;
+            ambience.fillStyle(0xf59462, .64 - rise * .06).fillRect(x + Math.floor(rise / 3), y - rise, 1, 1);
+        }
     };
 }

@@ -40,8 +40,9 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 
 - Deux classes : Guerrier (Lina) et Mage (Noé). Leurs apparences et animations de marche sont conservées.
 - Carte plein écran de 168 × 120 tuiles de 16 px, caméra suiveuse et zoom ×1 sur les écrans usuels. Des falaises bloquent ses quatre bords.
-- Sangliers N.1–5 près de la clairière, squelettes N.5–10 au cimetière et dragons N.10–20 dans les montagnes. Les monstres engagent à proximité et restent dans leur zone.
-- Décors et sols détaillés ; huit orientations PixelLab pour sangliers et squelettes. Le dragon conserve ses planches existantes.
+- Sangliers N.1–5, squelettes N.5–10 et dragons N.10–20. À l’est des montagnes, le chemin mène aux Terres dévastées et à leurs démons N.21–35.
+- Le cimetière mêle pavés usés, mausolées sculptés, stèles moussues et saules à lichen. Les Terres dévastées alternent cendre striée, basalte, arbres calcinés et arches incandescentes. Les textures se fondent dans le terrain voisin.
+- Les six espèces ont huit orientations et leur propre démarche, du trot du sanglier au galop du molosse. Le souffle du dragon annonce sa trajectoire au sol, puis vole en ligne droite et peut être esquivé.
 - Quête du PNJ : accepter, vaincre trois sangliers, puis revenir recevoir deux potions de vie. `!` doré disponible, `?` gris en cours, `?` doré à rendre.
 
 ### Combat et équipement
@@ -61,7 +62,7 @@ Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L�
 
 ### Progression et butin
 
-Le niveau 1 ne donne aucun point. Chaque montée suivante donne trois points de caractéristiques et un point de talent/sort. Le niveau 2 demande 100 XP ; le seuil augmente ensuite de 50 XP par niveau. Le gain d’XP dépend du monstre et de son niveau.
+Le niveau 1 ne donne aucun point. Chaque montée suivante donne trois points de caractéristiques et un point de talent/sort. Le niveau 2 demande 100 XP ; le seuil augmente ensuite de 50 XP par niveau. Les monstres de niveau supérieur accordent davantage d’XP. Dans les Terres dévastées, un diablotin N.22 rapporte 676 XP et un garde N.35 en rapporte 1 638.
 
 Chaque défaite donne un objet : potion de vie 47 %, potion de ressource 30 %, arme rare 15 %, arme épique 5 %, Écaille de Saphyr 2 %, Cœur de flamme bleue 1 %. Les armes sont adaptées à la classe : Lame des saules / Croc de Saphyr pour le Guerrier, Bâton des saules / Sceptre de Saphyr pour le Mage. Écailles et cœurs sont des matériaux, non équipables. Les potions rendent 20 PV ou 15 points de ressource.
 

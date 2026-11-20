@@ -243,7 +243,7 @@ export class TrainingCombat {
         this.refreshInventory();
         this.refreshActionSlots();
         this.updateCooldowns(0);
-        this.tell('Sangliers près de la clairière · Suis le sentier vers le cimetière, puis les montagnes.');
+        this.tell('Suis le sentier vers le cimetière, les montagnes, puis les Terres dévastées à l’est.');
     }
 
     /**
@@ -1123,12 +1123,18 @@ export class TrainingCombat {
             return;
         }
 
-        if (monster.attackEndsAt) {
-            if (now < monster.attackEndsAt) return;
-            monster.attackEndsAt = 0;
-            monster.sprite.clearTint();
-
-            if (!monster.canAttack(this.scene.position)) {
+        const shot = monster.attackVisual?.projectile;
+        if (shot || monster.attackEndsAt) {
+            if (!shot && now < monster.attackEndsAt) return;
+            const outcome = shot ? monster.advanceBreath(now, this.scene.position)
+                : monster.canAttack(this.scene.position) ? 'hit' : 'miss';
+            if (outcome === 'travel') return;
+            if (shot) monster.cancelAttack();
+            else {
+                monster.attackEndsAt = 0;
+                monster.sprite.clearTint();
+            }
+            if (outcome === 'miss') {
                 this.tell(`Tu as esquivé l’attaque de ${monster.name}.`);
                 return;
             }
@@ -1164,7 +1170,8 @@ export class TrainingCombat {
      * Dessine les animations d'attaques et d'impacts en pixel art sur la scène.
      */
     drawEffects(now) {
-        const enemyAttacking = this.monsters.some(monster => monster.attackVisual && now < monster.attackVisual.end + recoveryMs);
+        const enemyAttacking = this.monsters.some(monster => monster.attackVisual
+            && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs));
         if (!this.pending && !this.recovery && this.impacts.length === 0 && !enemyAttacking) {
             this.effect.clear();
             return;
@@ -1243,16 +1250,33 @@ export class TrainingCombat {
     drawMonsterAttacks(now) {
         for (const monster of this.monsters) {
             const attack = monster.attackVisual;
-            if (!monster.isAlive || !attack || now >= attack.end + recoveryMs) continue;
+            if (!monster.isAlive || !attack || (!attack.projectile && now >= attack.end + recoveryMs)) continue;
             const elapsed = now - attack.start;
             const color = monster.species === 'dragon' ? 0x7bdef2 : 0xffba87;
             this.effect.fillStyle(color, .9);
-            if (monster.species === 'dragon') {
-                const progress = Math.max(0, Math.min(1, (now - attack.castEnd) / (attack.end - attack.castEnd)));
-                const x = attack.x + (this.scene.position.x - attack.x) * progress;
-                const y = attack.y + (this.scene.position.y - 17 - attack.y) * progress;
-                this.effect.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
-                this.effect.fillStyle(0xe3ffff, 1).fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+            if (attack.projectile) {
+                const shot = attack.projectile;
+                if (now < attack.castEnd) {
+                    this.effect.fillStyle(color, .5);
+                    for (let step = 8; step <= shot.range; step += 8) {
+                        const x = shot.x + shot.dx * step;
+                        const y = shot.y + shot.dy * step;
+                        if (!this.scene.canStand(x, y)) break;
+                        this.effect.fillRect(Math.round(x) - 2, Math.round(y) - 1, 4, 2);
+                    }
+                    this.effect.fillStyle(0xd0ffff, .95).fillRect(attack.x - 3, attack.y - 3, 6, 6);
+                    continue;
+                }
+                for (let tail = 16; tail > 0; tail -= 4) {
+                    const trail = Math.max(0, shot.distance - tail);
+                    this.effect.fillStyle(color, .65 - tail / 32)
+                        .fillRect(Math.round(shot.x + shot.dx * trail) - 2, Math.round(shot.y + shot.dy * trail) - 10, 4, 4);
+                }
+                const x = Math.round(shot.x + shot.dx * shot.distance);
+                const y = Math.round(shot.y + shot.dy * shot.distance);
+                this.effect.fillStyle(color, .5).fillRect(x - 5, y - 2, 10, 4);
+                this.effect.fillStyle(color, 1).fillRect(x - 4, y - 12, 8, 8);
+                this.effect.fillStyle(0xe3ffff, 1).fillRect(x - 2, y - 10, 4, 4);
             } else {
                 const progress = Math.min(1, elapsed / (attack.end - attack.start));
                 const angle = attack.angle + (this.scene.motionPreference.matches ? 0 : -.65 + progress * 1.3);

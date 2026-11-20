@@ -4,11 +4,13 @@
 
 ## Carte et ressources visuelles
 
-La carte de 168 × 120 tuiles de 16 px couvre la clairière, le cimetière et les montagnes. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` ; zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté seulement si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. Les falaises de quatre cases et l’eau bloquent le déplacement.
+La carte de 168 × 120 tuiles de 16 px couvre la clairière, le cimetière, les montagnes et les Terres dévastées. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. Les falaises de quatre cases et l’eau bloquent le déplacement.
 
-`public/game/val-des-saules/` contient les ressources : atlas détaillés `environment-detailed.png` (saules, cabane, rochers, falaises) et `ground-detailed.png` (herbe, chemin, cimetière, montagne), sprites PixelLab de sanglier/squelette dans huit directions et six icônes d’objets. Les raccords de chemin réutilisent les masques du terrain original. Le sol est composé une seule fois ; les ondulations et lumières sont actualisées séparément.
+`public/game/val-des-saules/` contient les atlas `environment-detailed.png` (saules, cabane, rochers, falaises), `ground-detailed.png` (herbe, chemin, terrain pierreux), les sprites PixelLab de sanglier et de squelette dans huit directions et six icônes d’objets. Les raccords des chemins de la clairière réutilisent les masques du terrain original.
 
-Le Guerrier utilise Lina et le Mage Noé ; les portraits suivent la même règle PHP `CharacterClass::skin()`. Les planches de marche existantes sont conservées. Les images du personnage ne doivent pas être redessinées lors des retouches de décor.
+`regional-ground.png` contient quatre matériaux de 256 × 256 px, échantillonnés en coordonnées de monde. `regional-art.js` fond les sols régionaux dans les textures voisines et érode les bords du pavage. `cemetery-scenery.png` contient le mausolée, les stèles, le saule et la grille. `wasteland-scenery.png` contient l’obsidienne, l’arbre calciné, l’arche et les éboulis. Les décors sont triés en profondeur au pied et leur collision se limite à l’emprise au sol. Le sol et les fissures sont composés au chargement. La brume et les braises respectent la préférence de mouvement réduit.
+
+Le Guerrier utilise Lina et le Mage Noé. Leurs portraits suivent la règle PHP `CharacterClass::skin()` et leurs planches de marche sont conservées.
 
 ## Combat, équipement et animations
 
@@ -24,7 +26,11 @@ Les archives PixelLab actuelles proposent uniquement « Frappe à la lanterne »
 
 ## Monstres et PNJ
 
-Les sangliers N.1–2 commencent au plus près du départ ; d’autres patrouilles N.2–4 et N.4–5 sont plus loin. Squelettes N.5–10 au cimetière, dragons N.10–20 dans les montagnes. Les monstres engagent à proximité et leurs déplacements restent dans leur zone. Préparation, recharge, portée, obstacles, étourdissement et mort contrôlent leurs impacts ciblés. Ils n’utilisent plus de cercle de dégâts.
+Les sangliers N.1–5 patrouillent dans la clairière, les squelettes N.5–10 au cimetière et les dragons N.10–20 dans les montagnes. Les trois secteurs des Terres dévastées accueillent des diablotins, des molosses et des gardes N.21–35.
+
+Les six planches de `public/game/val-des-saules/monsters/` contiennent huit blocs de deux lignes, dans l’ordre est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est. Chaque bloc contient un repos, 24 images de marche et trois poses d’attaque. `monster-art.js` donne la taille de découpe, l’emprise visuelle et la distance d’un cycle par espèce. La distance parcourue règle le trot du sanglier, la marche saccadée du squelette, les appuis du dragon, les bonds du diablotin, le galop du molosse et la marche lourde du garde. Les images sont ancrées aux pieds pour que le tri en profondeur suive le sol.
+
+Le dragon annonce une ligne de tir pendant sa préparation. Le rendu du souffle suit la position réelle du projectile, qui avance par petits pas de collision pour détecter le joueur et le décor même lors d’une image lente.
 
 `quest_early.png` représente l’habitante du hameau. Le clic, `E` ou le bouton de quête à proximité ouvre un dialogue au clavier. La quête demande trois sangliers après acceptation et récompense deux potions de vie au retour, une seule fois. Le marqueur est `!` doré, puis `?` gris, puis `?` doré, puis caché ; le texte donne aussi l’état. La quête reste locale au personnage.
 
