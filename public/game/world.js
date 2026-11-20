@@ -1,3 +1,4 @@
+import { vfxFrameSize } from './combat-vfx.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -5,6 +6,8 @@ import { Monster } from './monsters.js';
 import { monsterArt } from './monster-art.js';
 import { buildTerrain, cameraZoom, coastalLookouts, columns, frontierSpecies, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { transitionZoneLabel } from './biome-gradient.js';
+import { createZoneAmbience } from './zone-ambience.js';
+import { createWorldLighting } from './world-lighting.js';
 import { CameraFeel } from './camera-feel.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
@@ -78,6 +81,7 @@ import { saveProgress } from './progression.js';
             for (const atlas of ['malakor-actions', 'malakor-rage', 'malakor-rage-actions']) {
                 this.load.spritesheet(atlas, 'monsters/' + atlas + '.png', { frameWidth: malakorFrameSize, frameHeight: malakorFrameSize });
             }
+            this.load.spritesheet('combat-vfx', 'combat-vfx.png', { frameWidth: vfxFrameSize, frameHeight: vfxFrameSize });
             this.load.spritesheet('eau-herbe', 'eau-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             this.load.spritesheet('chemin-herbe', 'chemin-herbe.png', { frameWidth: tileSize, frameHeight: tileSize });
             baseTiles.forEach((tile, index) => this.load.image(tile, 'terrain-' + (index + 1) + '.png'));
@@ -103,7 +107,10 @@ import { saveProgress } from './progression.js';
             if (this.load.totalFailed > 0) return;
             this.terrain = buildTerrain(this.cache.json.get('terrain'));
             this.obstacles = [];
-            this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
+            const clearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
+            this.animateClearing = clearing.animate;
+            this.animateZoneAmbience = createZoneAmbience(this, tileSize);
+            this.lighting = createWorldLighting(this, width, height, tileSize, clearing.lights);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
             this.add.ellipse(questNpc.x, questNpc.y - 1, 18, 6, 0x172622, .48).setDepth(3);
             this.npc = this.add.image(questNpc.x, questNpc.y, 'quest-early')
@@ -465,6 +472,7 @@ import { saveProgress } from './progression.js';
             }, { signal: keyboard.signal });
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
                 keyboard.abort();
+                this.lighting.destroy();
                 releaseKeys();
                 this.game.events.off(Phaser.Core.Events.BLUR, releaseKeys);
             });
@@ -521,6 +529,8 @@ import { saveProgress } from './progression.js';
             this.refreshQuest();
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
+            this.animateZoneAmbience(time, this.motionPreference.matches);
+            this.lighting.update(time, this.motionPreference.matches);
             const { offsetX, offsetY } = this.cameraFeel.update(delta, this.motionPreference.matches);
             this.cameras.main.setFollowOffset(offsetX, offsetY);
             const zone = Object.values(zones).find(z => inZone(z, this.position.x, this.position.y))

@@ -22,7 +22,7 @@ function fakeMonster(name, x, y, alive = true) {
     };
 }
 
-test('selectNextTarget trie par distance, boucle avec Tab / Shift+Tab et ignore morts et cibles lointaines', () => {
+test('Tab reprend le plus proche, Maj+Tab recule et les cibles mortes ou lointaines sont ignorées', () => {
     const player = { x: 100, y: 100 };
     const far = fakeMonster('Lointain', 800, 800, true);
     const dead = fakeMonster('Mort', 110, 100, false);
@@ -34,8 +34,8 @@ test('selectNextTarget trie par distance, boucle avec Tab / Shift+Tab et ignore 
     assert.equal(selectNextTarget(monsters, player, null, 1), near);
     assert.equal(selectNextTarget(monsters, player, null, -1), mid);
 
-    // Rotation avant puis bouclage
-    assert.equal(selectNextTarget(monsters, player, near, 1), mid);
+    // Tab reprend le plus proche quelle que soit la cible courante.
+    assert.equal(selectNextTarget(monsters, player, near, 1), near);
     assert.equal(selectNextTarget(monsters, player, mid, 1), near);
 
     // Rotation arrière avec Shift+Tab
@@ -74,6 +74,8 @@ test('TrainingCombat.cycleTarget met à jour la sélection, le HUD et le journal
     assert.equal(refreshed, 1);
     assert.match(told, /Sanglier A/);
 
+    assert.equal(combat.cycleTarget(1), m1);
+    combat.scene.position.x = 174;
     assert.equal(combat.cycleTarget(1), m2);
     assert.equal(m1.selected, false);
     assert.equal(m2.selected, true);
@@ -176,7 +178,9 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         document: doc,
         HTMLElement: class {},
         TrainingCombat: MockTrainingCombat,
-        buildClearing: () => () => {},
+        buildClearing: () => ({ animate() {}, lights: [] }),
+        createZoneAmbience: () => () => {},
+        createWorldLighting: () => ({ update() {}, destroy() {} }),
         createPoseSheet: () => 'sheet',
         Monster: class {},
         monsterArt: {},

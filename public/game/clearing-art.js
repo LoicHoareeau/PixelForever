@@ -232,7 +232,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         context.fillRect(px + 2, py - 1, 1, 2);
         context.fillRect(px + 3, py, 1, 1);
     }));
-    const cinders = drawRegionalGround(scene, context, terrain, tileSize);
+    const { cinders, lights } = drawRegionalGround(scene, context, terrain, tileSize);
     const { surfPoints, glints, seaDistance } = drawCoastalFloor(scene, context, terrain, tileSize);
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
@@ -257,6 +257,9 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     drawLantern(lantern.getContext());
     lantern.refresh();
     const lamps = [[160, 177], [271, 163], [286, 224], [148, 231], [306, 231]];
+    lights.push(...lamps.map(([x, y]) => ({
+        x, y: y - 6, radius: 58, color: 0xffb45f, lift: .56, glow: .27, flicker: true,
+    })), { x: 140, y: 136, radius: 85, color: 0xffbb68, lift: .50, glow: .23, flicker: true });
     const shadows = scene.add.graphics().setDepth(1).fillStyle(0x182d29, .34);
     shadows.fillRect(114, 155, 53, 6);
     scene.add.image(140, 160, 'ranger-cabin').setOrigin(.5, 1).setDepth(160);
@@ -325,7 +328,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
 
     const ambience = scene.add.graphics().setDepth(2);
     let previousFrame = -1;
-    return (time, still) => {
+    const animate = (time, still) => {
         const frame = still ? 0 : Math.floor(time / 200);
         if (frame === previousFrame) return;
         previousFrame = frame;
@@ -349,4 +352,5 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         }
         animateCoast(ambience, frame, surfPoints, glints);
     };
+    return { animate, lights };
 }

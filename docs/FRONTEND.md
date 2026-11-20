@@ -12,6 +12,14 @@ La carte de 256 × 252 tuiles de 16 px (4 096 × 4 032 px) forme une péninsule 
 
 Le Guerrier utilise Lina et le Mage Noé. Leurs portraits suivent la règle PHP `CharacterClass::skin()` et leurs planches de marche sont conservées.
 
+## Éclairage
+
+`world-lighting.js` transforme les poids de `biome-gradient.js` en couleurs ambiantes. Une carte de référence échantillonnée à raison d’un pixel par tuile est interpolée autour de la caméra. La couche `MULTIPLY` assombrit terrain et sprites et s’éclaircit sous les sources. Une seconde couche `ADD`, limitée à 36 % d’opacité globale, colore les halos. Les textures de travail sont dimensionnées à la zone visible avec marge et actualisées à environ 30 Hz. Le rendu utilise les modes de fusion de Phaser sur WebGL. En Canvas, la fusion multiplicative est vérifiée sur le contexte 2D à l’initialisation. Un masque translucide conserve le terrain visible si cette fusion est indisponible.
+
+Les lanternes, la cabane et les fissures fournissent les sources fixes. Le personnage actif, les incantations, leurs impacts et la Rage de Malakor fournissent les sources mobiles. Les télégraphies, jauges et textes de combat sont dessinés au-dessus des deux couches. La préférence de mouvement réduit fixe le scintillement et l’intensité des halos de sorts pendant leur présence.
+
+`zone-ambience.js` place les sprites de pollen, brume, flocons, lueurs des marais, cendres et braises à partir des poids de biome. Les sources sont ancrées dans le monde et seuls les effets proches de la caméra sont dessinés. Leur position et leur pose restent fixes avec la préférence de mouvement réduit.
+
 ## Combat, équipement et animations
 
 L’épée et le croc frappent à 1,5 case. Le Mage commence avec la Baguette de braise : projectile à 7,5 cases (extensible à 8 avec Déflagration) pour compenser une régénération de base réduite (`1,0/s`) et des coûts en mana relevés (`15` à `28` selon les sorts ; Boule de feu `18`). Boule de feu, Mur de feu et Tourbillon de feu demandent `1,0 s` d’incantation (barre de sort dédiée `#cast-bar` annulée avec remboursement si le mage se déplace). Son Sceptre de Saphyr se comporte comme une baguette ; le Bâton des saules frappe au contact à 1,5 case. Sans arme, les deux classes frappent au poing à 1,5 case. L’auto-attaque est gratuite. Boule de feu garde sa portée de sort quand un bâton est équipé.
@@ -23,6 +31,8 @@ Les quatre sorts de talents du Mage restent utilisables à distance avec un bât
 Noé ne doit pas utiliser sa planche « Frappe à la lanterne » pour un tir ou une incantation : les poses orientées existantes servent au geste magique, et les effets dessinent le projectile. Le bâton peut utiliser la frappe de contact. Préparation et récupération permettent de lire le cycle à 30 FPS ; les sorts de talents déclenchent aussi un geste. Les directions nord utilisent des poses dérivées du sprite au lieu d’une frappe tournée dans le mauvais sens.
 
 Les archives PixelLab actuelles proposent uniquement « Frappe à la lanterne » (Noé) et « Coup de marteau » (Lina) pour les frappes. Elles ne contiennent pas de planche d’incantation dédiée : ne pas présenter ces exports comme des animations magiques complètes.
+
+`public/game/val-des-saules/combat-vfx.png` regroupe des cycles de 12 images de 128 × 128 px. Les projectiles, tourbillons, cristaux de givre et colonnes de feu ont des sprites distincts. Malakor dispose d’un arc de clivage, d’une onde de débris, de failles de magma et de deux cycles d’effets autour du corps pour l’embrasement et la Rage. Les repères de sol restent indépendants de ces sprites. `combat-vfx.js` réutilise les objets d’affichage. Générer l’atlas avec GD via `php tools/build_combat_vfx.php`.
 
 ## Monstres et PNJ
 
@@ -44,7 +54,8 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | --- | --- |
 | Déplacement | Flèches, ZQSD (AZERTY), WASD (QWERTY), commandes tactiles |
 | Sélection d’un monstre | Clic sur le monstre |
-| Changer de cible | `Tab` / `Maj+Tab` (réservé au jeu, focus fenêtre bloqué) |
+| Cibler le monstre vivant le plus proche | `Tab` |
+| Parcourir les cibles en sens inverse | `Maj+Tab` |
 | Attaque de base / compétence principale | `1` / `2` |
 | Sorts de talents débloqués | `3` à `6` |
 | Potions de vie / ressource | `R` / `F` |

@@ -231,6 +231,7 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
 
     // Fissures incandescentes dans les Terres dévastées et leur lisière ouest
     const cinders = [];
+    const lights = [];
     const fissures = [
         [[205, 84], [208, 86], [211, 84]],
         [[227, 86], [226, 89], [229, 92]],
@@ -262,6 +263,8 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
     for (const fissure of fissures) {
         const marks = [];
         const points = fissure.map(([x, y]) => [(x + 0.5) * tileSize, (y + 0.5) * tileSize]);
+        const [x, y] = points[1];
+        lights.push({ x, y, radius: 76, color: 0xff6030, lift: .52, glow: .28, flicker: true });
         for (let index = 1; index < points.length; index++) {
             const [x, y] = points[index - 1];
             const dx = points[index][0] - x;
@@ -289,7 +292,7 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
         });
     }
 
-    return cinders;
+    return { cinders, lights };
 }
 
 export function createScorchedCliff(scene) {
