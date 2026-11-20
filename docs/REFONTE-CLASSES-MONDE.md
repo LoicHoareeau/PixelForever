@@ -8,7 +8,9 @@ Cadrage du 20 novembre 2026, validé par l’utilisateur. Livrés sur la branche
 
 Le lot suivant ajoute l’apprivoisement, l’héritage des statistiques des familiers, la barre W/X/C et la fiche P. La créature apprivoisée est sauvegardée localement ; sa persistance serveur reste liée au futur profil complet.
 
-Restent notamment : reprise complète des planches d’armes en mouvement, calibration des familiers contre les monstres rééquilibrés, validation du temps de progression vers N.60, persistance du profil complet et monde partagé Symfony. La fixation des armes a reçu un ajustement d’ancrage dans le lot externe ; cela ne constitue pas encore une validation des nouvelles planches demandées.
+Le lot armes remplace les objets séparés des trois nouvelles classes par neuf planches équipées, avec arc retravaillé et prise à deux mains, dagues tenues et livre animé. Les visages, cheveux et apparences sources sont conservés. Le départ de la flèche est synchronisé à la poignée et à la décoche. Les planches et le passage équipé/mains nues ont été vérifiés dans le moteur.
+
+Restent notamment : calibration des monstres, des ressources et des familiers, validation du temps de progression vers N.60, persistance du profil complet et monde partagé Symfony.
 
 Des armes tenues correctement dans les animations, un début de jeu où les ressources imposent de choisir ses compétences, cinq classes distinctes, une progression naturelle modérée et des combats exigeants contre des monstres jusqu’à deux ou trois niveaux supérieurs. Les personnages connectés doivent réellement partager la présence des joueurs, l’état des monstres et les récompenses de combat.
 

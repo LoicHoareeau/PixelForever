@@ -4,6 +4,8 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Le prototype jouable utilise Phaser 3.90.0, Twig et JavaScript. Les règles PHP historiques de `src/Game/` ne remplacent pas le moteur de combat actuel du navigateur.
 
+Le Chasseur, le Voleur et le Démoniste disposent de planches équipées intégrant l’arc, les dagues et le grimoire aux animations. La corde se tend à deux mains, la flèche part de l’arc à la décoche et les pages du livre tournent pendant l’incantation. Les personnages d’origine sont conservés. [Animations et génération des planches](docs/FRONTEND.md)
+
 ## Aperçu
 
 ### Accueil du Val-des-Saules

@@ -190,4 +190,10 @@ test('les quatre atlas jouables ont huit directions et toutes leurs images de ma
             assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [size * columns, size * 8]);
         }
     }
+    for (const skin of ['warlock', 'rogue', 'hunter']) {
+        for (const [file, width, height] of [['idle-equipped', 512, 64], ['walk-equipped', 512, 512], ['attack-equipped', 576, 512]]) {
+            const png = readFileSync(new URL(`../public/game/val-des-saules/${skin}/${file}.png`, import.meta.url));
+            assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [width, height]);
+        }
+    }
 });

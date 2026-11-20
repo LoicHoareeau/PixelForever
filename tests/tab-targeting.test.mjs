@@ -6,6 +6,7 @@ import { TrainingCombat, selectNextTarget } from '../public/game/combat.js';
 import { CameraFeel } from '../public/game/camera-feel.js';
 import { frontierSpecies } from '../public/game/exploration.js';
 import { petKeys } from '../public/game/pet-rules.js';
+import { equippedWeaponStyles } from '../public/game/equipped-art.js';
 
 function fakeMonster(name, x, y, alive = true) {
     return {
@@ -183,6 +184,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         HTMLElement: class {},
         TrainingCombat: MockTrainingCombat,
         petKeys,
+        equippedWeaponStyles,
         petAction: (_combat, index) => petCommands.push(index),
         buildClearing: () => ({ animate() {}, lights: [] }),
         createZoneAmbience: () => () => {},

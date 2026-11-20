@@ -32,6 +32,10 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
+Pour `hunter`, `rogue` et `warlock`, `idle-equipped.png`, `walk-equipped.png` et `attack-equipped.png` intègrent l’arme au personnage. Cellules de 64 × 64 px : repos 512 × 64, marche 512 × 512, attaque 576 × 512. Les pieds sont alignés à y=54 et l’origine Phaser vaut 56/64 ; passer du repos à la marche ou au tir ne fait pas sauter le personnage. À mains nues, les planches originales sont utilisées et aucun ancien sprite d’arme séparé n’est dessiné pour ces trois classes.
+
+`tools/build_equipped_sprites.php` compose les neuf planches à partir des corps existants, sans réécrire ces sources. Après régénération des corps via `tools/build_class_sprites.php`, lancer `php tools/build_equipped_sprites.php`. `php tools/build_equipped_sprites.php --check` vérifie leur reproductibilité pixel par pixel, la préservation du visage et des cheveux et l’absence d’arme coupée sur les bords. `equipped-art.js` donne la prise de l’arc au combat et aux VFX pour éviter un décalage entre la corde et le projectile.
+
 L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 2,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.

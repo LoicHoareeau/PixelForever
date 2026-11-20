@@ -1,4 +1,5 @@
 import { vfxFrameSize } from './combat-vfx.js';
+import { equippedWeaponStyles } from './equipped-art.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -94,6 +95,11 @@ import { petKeys } from './pet-rules.js';
             this.load.spritesheet(this.walkSheet, art + '/walk.png', { frameWidth: 48, frameHeight: 48 });
             const attackSize = this.skin === 'noe' ? 68 : 64;
             this.load.spritesheet(this.attackSheet, art + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
+            if (equippedWeaponStyles[this.skin]) {
+                for (const pose of ['idle', 'walk', 'attack']) {
+                    this.load.spritesheet(this.skin + '-' + pose + '-equipped', art + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
+                }
+            }
             this.load.spritesheet('class-gear', 'class-gear.png', { frameWidth: 40, frameHeight: 32 });
             this.load.spritesheet('class-familiars', 'class-familiars.png', { frameWidth: 32, frameHeight: 32 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
@@ -673,10 +679,26 @@ import { petKeys } from './pet-rules.js';
                     : step % walkFrames;
                 frame = directions.indexOf(this.facing) * walkFrames + walkFrame;
             }
+            const integratedWeapon = equippedWeaponStyles[this.skin];
+            const equippedPose = integratedWeapon && this.combat.weaponStyle === integratedWeapon
+                && (!gesture || gesture.attack.weaponStyle === integratedWeapon);
+            if (equippedPose) {
+                const facing = gesture?.attack.facing ?? this.facing;
+                const row = directions.indexOf(facing);
+                const pose = gesture ? 'attack' : walking ? 'walk' : 'idle';
+                texture = this.skin + '-' + pose + '-equipped';
+                frame = gesture ? row * 9 + gesture.frame : walking ? row * 8 + Math.floor(this.walkDistance / pixelsPerWalkFrame) % 8 : row;
+                origin = 56 / 64;
+            }
             if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
-            if (this.weaponSprite) this.renderArmament(gesture, walking, time);
+            if (this.weaponSprite) {
+                if (integratedWeapon) {
+                    this.weaponSprite.setVisible(false);
+                    this.offHandSprite.setVisible(false);
+                } else this.renderArmament(gesture, walking, time);
+            }
         }
 
         renderArmament(gesture, walking, time) {

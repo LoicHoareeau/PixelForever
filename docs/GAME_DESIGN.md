@@ -73,6 +73,8 @@ Les bonus de baguette s’appliquent aux tirs de baguette. Les techniques active
 
 ## Animations de combat
 
+Le Chasseur utilise un arc recourbé en bois avec ligatures et embouts clairs. Sa prise à deux mains, la tension de la corde et la décoche font partie des images du personnage. Le Voleur tient des dagues d’acier aux gardes dorées ; le Démoniste porte un grimoire violet orné et tourne ses pages pendant l’incantation. Ces armes sont intégrées aux planches équipées, avec passage derrière le corps dans les directions de dos. Les pieds restent au même niveau entre repos, marche et attaque. L’apparence de base, le visage et les cheveux sont conservés ; les images d’origine du Mage et du Guerrier ne sont pas remplacées.
+
 L’auto-attaque à distance et les sorts du Mage utilisent une pose d’incantation orientée et des effets magiques. La planche Noé `attack.png`, issue de « Frappe à la lanterne », sert aux coups de contact et ne doit pas être utilisée pour représenter un tir de baguette. Les poses d’incantation dérivent du sprite existant, sans redessiner le personnage.
 
 Le Guerrier en armure utilise une planche d’attaque dédiée. L’épée, la hache et le bouclier suivent la main dans les poses de combat. La Hache de fer s’équipe dans l’inventaire et déclenche sa propre animation de frappe. La préparation, le projectile et le retour du geste rendent le déroulement des attaques lisible. [Catalogue des VFX](VFX.md)

@@ -4,6 +4,8 @@ Le projet utilise un conteneur PHP 8.2 / Apache. Le `Dockerfile` installe les d�
 
 ## Branche Git et déploiement
 
+Le lot armes ajoute neuf PNG équipés dans les dossiers `hunter`, `rogue` et `warlock`, ainsi que le module `equipped-art.js`. Publier ces fichiers avec les modifications de `world.js`, `combat.js` et `combat-renderer.js`. Les planches sont déjà générées et versionnées : aucun générateur GD ni migration n’est requis sur Render pour les servir.
+
 Le lot familiers ajoute `pet-controls.js` et `pet-rules.js` avec des imports relatifs depuis le moteur. Déployer les ressources JavaScript et Twig ensemble. Aucune migration dans ce lot ; la créature apprivoisée reste dans la sauvegarde locale du navigateur. Le monde partagé et la persistance complète du profil sont des étapes distinctes.
 
 Le lot caméra ×2, neutralité N.1–10 et notification de niveau modifie les ressources front-end et Twig, sans migration de données. Le déploiement Render reste manuel à la demande du propriétaire.

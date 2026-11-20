@@ -12,7 +12,7 @@ Les VFX de combat indiquent la préparation, la trajectoire, l’impact et la di
 | Voleur | Croissants d’acier et d’ombre pour les dagues, éclats verts pour le poison et la rupture. |
 | Chasseur | Flèche dorée et traînée verte, éclats au point d’impact, volée et pointes de piège. Le familier apprivoisé réutilise les huit directions et les poses de la créature sauvage, sans ses attaques spéciales. |
 
-Les corps du Guerrier, du Démoniste, du Voleur et du Chasseur ont huit directions, huit images de marche et neuf images d’attaque par direction. Les armes et le bouclier utilisent des sprites séparés, ancrés à la main pendant le geste. Chaque familier dispose de six poses de 32 × 32 px. [Rendu des avatars](../public/game/world.js) · [Techniques et familiers](../public/game/class-combat.js)
+Les corps du Guerrier, du Démoniste, du Voleur et du Chasseur ont huit directions, huit images de marche et neuf images d’attaque par direction. Le Chasseur, le Voleur et le Démoniste utilisent des planches équipées : arc à deux mains, dagues d’acier et grimoire relié sont composés avec le corps, avec occultation derrière le personnage selon la direction. Le Chasseur tend la corde puis décoche ; la flèche de VFX n’apparaît qu’à la libération et part de la poignée. Le grimoire s’ouvre et ses pages tournent pendant l’incantation. Les objets séparés restent utilisés pour les armes et le bouclier du Guerrier. Les démons familiers ont six poses de 32 × 32 px ; les créatures apprivoisées réutilisent leurs propres planches. [Rendu des avatars](../public/game/world.js) · [Techniques et familiers](../public/game/class-combat.js)
 
 ## Malakor et les faisceaux de lave
 

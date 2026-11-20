@@ -1,6 +1,7 @@
 import { createCombatVfx } from './combat-vfx.js';
 import { classAttacks } from './class-talents.js';
 import { applyTechnique, classEffect, dismissFamiliar, updateClassCombat } from './class-combat.js';
+import { bowGrip } from './equipped-art.js';
 import { cancelTaming, rememberPetHealth, updatePetControls } from './pet-controls.js';
 import {
     createMalakorTrial, isMalakorWaveHit, malakorEmberMs, malakorFirstTrialDelay,
@@ -490,8 +491,10 @@ export class TrainingCombat {
             interruptible: ranged && castMs >= 500,
             manaCost,
             slotKey: special ? 'special' : 'basic',
-            x: this.scene.position.x + Math.cos(angle) * 7,
-            y: this.scene.position.y - 20 + Math.sin(angle) * 4,
+            ...(this.classKey === 'hunter' && ranged ? bowGrip(this.scene.position, this.scene.facing) : {
+                x: this.scene.position.x + Math.cos(angle) * 7,
+                y: this.scene.position.y - 20 + Math.sin(angle) * 4,
+            }),
         };
 
         this.pending = attack;

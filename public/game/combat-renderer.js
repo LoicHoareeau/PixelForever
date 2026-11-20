@@ -1,4 +1,5 @@
 import { drawInfernoBeam } from './combat-vfx.js';
+import { bowGrip } from './equipped-art.js';
 import { malakorIgnitionMs, malakorRageProgress, malakorSurgeMs, malakorWave, malakorWaveImpactMs } from './malakor.js';
 
 export const impactMs = 210;
@@ -82,11 +83,13 @@ export function drawEffectsView(combat, now) {
             }
             attack.x = combat.scene.position.x + Math.cos(attack.angle) * 7;
             attack.y = combat.scene.position.y - 20 + Math.sin(attack.angle) * 4;
+            if (attack.projectile === 'arrow') Object.assign(attack, bowGrip(combat.scene.position, attack.facing));
         }
         const x = attack.x + (target.sprite.x - attack.x) * travel;
         const y = attack.y + (target.sprite.y - 12 - attack.y) * travel;
         const angle = Math.atan2(target.sprite.y - 12 - attack.y, target.sprite.x - attack.x);
         const released = elapsed >= attack.castMs;
+        if (attack.projectile === 'arrow' && !released) return;
         const size = attack.special ? .84 : .43;
         combat.vfx?.play(attack.projectile ?? (attack.special ? 'firebolt' : 'arcane'), x, y,
             still ? .4 : (elapsed % 220) / 220, released ? size : size * .44, angle, released ? .94 : .78);
