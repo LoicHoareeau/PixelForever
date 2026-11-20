@@ -10,7 +10,7 @@ Les VFX de combat indiquent la préparation, la trajectoire, l’impact et la di
 | Mage | Boule de feu composée d’un projectile, d’une traînée et d’un impact. Tourbillon de feu en double hélice, Nova de givre en cristaux et Déflagration sous forme de rayon violet. |
 | Démoniste | Trait d’ombre violet, sceaux de malédiction à la pose et à chaque pulsation, filaments entre le lanceur et la cible pendant Drain de vie. Le portail d’invocation s’ouvre en flammes violettes. Le diablotin lance un projectile de feu qui éclate à l’impact. |
 | Voleur | Croissants d’acier et d’ombre pour les dagues, éclats verts pour le poison et la rupture. |
-| Chasseur | Flèche dorée et traînée verte, éclats au point d’impact, volée et pointes de piège. Le faucon joue ses propres poses. |
+| Chasseur | Flèche dorée et traînée verte, éclats au point d’impact, volée et pointes de piège. Le familier apprivoisé réutilise les huit directions et les poses de la créature sauvage, sans ses attaques spéciales. |
 
 Les corps du Guerrier, du Démoniste, du Voleur et du Chasseur ont huit directions, huit images de marche et neuf images d’attaque par direction. Les armes et le bouclier utilisent des sprites séparés, ancrés à la main pendant le geste. Chaque familier dispose de six poses de 32 × 32 px. [Rendu des avatars](../public/game/world.js) · [Techniques et familiers](../public/game/class-combat.js)
 

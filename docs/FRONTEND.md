@@ -44,6 +44,8 @@ Les deux atlas de VFX partagent un pool de sprites. Les effets au sol suivent le
 
 ## Monstres et PNJ
 
+`pet-rules.js` valide les créatures apprivoisables et calcule les statistiques héritées ; `pet-controls.js` gère la canalisation, la sauvegarde locale de la créature et les trois commandes ; `class-combat.js` gère les sprites, déplacements et attaques du familier. `getUnlockedPetSpells` sépare les invocations des techniques de la barre principale. La barre `data-pet-action` utilise les touches physiques KeyZ/KeyX/KeyC ; la fiche est déplacée sur KeyP. La créature et sa fraction de PV sont normalisées à la reprise du profil local du Chasseur.
+
 Les 59 créatures peuplant la carte se répartissent sur des secteurs élargis : 7 sangliers N.1–5 dans la clairière, 6 squelettes N.5–10 au cimetière, 5 dragons N.10–20 dans les montagnes, 16 démons (6 diablotins, 5 molosses et 5 gardes N.21–35) dans les trois secteurs des Terres dévastées, le Boss de palier niveau 40 **Malakor, Seigneur de la Brèche** au Trône d’Obsidienne (`128 × 128 px`, trois phases télégraphiées et jauge avec seuils de phase) et huit créatures dans chacun des trois secteurs N.41–60. Les variantes teintent les atlases du molosse et du garde et emploient les mêmes télégraphies circulaires et linéaires que Malakor. Chaque espèce standard dispose d’au moins 10 points de patrouille.
 
 Les sept atlas d’origine de `public/game/val-des-saules/monsters/` contiennent huit blocs de deux lignes, dans l’ordre est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est. Chaque bloc contient un repos, 36 images de marche et trois poses d’attaque. `monster-art.js` donne la taille de découpe, l’emprise visuelle et la distance d’un cycle par espèce (`tools/build_boss_spritesheet.php` assemble celle de Malakor en `128 × 128`). La distance parcourue règle le trot du sanglier, la marche saccadée du squelette, les appuis du dragon, les bonds du diablotin, le galop du molosse, la marche lourde du garde et la foulée colossale du boss. Les images sont ancrées aux pieds pour que le tri en profondeur suive le sol. Malakor conserve ses poses d’origine. Les atlas d’effets ont des cellules de 192 × 192 px pour laisser de la place aux flammes et aux traînées. Chaque technique et la transformation rythment ces effets sur 12 images par direction. En Rage, la lumière suit le bord des ailes, l’armure, la lame et le halo. Phaser dessine autour de Malakor un cercle runique, des fissures et des braises. Avec la préférence de mouvement réduit, le cercle et les fissures restent fixes et les braises sont masquées. Le générateur GD se lance avec `php -d memory_limit=384M tools/build_malakor_animations.php`.
@@ -69,7 +71,8 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | Attaque de base / compétence principale | `1` / `2` |
 | Techniques disponibles | `3` à `6`, jusqu’à `8` pour le Guerrier et `9` pour le Démoniste |
 | Potions de vie / ressource | `R` / `F` |
-| Fiche / talents / inventaire | `C` / `T` / `I` |
+| Fiche / talents / inventaire | `P` / `T` / `I` |
+| Familier (Chasseur/Démoniste) | `W` / `X` / `C` AZERTY ; `Z` / `X` / `C` QWERTY |
 | Parler au PNJ à proximité | `E` ou clic |
 
 Les commandes utilisent `KeyboardEvent.code`. Sur AZERTY, les touches physiques de la rangée des chiffres activent les actions sans Maj. Les raccourcis sont suspendus pendant la saisie et lorsque les dialogues l’exigent.

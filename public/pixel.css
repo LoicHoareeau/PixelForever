@@ -716,6 +716,34 @@ body.game-fullscreen .masthead {
     display: none;
 }
 
+.pet-bar {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + .5rem);
+    display: flex;
+    gap: .25rem;
+    padding: .3rem;
+    background: #172523ed;
+    border: 1px solid #a2875f;
+}
+
+.pet-command {
+    width: 5rem;
+    min-height: 3rem;
+    padding: .2rem;
+    display: grid;
+    gap: .1rem;
+    font-size: .65rem;
+    line-height: 1.15;
+    background: #1d292e;
+    border: 1px solid #8c7551;
+    color: #ede3d0;
+}
+
+.pet-command kbd { color: #ffe5a4; font: inherit; font-weight: bold; }
+.pet-command[data-active="true"] { outline: 1px solid #d9b36a; }
+.pet-status { position: absolute; right: 0; bottom: 100%; padding: .2rem; font-size: .65rem; white-space: nowrap; background: #172523ed; }
+
 .action-bar-frame {
     display: flex;
     align-items: flex-end;

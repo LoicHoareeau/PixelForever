@@ -1,8 +1,11 @@
+import { inheritedPetStats } from './pet-rules.js';
+import { monsterTemplates } from './monsters.js';
+import { monsterArt, monsterFrames, monsterWalkFrames } from './monster-art.js';
+
 const familiars = {
-    imp: { row: 0, name: 'Diablotin', range: 76, cadence: 1540, scale: .38, vfx: 'imp_flare' },
-    succubus: { row: 1, name: 'Succube', range: 28, cadence: 1770, scale: .41, vfx: 'curse' },
-    void: { row: 2, name: 'Marcheur du Vide', range: 29, cadence: 1900, scale: .32, vfx: 'chaos' },
-    hawk: { row: 3, name: 'Faucon', range: 24, cadence: 1440, scale: .41, vfx: 'arrow_hit' },
+    imp: { row: 0, name: 'Diablotin', range: 76, cadence: 600, vfx: 'imp_flare' },
+    succubus: { row: 1, name: 'Succube', range: 28, cadence: 650, vfx: 'curse' },
+    void: { row: 2, name: 'Marcheur du Vide', range: 29, cadence: 900, vfx: 'chaos' },
 };
 
 export function classEffect(combat, row, point, now, angle = 0, size = .8, duration = 510) {
@@ -16,18 +19,25 @@ export function dismissFamiliar(combat) {
     combat.familiar = null;
 }
 
-function summon(combat, kind, now) {
+export function summonFamiliar(combat, kind, now) {
     dismissFamiliar(combat);
-    const profile = familiars[kind];
+    const captured = kind === 'beast' ? combat.progress.capturedPet : null;
+    const template = captured ? monsterTemplates[captured.species] : null;
+    const species = template?.art ?? captured?.species;
+    const art = monsterArt[species];
+    const profile = captured ? { name: template.label, range: 28, cadence: 600, vfx: 'arrow_hit', art,
+        frames: template.isBoss ? 48 : monsterFrames, walkFrames: template.isBoss ? 36 : monsterWalkFrames } : familiars[kind];
     const { x, y } = combat.scene.position;
-    const actor = combat.scene.add.image(Math.round(x - 20), Math.round(y + 3), 'class-familiars', profile.row * 6)
-        .setOrigin(.5, .875).setDepth(y + 3);
-    combat.familiar = { kind, profile, actor, nextHit: now + 800, target: null, summonedAt: now };
-    if (kind === 'void') {
-        const health = Math.max(1, Math.round(combat.stats.maxHealth * .72));
-        Object.assign(combat.familiar, { health, maxHealth: health,
-            meter: combat.scene.add.rectangle(actor.x, actor.y - 28, 17, 2, 0x9b8eef).setDepth(y + 4) });
-    }
+    const beside = !combat.scene.canStand || combat.scene.canStand(x - 20, y + 3);
+    const actor = combat.scene.add.image(Math.round(beside ? x - 20 : x), Math.round(beside ? y + 3 : y),
+        captured ? species + '-motion' : 'class-familiars', captured ? 0 : profile.row * 6)
+        .setOrigin(.5, captured ? (art.frame - 16) / art.frame : .875).setDepth(y + 3);
+    if (captured) actor.setScale(Math.min(1, 42 / art.width));
+    if (template?.tint) actor.setTint(template.tint);
+    combat.familiar = { kind, profile, actor, x: actor.x, y: actor.y, nextHit: now + 800, target: null, summonedAt: now };
+    const stats = inheritedPetStats(combat.stats, kind === 'void');
+    Object.assign(combat.familiar, stats, { health: Math.max(1, Math.round(stats.maxHealth * (captured?.healthFraction || 1))),
+        meter: combat.scene.add.rectangle(actor.x, actor.y - 28, 17, 2, 0x9b8eef).setDepth(y + 4) });
 }
 
 export function applyTechnique(combat, technique, target, damage, name, now, angle = 0, effectKey = name) {
@@ -46,13 +56,17 @@ export function applyTechnique(combat, technique, target, damage, name, now, ang
         target?.pursue();
     }
     if (technique.summon) {
-        summon(combat, technique.summon, now);
+        summonFamiliar(combat, technique.summon, now);
         point = combat.familiar.actor;
     }
     const targets = technique.radius
         ? combat.monsters.filter(monster => monster.isAlive && Math.hypot(monster.sprite.x - point.x, monster.sprite.y - point.y) <= technique.radius)
         : target ? [target] : [];
     const talents = combat.progress.talents ?? {};
+    if (technique.healPet && combat.familiar) {
+        combat.familiar.health = Math.min(combat.familiar.maxHealth, combat.familiar.health + Math.round(combat.familiar.maxHealth * .3));
+        point = combat.familiar.actor;
+    }
     const direct = 1 + (talents.wl_ruin ?? 0) * .05;
     for (const monster of targets) {
         if (monster.trial) continue;
@@ -79,11 +93,11 @@ export function applyTechnique(combat, technique, target, damage, name, now, ang
             dots.set(monster, effects);
         }
         if (technique.slow) monster.slowUntil = Math.max(monster.slowUntil, now + technique.slow * (monster.isBoss ? .25 : 1));
-        if (technique.mark && combat.familiar?.kind === 'hawk') {
+        if (technique.mark && combat.familiar?.kind === 'beast') {
             combat.familiar.mark = { target: monster, until: now + 6000 };
             combat.familiar.nextHit = now;
         }
-        if ((technique.power || technique.dot) && combat.familiar) combat.familiar.target = monster;
+        if ((technique.power || technique.dot) && combat.familiar && !combat.familiar.recalled) combat.familiar.target = monster;
         if (technique.dot && !technique.power) monster.pursue();
     }
     if (!technique.channel) {
@@ -127,9 +141,12 @@ export function updateClassCombat(combat, now, delta) {
         return;
     }
     const { actor, profile, kind } = pet;
+    const stats = inheritedPetStats(combat.stats, kind === 'void');
+    pet.health = Math.min(stats.maxHealth, pet.health * stats.maxHealth / pet.maxHealth);
+    Object.assign(pet, stats);
     const target = pet.target;
     const player = combat.scene.position;
-    const engaged = target?.isAlive && !target.trial && !dodging && combat.distanceTo(target) <= 130;
+    const engaged = !pet.recalled && !combat.scene.isInStarterTown?.() && target?.isAlive && !target.trial && !dodging && combat.distanceTo(target) <= 130;
     const x = engaged ? target.sprite.x : player.x - 21;
     const y = engaged ? target.sprite.y : player.y + 8;
     const dx = x - (pet.x ?? actor.x);
@@ -137,12 +154,26 @@ export function updateClassCombat(combat, now, delta) {
     const dist = Math.hypot(dx, dy);
     const reach = engaged ? profile.range : 2;
     const step = Math.min(Math.max(dist - reach, 0), Math.min(delta, 100) * .082);
-    pet.x = (pet.x ?? actor.x) + dx * step / (dist || 1);
-    pet.y = (pet.y ?? actor.y) + dy * step / (dist || 1);
+    const nextX = (pet.x ?? actor.x) + dx * step / (dist || 1);
+    const nextY = (pet.y ?? actor.y) + dy * step / (dist || 1);
+    if (!combat.scene.canStand || combat.scene.canStand(nextX, nextY)) {
+        pet.x = nextX;
+        pet.y = nextY;
+    } else if (nextX !== pet.x && combat.scene.canStand(nextX, pet.y)) {
+        pet.x = nextX;
+    } else if (nextY !== pet.y && combat.scene.canStand(pet.x, nextY)) {
+        pet.y = nextY;
+    } else if (!engaged && dist > 180) {
+        pet.x = player.x;
+        pet.y = player.y;
+    }
     const pose = step > 0 ? Math.floor(now / 100) % 4 : Math.floor(now / 180) % 2;
     const striking = now < (pet.strikeUntil ?? 0);
-    actor.setFrame(profile.row * 6 + (striking ? 4 + (pet.strikeUntil - now > 170 ? 0 : 1) : pose))
-        .setFlipX(dx < -1 || (dx <= 1 && actor.flipX)).setPosition(Math.round(pet.x), Math.round(pet.y)).setDepth(pet.y);
+    const direction = Math.round(Math.atan2(dy, dx) / (Math.PI / 4) + 8) % 8;
+    const frame = kind === 'beast' ? direction * profile.frames + (striking ? profile.walkFrames + 1 : step > 0 ? 1 + Math.floor(now / 45) % profile.walkFrames : 0)
+        : profile.row * 6 + (striking ? 4 + (pet.strikeUntil - now > 170 ? 0 : 1) : pose);
+    actor.setFrame(frame)
+        .setFlipX(kind === 'beast' ? false : dx < -1 || (dx <= 1 && actor.flipX)).setPosition(Math.round(pet.x ?? actor.x), Math.round(pet.y ?? actor.y)).setDepth(pet.y ?? actor.y);
     pet.meter?.setPosition(actor.x, actor.y - 29).setDepth(pet.y + 1).setScale(pet.health / pet.maxHealth, 1);
     if (pet.bolt && now >= pet.bolt.end) {
         const shot = pet.bolt;
@@ -153,9 +184,16 @@ export function updateClassCombat(combat, now, delta) {
         }
     }
     if (!engaged || !target.isAlive || target.trial || dist > reach + 1 || now < pet.nextHit) return;
-    const bond = combat.progress.talents?.[kind === 'hawk' ? 'h_bond' : 'wl_bond'] ?? 0;
+    if (combat.scene.canStand) {
+        const steps = Math.max(1, Math.ceil(dist / 4));
+        for (let i = 1; i <= steps; i++) {
+            if (!combat.scene.canStand(actor.x + (target.sprite.x - actor.x) * i / steps,
+                actor.y + (target.sprite.y - actor.y) * i / steps)) return;
+        }
+    }
+    const bond = combat.progress.talents?.[kind === 'beast' ? 'h_bond' : 'wl_bond'] ?? 0;
     const marked = pet.mark?.target === target && pet.mark.until > now;
-    const damage = Math.max(1, Math.round(combat.stats.basicDamage * profile.scale * (1 + bond * .10) * (marked ? 1.45 : 1)));
+    const damage = Math.max(1, Math.round(pet.damage * (1 + bond * .10) * (marked ? 1.45 : 1)));
     pet.nextHit = now + profile.cadence;
     pet.strikeUntil = now + 320;
     if (kind === 'imp') {

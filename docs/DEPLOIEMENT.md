@@ -4,6 +4,8 @@ Le projet utilise un conteneur PHP 8.2 / Apache. Le `Dockerfile` installe les d�
 
 ## Branche Git et déploiement
 
+Le lot familiers ajoute `pet-controls.js` et `pet-rules.js` avec des imports relatifs depuis le moteur. Déployer les ressources JavaScript et Twig ensemble. Aucune migration dans ce lot ; la créature apprivoisée reste dans la sauvegarde locale du navigateur. Le monde partagé et la persistance complète du profil sont des étapes distinctes.
+
 Le lot caméra ×2, neutralité N.1–10 et notification de niveau modifie les ressources front-end et Twig, sans migration de données. Le déploiement Render reste manuel à la demande du propriétaire.
 
 Les modifications passent par une branche dédiée et une pull request vers `main`. Pour livrer les classes et les VFX, vérifier que le SHA choisi inclut à la fois le code client et ses atlas PNG.

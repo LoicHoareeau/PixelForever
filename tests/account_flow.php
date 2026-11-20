@@ -174,6 +174,8 @@ try {
         check($class === $rules['classKey'] && $class === htmlValue($game, '//div[@id="world"]/@data-skin'), 'La nouvelle classe doit accéder à son apparence.');
         check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Les nouvelles classes conservent un butin valide.');
         check(count($rules['baseStats']) === 6, 'Toutes les classes exposent les six caractéristiques.');
+        check(str_contains($game->getContent(), 'Fiche (P)'), 'La fiche doit utiliser P pour libérer C.');
+        check(substr_count($game->getContent(), 'data-pet-action=') === ($class === 'rogue' ? 0 : 3), 'Chasseur et Démoniste ont trois commandes dédiées de familier.');
         if ($class === 'hunter') check($rules['resourceName'] === 'Mana' && $rules['range'] == 7.0, 'Le Chasseur utilise le Mana à 7 cases.');
         if ($class === 'warlock') check($rules['specialCastMs'] === 750 && $rules['range'] == 5.0, 'Le Démoniste incante Corruption à 5 cases.');
     }

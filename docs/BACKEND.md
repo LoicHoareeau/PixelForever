@@ -4,6 +4,8 @@
 
 ## Modèle et parcours actuels
 
+Le familier apprivoisé (`capturedPet`, espèce et fraction de PV) est encore sauvegardé localement par personnage. Ce lot ne crée pas de table ni d’API de monde partagé. La validation locale d’un propriétaire d’engagement prépare ce cas, sans constituer une garantie multijoueur côté serveur.
+
 `CharacterController` transmet les portées et les six caractéristiques définies par `CharacterClass`. Le drapeau `ranged` dépend explicitement de la classe (Mage, Démoniste, Chasseur), car une portée de mêlée de 2,5 cases dépasse désormais l’ancien seuil de 1,5. Le choix Rempart/Berserker et le reste du profil restent locaux au navigateur ; seuls le niveau et l’XP sont persistés en base pour ce lot.
 
 `User` conserve pseudo et e-mail uniques, avec mot de passe haché. `PlayerCharacter` appartient à un `User` et contient nom, classe (`CharacterClass`), niveau, expérience et or. Les deux seules entités Doctrine actuelles sont dans `src/Entity/`.

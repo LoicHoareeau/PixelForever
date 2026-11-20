@@ -4,7 +4,7 @@ import test from 'node:test';
 import { applyTechnique, updateClassCombat } from '../public/game/class-combat.js';
 import { starterTalents } from '../public/game/class-talents.js';
 import { TrainingCombat } from '../public/game/combat.js';
-import { allocateStat, basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent, getUnlockedActiveSpells, loadProgress } from '../public/game/progression.js';
+import { allocateStat, basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent, getUnlockedActiveSpells, getUnlockedPetSpells, loadProgress } from '../public/game/progression.js';
 import { zones, tileSize } from '../public/game/exploration.js';
 
 function combat(classKey = 'warlock') {
@@ -155,11 +155,14 @@ test('les invocations et malédictions du Démoniste ont un temps d’incantatio
 
 test('les invocations sont exclusives, le diablotin tire à distance et le marcheur récupère l’aggro', () => {
     const { instance, target } = combat();
-    assert.equal(getUnlockedActiveSpells(createInitialProgress(), 'warlock')[0].slot, 'summon_imp');
+    assert.equal(getUnlockedPetSpells(createInitialProgress(), 'warlock')[0].slot, 'summon_imp');
+    assert.equal(getUnlockedActiveSpells(createInitialProgress(), 'warlock').length, 0);
     applyTechnique(instance, { summon: 'imp', vfx: 'summon' }, null, 0, 'Diablotin', 0);
     const imp = instance.familiar;
     imp.target = target;
     imp.actor.setPosition(12, 0);
+    imp.x = 12;
+    imp.y = 0;
     updateClassCombat(instance, 1000, 16);
     assert.equal(instance.spellEffects.at(-1).kind, 'familiar_bolt');
     assert.equal(target.health, 500);

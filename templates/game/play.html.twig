@@ -105,7 +105,7 @@
                             <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
                         </label>
                         <label>
-                            <span title="{{ combat.resourceName }}">{{ combat.classKey == 'hunter' ? 'Concentr.' : combat.resourceName }}</span>
+                            <span title="{{ combat.resourceName }}">{{ combat.resourceName }}</span>
                             <meter
                                 id="combat-mana"
                                 class="{{ energy ? 'energy-meter' : 'mana-meter' }}"
@@ -146,7 +146,7 @@
                         type="button"
                         aria-haspopup="dialog"
                     >
-                        Fiche (C)
+                        Fiche (P)
                     </button>
                     <a class="hud-quick-link" href="{{ path('character_list') }}">Personnages</a>
                 </div>
@@ -175,6 +175,18 @@
 
             {# Barre de sorts MMO plein écran (bas centre) #}
             <div id="combat-actions" class="combat-actions" hidden>
+                {% if combat.classKey in ['hunter', 'warlock'] %}
+                    <div class="pet-bar" role="group" aria-label="Commandes du familier">
+                        <span id="pet-status" class="pet-status" aria-live="polite">Aucun familier actif</span>
+                        {% set petLabels = combat.classKey == 'hunter' ? ['Apprivoiser', 'Appeler / rappeler', 'Révoquer'] : ['Diablotin', 'Succube', 'Marcheur du Vide'] %}
+                        {% for label in petLabels %}
+                            <button class="pet-command" type="button" data-pet-action="{{ loop.index0 }}" aria-keyshortcuts="{{ ['W Z', 'X', 'C'][loop.index0] }}" title="{{ label }}">
+                                <kbd>{{ ['W', 'X', 'C'][loop.index0] }}</kbd>
+                                <span>{{ label }}</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 <div class="action-bar-frame">
                     <span class="bar-ornament bar-ornament-left" aria-hidden="true"></span>
 
@@ -265,12 +277,12 @@
                                     id="character-open"
                                     class="micro-btn"
                                     type="button"
-                                    aria-keyshortcuts="C"
+                                    aria-keyshortcuts="P"
                                     aria-haspopup="dialog"
-                                    title="Fiche & Caractéristiques (C)"
+                                    title="Fiche & Caractéristiques (P)"
                                 >
                                     <span class="action-icon icon-sheet" aria-hidden="true"></span>
-                                    <span class="micro-key">C</span>
+                                    <span class="micro-key">P</span>
                                     <span id="character-points-badge" class="micro-badge" data-has-points="false"></span>
                                 </button>
 
@@ -316,7 +328,7 @@
         </div>
 
         <p id="game-controls" class="sr-only">
-            Déplacement avec les flèches, ZQSD ou WASD · Changer de cible (Tab) · Parler (E) · Sorts (1-6) · Potions (R/F) · Fiche (C) · Talents (T) · Sac (I).
+            Déplacement avec les flèches, ZQSD ou WASD · Changer de cible (Tab) · Parler (E) · Sorts (1-6) · Potions (R/F) · Fiche (P) · Talents (T) · Sac (I). Familier : W/X/C sur AZERTY, Z/X/C sur QWERTY.
         </p>
 
         {# Fenêtre modale : Inventaire #}

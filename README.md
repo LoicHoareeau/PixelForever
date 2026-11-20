@@ -83,6 +83,8 @@ Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L�
 
 Le niveau 1 ne donne aucun point. Chaque montée suivante donne trois points de caractéristiques et un point de talent/sort. Le niveau 2 demande 100 XP ; le seuil augmente ensuite de 50 XP par niveau. Les monstres de niveau supérieur accordent davantage d’XP. Dans les Terres dévastées, un diablotin N.22 rapporte 676 XP et un garde N.35 en rapporte 1 638.
 
+Le Chasseur peut apprivoiser les créatures de son niveau ou moins, sauf les squelettes, après les avoir affaiblies à 30 % de PV. Chasseur et Démoniste disposent d’une barre de familier W/X/C sur AZERTY (Z/X/C sur QWERTY) ; la fiche passe sur P. Les familiers héritent d’une partie des statistiques du maître équipé. La créature apprivoisée reste sauvegardée localement dans ce lot. [Règles des familiers](docs/GAME_DESIGN.md)
+
 Chaque victoire donne un objet selon un tirage qui réserve 47 % à la vie, 30 % à la ressource, 15 % à une arme rare, 5 % à une arme épique, 2 % à l’Écaille de Saphyr et 1 % au Cœur de flamme bleue. Le type d’arme dépend de la classe. Écailles et cœurs sont des matériaux. Les potions rendent 20 PV ou 15 points de ressource. La Citadelle, Malakor, les Remparts et le Cap donnent aussi des coiffes et des gants adaptés à la classe.
 
 Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipées, les allocations et la quête restent enregistrés par personnage dans le navigateur. Effacer ce stockage peut donc effacer ces éléments locaux.

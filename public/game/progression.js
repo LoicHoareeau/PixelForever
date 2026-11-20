@@ -2,6 +2,7 @@ import { armorBonuses, armorItems, armorSlots } from './armor.js';
 import { classTalents, protectionTalents, starterTalents } from './class-talents.js';
 // Barèmes d'expérience, de caractéristiques, de sorts et de régénération
 import { normalizeTrailQuest } from './trail-quest.js';
+import { normalizeCapturedPet } from './pet-rules.js';
 
 export const victoryXp = 50;
 
@@ -430,6 +431,7 @@ export function createInitialProgress(startingLevel = 1) {
         weapon: 'starter',
         armor: { head: null, hands: null },
         specialization: null,
+        capturedPet: null,
         statPoints: Math.max(0, startingLevel - 1) * statPointsPerLevel,
         spellPoints: Math.max(0, startingLevel - 1) * spellPointsPerLevel,
         allocatedStats: {
@@ -508,6 +510,7 @@ function normalizeProgress(saved, classKey) {
         items,
         armor,
         specialization: validSpec,
+        capturedPet: normalizeCapturedPet(saved.capturedPet, classKey),
         statPoints: statBudget - spentStats,
         spellPoints: spellBudget - spentSpells,
         allocatedStats,
@@ -754,7 +757,7 @@ export function resetTalents(progress) {
 /**
  * Retourne la liste des sorts actifs débloqués par les talents pour la barre de sorts.
  */
-export function getUnlockedActiveSpells(progress, classKey) {
+function unlockedSpells(progress, classKey) {
     const tree = talentTrees[classKey];
     if (!tree) return [];
     const unlocked = [...(starterTalents[classKey] ?? [])];
@@ -766,6 +769,14 @@ export function getUnlockedActiveSpells(progress, classKey) {
         }
     }
     return unlocked;
+}
+
+export function getUnlockedActiveSpells(progress, classKey) {
+    return unlockedSpells(progress, classKey).filter(talent => !talent.technique?.summon);
+}
+
+export function getUnlockedPetSpells(progress, classKey) {
+    return unlockedSpells(progress, classKey).filter(talent => talent.technique?.summon);
 }
 
 // Les armes changent l'auto-attaque sans changer la classe ni la portée des sorts.

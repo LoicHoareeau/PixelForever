@@ -41,11 +41,17 @@ Dès le N.10, la fiche du Guerrier propose Rempart (+3 Défense, puis Défense �
 
 Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`0,8/s` de base). Le Mage utilise Noé, les sorts à distance et le mana (`0,4/s` de base). Le Chasseur utilise aussi le mana. Seul l’Esprit ajoute de la régénération : `+0,12/s` par point gagné pour les classes à énergie, `+0,08/s` pour les classes à mana, plus les talents dédiés. La récupération est multipliée par 2,5 hors combat ; l’Intelligence ne donne aucune régénération. La baguette et le sceptre tirent en mouvement à 5 cases et infligent 50 % des dégâts d’auto-attaque avant Focalisation et Maîtrise des baguettes.
 
-Le Démoniste applique Corruption sans incantation. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse toutes les 500 ms pendant 2 s, en rendant des PV selon les dégâts infligés. Se déplacer interrompt l’incantation ou la canalisation. Une pulsation déjà jouée engage le coût et la recharge du drain.
+Le Démoniste incante Corruption en 0,75 s. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse toutes les 500 ms pendant 2 s, en rendant des PV selon les dégâts infligés. Se déplacer interrompt l’incantation ou la canalisation. Une pulsation déjà jouée engage le coût et la recharge du drain.
 
-Le Démoniste garde une invocation à la fois. Le diablotin, disponible au niveau 1, attaque à distance. La succube ralentit et le marcheur du Vide détourne l’ennemi ordinaire qu’il engage. Malakor continue de viser le joueur. Le faucon du Chasseur attaque les cibles engagées et bénéficie de Marque de proie.
+Le Démoniste garde une invocation à la fois. Le diablotin, disponible au niveau 1, attaque à distance. La succube ralentit et le marcheur du Vide est plus robuste mais frappe moins fort. Les invocations assistent les attaques du maître et peuvent recevoir les coups des monstres ordinaires qu’elles engagent. Malakor continue de viser le joueur.
 
-Un Mage au bâton garde la portée de Boule de feu. Tir perforant requiert un arc équipé. L’attaque de base est gratuite. Attaque chargée coûte 10 d’énergie et Boule de feu coûte 18 de mana avec 1 s d’incantation. La cadence de base est de 500 ms et une attaque en cours bloque le lancement d’une autre auto-attaque. Les talents peuvent réduire les coûts et les délais.
+Le Chasseur apprivoise une créature du monde, sauf les squelettes : niveau inférieur ou égal au sien, au plus 30 % des PV et portée de 7 cases. Il canalise quatre secondes sans se déplacer ni subir de dégâts. Une cible morte, hors de portée ou engagée par un autre propriétaire annule la tentative. La capture retire la créature du monde et programme sa réapparition, sans donner XP, butin ou crédit de quête. Une nouvelle capture remplace le familier précédent.
+
+Les familiers héritent de 30 % des dégâts de base, de 50 % des PV et de 35 % de la Défense du maître ; les bonus d’équipement aux dégâts/PV et une part de sa réduction de dégâts sont pris en compte. Le Marcheur du Vide gagne 30 % de PV supplémentaires et inflige 20 % de dégâts en moins, avec une cadence plus lente. Un boss apprivoisé réutilise son apparence à taille réduite, sans ses statistiques ou attaques spéciales sauvages. Ces pourcentages sont une première calibration à éprouver avec le futur équilibrage des combats.
+
+Trois petites cases au-dessus de la barre, à droite, utilisent **W/X/C sur AZERTY** et **Z/X/C sur QWERTY** (positions physiques KeyZ/KeyX/KeyC). Démoniste : Diablotin / Succube / Marcheur du Vide, selon les talents appris. Chasseur : Apprivoiser / Appeler ou rappeler près de soi / Révoquer. Un familier rappelé reste passif jusqu’à une nouvelle commande X. Révoquer conserve la créature et ses PV pour l’appel suivant. Appeler ou apprivoiser coûte au moins 10 mana ou 28 % du mana maximum ; les invocations démoniaques coûtent au moins 28 % du maximum avant réduction de coût. Un familier vaincu impose 30 secondes avant rappel dans la session. La fiche utilise **P**.
+
+Un Mage au bâton garde la portée de Boule de feu. Tir perforant requiert un arc équipé. L’attaque de base est gratuite. Attaque chargée coûte 7 d’énergie et Boule de feu coûte 14 de mana avec 1 s d’incantation. La cadence de base est de 500 ms et une attaque en cours bloque le lancement d’une autre auto-attaque. Les talents peuvent réduire les coûts et les délais.
 
 Boule de feu, Tourbillon de feu et Nova de givre portent à 15 cases avant bonus, quelle que soit l’arme équipée. Tourbillon de feu (28 mana, incantation de 1 s) et Nova de givre (20 mana) touchent dans un rayon de 54 px autour de la cible. Mur de feu (22 mana, incantation de 1 s) porte à 16 cases et couvre 38 px autour de la cible. Déflagration (15 mana) porte à 16,5 cases avant bonus. Se déplacer pendant une incantation l’annule et rembourse le mana. Nova ralentit pendant 2,5 secondes (`0,625 s` sur Malakor). Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste centrée sur le Guerrier.
 
@@ -59,11 +65,11 @@ Aucun point au niveau 1. Chaque niveau suivant donne trois points de caractéris
 - **Mage** · Pyromancie, Arcanes et Givre. Mur de feu, Tourbillon de feu, Déflagration et Nova de givre sont des compétences actives.
 - **Démoniste** · Affliction, Démonologie et Destruction. Les talents donnent accès à Drain de vie, aux invocations avancées et aux sorts de feu et de chaos.
 - **Voleur** · Assassinat, Combat et Subterfuge. La Dextérité renforce les dagues. Les branches proposent Rupture, Rafale de lames et des techniques d’ombre.
-- **Chasseur** · Précision, Survie et Fauconnerie. La Dextérité renforce l’arc. Les branches proposent Volée, Piège à pointes et des techniques de faucon.
+- **Chasseur** · Précision, Survie et Dompteur. La Dextérité renforce l’arc. Les branches proposent Volée, Piège à pointes, Soin du familier et Marque de proie. L’ancien talent Appel du faucon devient Soin du familier en conservant les points investis.
 - Maîtrise des baguettes : cinq rangs de +6 % sur le tir de baguette.
 - Focalisation de la baguette : trois rangs de +2 dégâts avant maîtrise, avec maîtrise apprise et cinq points en Arcanes requis.
 
-Les bonus de baguette s’appliquent aux tirs de baguette. Les techniques actives occupent les touches 3 à 6, jusqu’à 8 pour le Guerrier et 9 pour le Démoniste. Leur coût et leur recharge sont propres à chaque compétence. L’invocation du diablotin occupe la touche 3 dès le niveau 1.
+Les bonus de baguette s’appliquent aux tirs de baguette. Les techniques actives occupent les touches 3 à 6, jusqu’à 8 pour le Guerrier. Les invocations sont retirées des emplacements numérotés et utilisent leur barre dédiée. Leur coût et leur recharge sont propres à chaque compétence.
 
 ## Animations de combat
 

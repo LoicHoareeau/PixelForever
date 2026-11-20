@@ -12,6 +12,8 @@ import { createWorldLighting } from './world-lighting.js';
 import { CameraFeel } from './camera-feel.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
+import { petAction } from './pet-controls.js';
+import { petKeys } from './pet-rules.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -430,7 +432,7 @@ import { saveProgress } from './progression.js';
                     toggleInventory();
                     return;
                 }
-                if (event.code === 'KeyC' && !event.repeat) {
+                if (event.code === 'KeyP' && !event.repeat) {
                     event.preventDefault();
                     toggleCharacterSheet();
                     return;
@@ -449,6 +451,12 @@ import { saveProgress } from './progression.js';
                     return;
                 }
                 const movement = Object.hasOwn(bindings, event.code);
+                const petCommand = petKeys[event.code];
+                if (petCommand !== undefined && ['hunter', 'warlock'].includes(this.combat.classKey)) {
+                    event.preventDefault();
+                    if (!event.repeat) petAction(this.combat, petCommand, this.time.now);
+                    return;
+                }
                 const attack = attacks[event.code];
                 const potion = potions[event.code];
                 if (!movement && !attack && !potion) {
@@ -482,6 +490,9 @@ import { saveProgress } from './progression.js';
             }
             this.combat.buttons.forEach(button => {
                 button.addEventListener('click', () => this.combat.attack(button.dataset.attack, this.time.now), { signal: keyboard.signal });
+            });
+            this.combat.petButtons.forEach(button => {
+                button.addEventListener('click', () => petAction(this.combat, Number(button.dataset.petAction), this.time.now), { signal: keyboard.signal });
             });
             this.combat.resetButton.addEventListener('click', () => {
                 releaseKeys();
