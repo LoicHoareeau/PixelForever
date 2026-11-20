@@ -28,7 +28,9 @@ Les archives PixelLab actuelles proposent uniquement « Frappe à la lanterne »
 
 Les sangliers N.1–5 patrouillent dans la clairière, les squelettes N.5–10 au cimetière et les dragons N.10–20 dans les montagnes. Les trois secteurs des Terres dévastées accueillent des diablotins, des molosses et des gardes N.21–35.
 
-Les six planches de `public/game/val-des-saules/monsters/` contiennent huit blocs de deux lignes, dans l’ordre est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est. Chaque bloc contient un repos, 24 images de marche et trois poses d’attaque. `monster-art.js` donne la taille de découpe, l’emprise visuelle et la distance d’un cycle par espèce. La distance parcourue règle le trot du sanglier, la marche saccadée du squelette, les appuis du dragon, les bonds du diablotin, le galop du molosse et la marche lourde du garde. Les images sont ancrées aux pieds pour que le tri en profondeur suive le sol.
+Les six planches de `public/game/val-des-saules/monsters/` contiennent huit blocs de deux lignes, dans l’ordre est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est. Chaque bloc contient un repos, 36 images de marche et trois poses d’attaque. `monster-art.js` donne la taille de découpe, l’emprise visuelle et la distance d’un cycle par espèce. La distance parcourue règle le trot du sanglier, la marche saccadée du squelette, les appuis du dragon, les bonds du diablotin, le galop du molosse et la marche lourde du garde. Les images sont ancrées aux pieds pour que le tri en profondeur suive le sol.
+
+`python tools/monster_walk.py <dossier-des-atlas> <dossier-de-sortie> --preview <dossier-d-apercu>` reconstruit les foulées depuis les poses de repos avec Pillow et NumPy. Le script découpe cuisse, tibia et pied, puis calcule la flexion du genou entre l’appui, le décollage et la retombée. Il conserve les images de repos et d’attaque de l’atlas source. Le dossier d’aperçu est facultatif.
 
 Le dragon annonce une ligne de tir pendant sa préparation. Le rendu du souffle suit la position réelle du projectile, qui avance par petits pas de collision pour détecter le joueur et le décor même lors d’une image lente.
 

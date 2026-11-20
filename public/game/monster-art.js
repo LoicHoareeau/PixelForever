@@ -1,6 +1,6 @@
-export const monsterWalkFrames = 24;
+export const monsterWalkFrames = 36;
 export const monsterFrames = monsterWalkFrames + 4;
-export const monsterAtlasColumns = 14;
+export const monsterAtlasColumns = 20;
 
 export const monsterArt = {
     boar: { frame: 64, width: 47, height: 30, stride: 23, shadow: 22 },

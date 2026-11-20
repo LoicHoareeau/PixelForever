@@ -224,7 +224,7 @@ test('le souffle voyage sur une trajectoire fixe et le joueur peut esquiver apr�
     }
 });
 
-test('chaque espèce a huit orientations et vingt-quatre images de marche par orientation', () => {
+test('chaque espèce a huit orientations et trente-six images de marche par orientation', () => {
     for (const [species, { frame, stride }] of Object.entries(monsterArt)) {
         const png = readFileSync(new URL(`../public/game/val-des-saules/monsters/${species}.png`, import.meta.url));
         assert.equal(png.toString('ascii', 12, 16), 'IHDR');
