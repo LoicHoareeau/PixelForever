@@ -4,6 +4,9 @@ import { tileHasNonClearingBiome, writeBiomeWeights } from './biome-gradient.js'
 const textureSize = 256;
 const propCellSize = 128;
 const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+const saltMarshTone = [-10, 19, 13];
+const basaltTone = [-9, -3, 7];
+const riftTone = [14, -8, 13];
 
 // ---------------------------------------------------------------------------
 // Décors régionaux et éléments de transition entre zones
@@ -160,7 +163,7 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
     const colCount = terrain[0].length;
     const floorLayer = context.getImageData(0, 0, canvasWidth, canvasHeight);
     const data = floorLayer.data;
-    const weights = new Float32Array(4);
+    const weights = new Float32Array(7);
 
     for (let ty = 0; ty < rowCount; ty++) {
         for (let tx = 0; tx < colCount; tx++) {
@@ -207,7 +210,7 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
                     const wClr = weights[0];
                     const wCem = weights[1];
                     const wMnt = weights[2];
-                    const wAsh = weights[3];
+                    const wAsh = weights[3] + weights[4] + weights[5] + weights[6];
 
                     for (let channel = 0; channel < 3; channel++) {
                         const baseC = data[dstIdx + channel];
@@ -215,9 +218,9 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
                         const mntC = mntRock[texIdx + channel] + (mntTrail[texIdx + channel] - mntRock[texIdx + channel]) * (paving * 0.42);
                         const ashC = ashSoil[texIdx + channel] + (ashStone[texIdx + channel] - ashSoil[texIdx + channel]) * paving;
 
-                        data[dstIdx + channel] = Math.round(
-                            baseC * wClr + cemC * wCem + mntC * wMnt + ashC * wAsh,
-                        );
+                        const tone = saltMarshTone[channel] * weights[4]
+                            + basaltTone[channel] * weights[5] + riftTone[channel] * weights[6];
+                        data[dstIdx + channel] = Math.round(baseC * wClr + cemC * wCem + mntC * wMnt + ashC * wAsh + tone);
                     }
                 }
             }
@@ -247,6 +250,13 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
         [[115, 149], [118, 151], [116, 154]],
         [[91, 165], [94, 167], [96, 169]],
         [[115, 165], [118, 167], [120, 168]],
+        [[89, 196], [92, 199], [94, 198]],
+        [[113, 217], [118, 219], [120, 224]],
+        [[141, 203], [146, 207], [150, 206]],
+        [[157, 225], [162, 227], [165, 225]],
+        [[193, 203], [197, 208], [201, 209]],
+        [[218, 207], [222, 210], [227, 209]],
+        [[218, 229], [222, 233], [226, 232]],
     ];
 
     for (const fissure of fissures) {

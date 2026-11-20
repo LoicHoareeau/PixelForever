@@ -22,11 +22,9 @@ test('les poids de biomes forment une partition de l’unité sur toute la carte
             const x = (tx + 0.5) * tileSize;
             const y = (ty + 0.5) * tileSize;
             const weights = biomeWeights(x, y, tileSize);
-            const sum = weights.clearing + weights.cemetery + weights.mountain + weights.wasteland;
-            assert.ok(weights.clearing >= 0 && weights.clearing <= 1);
-            assert.ok(weights.cemetery >= 0 && weights.cemetery <= 1);
-            assert.ok(weights.mountain >= 0 && weights.mountain <= 1);
-            assert.ok(weights.wasteland >= 0 && weights.wasteland <= 1);
+            const values = Object.values(weights);
+            const sum = values.reduce((total, weight) => total + weight, 0);
+            assert.ok(values.every((weight) => weight >= 0 && weight <= 1));
             assert.ok(Math.abs(sum - 1) < 1e-5, `somme invalide (${sum}) en ${tx},${ty}`);
         }
     }
@@ -39,6 +37,9 @@ test('les cœurs de biomes restent purs sans mélange destructif', () => {
     assert.ok(biomeWeights(...centerPx(zones.imp)).wasteland > 0.99);
     assert.ok(biomeWeights(...centerPx(zones.hound)).wasteland > 0.99);
     assert.ok(biomeWeights(...centerPx(zones.fiend)).wasteland > 0.99);
+    assert.ok(biomeWeights(...centerPx(zones.salt_hound)).saltMarsh > 0.99);
+    assert.ok(biomeWeights(...centerPx(zones.ash_sentinel)).basaltRamparts > 0.99);
+    assert.ok(biomeWeights(...centerPx(zones.rift_guardian)).riftCape > 0.99);
 });
 
 test('les couloirs inter-biomes évoluent progressivement sans saut brutal', () => {
@@ -78,6 +79,12 @@ test('les couloirs inter-biomes évoluent progressivement sans saut brutal', () 
         mountainToWasteland.push([(tx + 0.5) * tileSize, (95 + 0.5) * tileSize]);
     }
     checkSmoothGradient(mountainToWasteland, 'wasteland');
+
+    for (const [start, end, key] of [[116, 140, 'basaltRamparts'], [169, 193, 'riftCape']]) {
+        const points = [];
+        for (let x = start; x <= end; x++) points.push([(x + 0.5) * tileSize, 215.5 * tileSize]);
+        checkSmoothGradient(points, key);
+    }
 });
 
 test('la cohérence littorale protège Baie de Saphyr / Baie Émeraude et garde Cap d’Obsidienne volcanique', () => {
@@ -99,6 +106,7 @@ test('la cohérence littorale protège Baie de Saphyr / Baie Émeraude et garde 
 test('les libellés de lisière identifient chaque couloir de transition', () => {
     assert.equal(transitionZoneLabel(11 * tileSize, 11 * tileSize), 'Sentier des Saules');
     assert.equal(transitionZoneLabel(103 * tileSize, 46 * tileSize), 'Lisière du Cimetière');
-    assert.equal(transitionZoneLabel(139 * tileSize, 71 * tileSize), 'Contreforts de Saphyr');
+    assert.equal(transitionZoneLabel(141 * tileSize, 71 * tileSize), 'Contreforts de Saphyr');
     assert.equal(transitionZoneLabel(195 * tileSize, 95 * tileSize), 'Marches calcinées');
+    assert.equal(transitionZoneLabel(128.5 * tileSize, 215.5 * tileSize), 'Sentier des Falaises');
 });

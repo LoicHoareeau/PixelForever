@@ -7,6 +7,7 @@ import {
     cliffTile,
     coastalLookouts,
     columns,
+    frontierSpecies,
     groundWalkable,
     inZone,
     isCoastBorderTile,
@@ -121,6 +122,25 @@ test('le zoom reste modéré et la carte couvre le viewport, même après redime
     assert.ok(zones.dragon.left * tileSize > startView.right || zones.dragon.top * tileSize > startView.bottom);
 });
 
+test('la route du Trône traverse les trois secteurs N.41–60 jusqu’au belvédère', () => {
+    const route = [
+        ...Array.from({ length: 59 }, (_, index) => [104, 157 + index]),
+        ...Array.from({ length: 107 }, (_, index) => [105 + index, 215]),
+        ...Array.from({ length: 24 }, (_, index) => [211, 216 + index]),
+    ];
+    for (const [x, y] of route) {
+        assert.equal(terrain[y][x], 32, `chaussée absente en ${x},${y}`);
+        assert.ok(canStand((x + .5) * tileSize, (y + .5) * tileSize), `chaussée bloquée en ${x},${y}`);
+    }
+    assert.deepEqual(frontierSpecies.map((species) => {
+        const { minLevel, maxLevel, patrolCells } = monsterTemplates[species];
+        const zone = zones[species];
+        assert.ok(route.some(([x, y]) => inZone(zone, (x + .5) * tileSize, (y + .5) * tileSize)));
+        assert.ok(patrolCells.every(([x, y]) => inZone(zone, (x + .5) * tileSize, (y + .5) * tileSize)));
+        return [minLevel, maxLevel];
+    }), [[41, 47], [48, 54], [55, 60]]);
+});
+
 // Only display objects are replaced: spawning, routing and movement use the real Monster class.
 function display(texture = '') {
     return new Proxy({ visible: true, texture: { key: texture }, frame: { name: 0 } }, {
@@ -218,6 +238,37 @@ test('sortir de portée, quitter la zone ou étourdir le monstre évite son atta
         combat.updateMonsterCounter(monster, impact);
         assert.equal(combat.health, 500, cancel);
         assert.equal(monster.attackEndsAt, 0, cancel);
+    }
+});
+
+test('les variantes côtières annoncent leurs attaques, frappent une seule fois et laissent une esquive', () => {
+    for (const species of frontierSpecies) {
+        const template = monsterTemplates[species];
+        for (const [index, [kind, config]] of Object.entries(template.specials).entries()) {
+            for (const dodge of [false, true]) {
+                const { combat, monster, player } = battle(species);
+                const [x, y] = [(template.zone.left + 16) * tileSize, (template.zone.top + 17) * tileSize];
+                monster.sprite.setPosition(x, y);
+                monster.attackCounter = index + 1;
+                Object.assign(player, { x: x + config.range + 1, y });
+                combat.health = 1500;
+                combat.updateMonsterCounter(monster, 100);
+                assert.equal(monster.attackVisual, null, 'hors de portée');
+                player.x = x + config.range - 4;
+                combat.updateMonsterCounter(monster, 110);
+                assert.equal(monster.attackVisual.special, kind);
+                assert.equal(monster.attackVisual.label, config.label);
+                const impact = monster.attackEndsAt;
+                combat.updateMonsterCounter(monster, impact - 1);
+                assert.equal(combat.health, 1500);
+                if (dodge) player.y = y + (config.radius ?? config.halfWidth) + 2;
+                combat.updateMonsterCounter(monster, impact);
+                combat.updateMonsterCounter(monster, impact + 1);
+                const damage = Math.round(monster.stats.damage * config.damageScale);
+                assert.equal(combat.health, dodge ? 1500 : 1500 - damage);
+                assert.equal(combat.impacts.length, dodge ? 0 : 1);
+            }
+        }
     }
 });
 

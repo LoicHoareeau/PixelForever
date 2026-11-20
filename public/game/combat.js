@@ -1413,7 +1413,7 @@ export class TrainingCombat {
         }
 
         const shot = monster.attackVisual?.projectile;
-        const bossVisual = monster.attackVisual?.bossSkill ? monster.attackVisual : null;
+        const specialVisual = monster.attackVisual?.special ? monster.attackVisual : null;
         if (shot || monster.attackEndsAt) {
             if (!shot && now < monster.attackEndsAt) return;
             const rawDamage = typeof monster.attackDamage === 'function' ? monster.attackDamage() : monster.stats.damage;
@@ -1421,26 +1421,27 @@ export class TrainingCombat {
                 : monster.canAttack(this.scene.position) ? 'hit' : 'miss';
             if (outcome === 'travel') return;
 
-            if (bossVisual) {
+            if (specialVisual) {
                 this.spellEffects?.push?.({
-                    kind: bossVisual.bossSkill === 'magma_rift' ? 'magma_detonation' : 'seismic_detonation',
-                    x: bossVisual.originX,
-                    y: bossVisual.originY,
-                    radius: bossVisual.radius ?? 78,
-                    dirX: bossVisual.dirX ?? 1,
-                    dirY: bossVisual.dirY ?? 0,
-                    riftRange: bossVisual.riftRange ?? 165,
+                    kind: specialVisual.special === 'magma_rift' ? 'magma_detonation' : 'seismic_detonation',
+                    x: specialVisual.originX,
+                    y: specialVisual.originY,
+                    radius: specialVisual.radius ?? 78,
+                    dirX: specialVisual.dirX ?? 1,
+                    dirY: specialVisual.dirY ?? 0,
+                    riftRange: specialVisual.riftRange ?? 165,
                     color: 0xff7b2f,
                     start: now,
                     duration: 540,
                 });
-                this.triggerShake(outcome === 'hit' ? 'large' : 'medium');
+                if (monster.isBoss) this.triggerShake(outcome === 'hit' ? 'large' : 'medium');
+                else if (outcome === 'hit') this.triggerShake('small');
                 monster.cancelAttack();
             } else if (shot) {
                 monster.cancelAttack();
             } else {
                 monster.attackEndsAt = 0;
-                monster.sprite.clearTint();
+                monster.restoreTint?.();
             }
 
             if (outcome === 'miss') {
@@ -1457,7 +1458,7 @@ export class TrainingCombat {
                 color: 0xf78863,
                 start: now,
             });
-            if (!bossVisual) {
+            if (!specialVisual) {
                 this.triggerShake(monster.isBoss || monster.species === 'dragon' ? 'medium' : 'small');
             }
             this.refreshVitals();
@@ -1658,7 +1659,7 @@ export class TrainingCombat {
             }
 
             const r = (fx.radius ?? 40) * (0.35 + 0.65 * p);
-            this.effect.lineStyle(2.5, fx.color ?? 0xff942f, alpha).strokeEllipse(fx.x, fx.y, r * 2, r * 1.35);
+            this.effect.lineStyle(2.5, fx.color ?? 0xff942f, alpha).strokeEllipse(fx.x, fx.y, r * 2, r * 2);
             this.effect.lineStyle(1, 0xffe4a0, alpha * 0.8).strokeEllipse(fx.x, fx.y, r * 1.4, r * 0.95);
         }
     }
@@ -1680,20 +1681,20 @@ export class TrainingCombat {
             }
 
             const attack = monster.attackVisual;
-            if (!attack || (!attack.projectile && !attack.bossSkill && now >= attack.end + recoveryMs)) continue;
+            if (!attack || (!attack.projectile && !attack.special && now >= attack.end + recoveryMs)) continue;
 
-            // Télégraphies au sol des compétences du Boss N.40
-            if (attack.bossSkill) {
+            // Télégraphies au sol des attaques spéciales
+            if (attack.special) {
                 const progress = Math.max(0, Math.min(1, (now - attack.start) / Math.max(1, attack.castEnd - attack.start)));
-                if (attack.bossSkill === 'seismic_ring') {
+                if (attack.special === 'seismic_ring') {
                     const r = attack.radius ?? 78;
-                    this.effect.fillStyle(0xff4a24, 0.14 + progress * 0.18).fillEllipse(attack.originX, attack.originY, r * 2, r * 1.35);
-                    this.effect.lineStyle(2, 0xff9f43, 0.85).strokeEllipse(attack.originX, attack.originY, r * 2, r * 1.35);
-                    this.effect.lineStyle(1.5, 0xffe49c, 0.95).strokeEllipse(attack.originX, attack.originY, r * 2 * progress, r * 1.35 * progress);
-                } else if (attack.bossSkill === 'magma_rift') {
+                    this.effect.fillStyle(0xff4a24, 0.14 + progress * 0.18).fillEllipse(attack.originX, attack.originY, r * 2, r * 2);
+                    this.effect.lineStyle(2, 0xff9f43, 0.85).strokeEllipse(attack.originX, attack.originY, r * 2, r * 2);
+                    this.effect.lineStyle(1.5, 0xffe49c, 0.95).strokeEllipse(attack.originX, attack.originY, r * 2 * progress, r * 2 * progress);
+                } else if (attack.special === 'magma_rift') {
                     const endX = attack.originX + attack.dirX * attack.riftRange;
                     const endY = attack.originY + attack.dirY * attack.riftRange;
-                    this.effect.lineStyle(attack.halfWidth * 1.6, 0xff3b1f, 0.18 + progress * 0.22);
+                    this.effect.lineStyle(attack.halfWidth * 2, 0xff3b1f, 0.18 + progress * 0.22);
                     this.effect.lineBetween(attack.originX, attack.originY, endX, endY);
                     this.effect.lineStyle(2, 0xffc66e, 0.9);
                     this.effect.lineBetween(attack.originX, attack.originY, endX, endY);

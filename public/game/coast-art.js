@@ -1,7 +1,7 @@
-import { cliffTile, seaTile, zones } from './exploration.js';
+import { cliffTile, frontierZones, seaTile, wastelandZones } from './exploration.js';
 import { biomeWeights, distanceToRegion } from './biome-gradient.js';
 
-const wastelandZones = [zones.imp, zones.hound, zones.fiend, zones.breach_lord];
+const volcanicZones = [...wastelandZones, ...frontierZones];
 
 // ---------------------------------------------------------------------------
 // Helpers de bruit déterministe et palettes côtières pixel art
@@ -62,7 +62,7 @@ export function ashCoastFactor(worldX, worldY, width, height, tileSize = 16) {
     const px = Math.min(worldX, width - 1);
     const py = Math.min(worldY, height - 1);
 
-    const minDist = distanceToRegion(wastelandZones, px, py, tileSize);
+    const minDist = distanceToRegion(volcanicZones, px, py, tileSize);
     const jitter = (coastNoise(px, py, 36) - 0.5) * 60;
     const reach = 280 + jitter;
     if (minDist >= reach) {
