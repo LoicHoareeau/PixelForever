@@ -63,13 +63,13 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 
 | Classe / arme | Attaque de base | Portée de base |
 | --- | --- | --- |
-| Guerrier · épée, croc ou Hache de fer | Coup en mêlée | 1,5 case |
-| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 7,5 cases avant bonus |
-| Mage · Bâton des saules | Coup de bâton | 1,5 case |
-| Démoniste · Grimoire | Trait d’ombre | 7 cases |
-| Voleur · Dagues | Coup de dague | 1,5 case |
-| Chasseur · Arc | Flèche rapide | 8 cases |
-| Mains nues | Coup de poing | 1,5 case |
+| Guerrier · épée, croc ou Hache de fer | Coup en mêlée | 2,5 case |
+| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 5 cases avant bonus |
+| Mage · Bâton des saules | Coup de bâton | 2,5 case |
+| Démoniste · Grimoire | Trait d’ombre | 5 cases |
+| Voleur · Dagues | Coup de dague | 2,5 case |
+| Chasseur · Arc | Flèche rapide | 7 cases |
+| Mains nues | Coup de poing | 2,5 case |
 
 L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes. [Règles des classes et des talents](docs/GAME_DESIGN.md)
 

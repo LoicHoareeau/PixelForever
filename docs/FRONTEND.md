@@ -4,7 +4,7 @@
 
 ## Accueil et choix du personnage
 
-`#level-notification` annonce les montées de niveau avec `role="status"`, sans bloquer les commandes. `TrainingCombat.showLevelUp` met les annonces en file et utilise l’horloge Phaser pour afficher chacune pendant trois secondes, avec une pause de 150 ms entre elles.
+`#level-up-banner` annonce les montées de niveau avec `role="status"`, sans bloquer les commandes. `combat-ui.js` met les annonces en file et utilise l’horloge Phaser pour afficher chacune pendant trois secondes, avec une pause de 150 ms entre elles.
 
 Twig rend l’accueil public du Val-des-Saules, la connexion, l’inscription et les écrans de personnage. `public/portal/val.css` adapte leur mise en page aux petits écrans. Le diorama 3D de l’accueil et de la connexion est une illustration JPEG. Les cartes des personnages mettent les sprites de jeu sur des socles éclairés et indiquent la classe, le niveau et les caractéristiques de base. **Actif** indique le personnage sélectionné en session.
 
@@ -32,7 +32,7 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 1,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 7,5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
+L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 2,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 

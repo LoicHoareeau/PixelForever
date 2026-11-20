@@ -90,10 +90,21 @@ export function createStarterTown(scene) {
 
     const fires = [[465, 250], [225, 485], [355, 484], [1013, 272], [1133, 272], [369, 789], [562, 789], [1139, 700]]
         .map(([x, y]) => townPoint(x, y));
-    const lights = fires.map(point => ({ ...point, radius: 62, color: 0xff964c, lift: .37, glow: .25, flicker: true }));
+    const lights = fires.map((point, index) => ({
+        ...point,
+        radius: index === 0 ? 78 : 62,
+        color: index === 0 ? 0xff8638 : 0xff964c,
+        lift: index === 0 ? .45 : .37,
+        glow: index === 0 ? .32 : .25,
+        flicker: true,
+    }));
     const chimney = townPoint(435, 22);
     const charms = townPoint(1095, 146);
-    lights.push({ ...charms, radius: 43, color: 0x73f1ca, lift: .32, glow: .23, flicker: true });
+    const gateLantern = townPoint(1420, 485);
+    const squareLantern = townPoint(740, 470);
+    lights.push({ ...charms, radius: 46, color: 0x73f1ca, lift: .34, glow: .25, flicker: true });
+    lights.push({ ...gateLantern, radius: 58, color: 0xffb35c, lift: .36, glow: .23, flicker: true });
+    lights.push({ ...squareLantern, radius: 66, color: 0xffb662, lift: .34, glow: .21, flicker: true });
     const effects = scene.add.graphics().setDepth(2);
     let previousFrame = -1;
     return {
@@ -101,18 +112,28 @@ export function createStarterTown(scene) {
         lights,
         animate(time, still) {
             const nearby = nearestTownResident(scene.position);
-            for (const { resident, label } of occupants) label.setVisible(resident === nearby);
+            for (const [index, { resident, sprite, label }] of occupants.entries()) {
+                label.setVisible(resident === nearby);
+                if (!still) {
+                    const breath = 1 + 0.015 * Math.sin(time / 440 + index * 1.4);
+                    sprite.setScale(1, breath);
+                } else {
+                    sprite.setScale(1, 1);
+                }
+            }
             const frame = still ? 0 : Math.floor(time / 85);
             if (frame === previousFrame) return;
             previousFrame = frame;
             effects.clear();
             for (const [index, { x, y }] of fires.entries()) {
                 const flicker = (frame + index * 3) % 4;
-                effects.fillStyle(0xffb754, .28 + flicker * .07).fillRect(x - 2, y - flicker, 5, 3 + flicker);
-                effects.fillStyle(0xffe0a0, .56).fillRect(x, y - flicker, 2, flicker + 1);
-                for (let ember = 0; ember < 5; ember++) {
+                effects.fillStyle(0xff8c3b, .18 + flicker * .04).fillCircle(x, y - 1, 5 + flicker);
+                effects.fillStyle(0xffb754, .34 + flicker * .07).fillRect(x - 2, y - flicker, 5, 3 + flicker);
+                effects.fillStyle(0xfff1c9, .72).fillRect(x, y - flicker, 2, flicker + 1);
+                const emberCount = index === 0 ? 8 : 5;
+                for (let ember = 0; ember < emberCount; ember++) {
                     const age = (frame + ember * 5 + index * 3) % 20;
-                    effects.fillStyle(ember % 2 ? 0xffd083 : 0xda6333, .85 * (1 - age / 20))
+                    effects.fillStyle(ember % 2 ? 0xffd083 : 0xda6333, .88 * (1 - age / 20))
                         .fillRect(x + (ember * 7) % 13 - 6 + Math.floor(age / 4), y - age, 1, 1);
                 }
             }
@@ -124,12 +145,12 @@ export function createStarterTown(scene) {
                 effects.fillStyle(0x353638, .32 * (1 - age / 42)).fillRect(x, y, spread * 2, spread);
                 effects.fillStyle(0x8f7761, .20 * (1 - age / 42)).fillRect(x + 1, y - 1, spread + 1, spread);
             }
-            for (let mote = 0; mote < 6; mote++) {
-                const angle = frame * .12 + mote * Math.PI / 3;
-                const x = Math.round(charms.x + Math.cos(angle) * 12);
+            for (let mote = 0; mote < 7; mote++) {
+                const angle = frame * .12 + mote * (Math.PI * 2) / 7;
+                const x = Math.round(charms.x + Math.cos(angle) * 13);
                 const y = Math.round(charms.y + Math.sin(angle) * 5 - 3);
-                effects.fillStyle(0x72e3c5, .20).fillRect(x - 1, y - 1, 3, 3);
-                effects.fillStyle(0xcbffe6, .85).fillRect(x, y, 1, 1);
+                effects.fillStyle(0x72e3c5, .24).fillRect(x - 1, y - 1, 3, 3);
+                effects.fillStyle(0xcbffe6, .88).fillRect(x, y, 1, 1);
             }
         },
     };

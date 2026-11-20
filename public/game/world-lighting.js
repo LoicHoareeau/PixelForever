@@ -72,6 +72,11 @@ export function combatLights(player, combat, now, still) {
     if (boss) {
         lights.push({ x: boss.sprite.x, y: boss.sprite.y - 22, radius: 122, color: 0xff632f, lift: .61, glow: .33 });
     }
+    const familiar = combat?.familiar;
+    if (familiar?.actor) {
+        const familiarColor = familiar.kind === 'imp' ? 0xff9944 : (familiar.kind === 'succubus' ? 0xd27bf0 : (familiar.kind === 'void' ? 0x8c70f0 : 0xdcc084));
+        lights.push({ x: familiar.actor.x, y: familiar.actor.y - 10, radius: 46, color: familiarColor, lift: .26, glow: .16 });
+    }
     return lights;
 }
 
@@ -151,18 +156,22 @@ export function createWorldLighting(scene, width, height, tileSize, staticLights
                 const x = (light.x - view.left) / pixelStep;
                 const y = (light.y - view.top) / pixelStep;
                 const radius = light.radius / pixelStep;
-                const flicker = light.flicker && !still ? .94 + .06 * Math.cos(now / 190 + light.x) : 1;
+                const flicker = light.flicker && !still
+                    ? .93 + .045 * Math.sin(now / 165 + light.x * .1) + .025 * Math.cos(now / 92 + light.y * .1)
+                    : 1;
                 const tint = `${light.color >> 16},${(light.color >> 8) & 255},${light.color & 255}`;
                 const cutout = shadow.createRadialGradient(x, y, 0, x, y, radius);
                 cutout.addColorStop(0, `rgba(255,255,255,${light.lift * flicker})`);
-                cutout.addColorStop(.45, `rgba(255,255,255,${light.lift * .44 * flicker})`);
+                cutout.addColorStop(.32, `rgba(255,255,255,${light.lift * .68 * flicker})`);
+                cutout.addColorStop(.68, `rgba(255,255,255,${light.lift * .24 * flicker})`);
                 cutout.addColorStop(1, 'rgba(255,255,255,0)');
                 shadow.fillStyle = cutout;
                 shadow.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 
                 const glowGradient = additive.createRadialGradient(x, y, 0, x, y, radius);
                 glowGradient.addColorStop(0, `rgba(${tint},${light.glow * flicker})`);
-                glowGradient.addColorStop(.34, `rgba(${tint},${light.glow * .48 * flicker})`);
+                glowGradient.addColorStop(.26, `rgba(${tint},${light.glow * .62 * flicker})`);
+                glowGradient.addColorStop(.60, `rgba(${tint},${light.glow * .21 * flicker})`);
                 glowGradient.addColorStop(1, `rgba(${tint},0)`);
                 additive.fillStyle = glowGradient;
                 additive.fillRect(x - radius, y - radius, radius * 2, radius * 2);

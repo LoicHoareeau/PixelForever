@@ -146,7 +146,7 @@ final class CharacterController extends AbstractController
                 'range' => $class->attackRange(),
                 'specialRange' => $class === CharacterClass::Mage ? 15.0 : $class->attackRange(),
                 'wandDamageMultiplier' => 0.5,
-                'ranged' => $class->attackRange() > 1.5,
+                'ranged' => !in_array($class, [CharacterClass::Warrior, CharacterClass::Rogue], true),
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),
                 'basicName' => $basic,
@@ -183,11 +183,7 @@ final class CharacterController extends AbstractController
                         'rarity' => 'Commun',
                     ],
                     'mana' => [
-                        'name' => match ($class->resourceName()) {
-                            'Énergie' => 'Potion d’énergie',
-                            'Concentration' => 'Potion de concentration',
-                            default => 'Potion de mana',
-                        },
+                        'name' => $class->resourceName() === 'Énergie' ? 'Potion d’énergie' : 'Potion de mana',
                         'chance' => 30,
                         'rarity' => 'Commun',
                     ],

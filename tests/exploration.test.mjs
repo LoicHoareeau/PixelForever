@@ -235,16 +235,21 @@ test('les attaques de mêlée frappent une fois après préparation et respecten
     }
 });
 
-test('un monstre au-dessus du niveau 10 engage par proximité', () => {
-    const { combat, monster, player } = battle('dragon');
-    monster.level = 11;
+test('les monstres N.1–10 restent neutres à proximité et les N.11+ engagent le joueur', () => {
+    const { combat, monster, player } = battle('boar');
+    monster.level = 5;
     monster.alert = false;
     monster.counterAt = Infinity;
     monster.update(100, 16, player);
-    assert.equal(monster.alert, true);
+    assert.equal(monster.alert, false);
+
+    const { monster: dragon, player: dragonPlayer } = battle('dragon');
+    dragon.level = 12;
+    dragon.alert = false;
+    dragon.update(100, 16, dragonPlayer);
+    assert.equal(dragon.alert, true);
     combat.updateMonsterCounter(monster, 100);
-    assert.ok(monster.attackEndsAt > 100);
-    assert.equal(combat.health, 500);
+    assert.equal(monster.attackEndsAt, 0);
 });
 
 test('les monstres de niveaux 1 à 10 restent neutres puis ripostent après engagement', () => {

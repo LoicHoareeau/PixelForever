@@ -4,6 +4,8 @@
 
 ## Modèle et parcours actuels
 
+`CharacterController` transmet les portées et les six caractéristiques définies par `CharacterClass`. Le drapeau `ranged` dépend explicitement de la classe (Mage, Démoniste, Chasseur), car une portée de mêlée de 2,5 cases dépasse désormais l’ancien seuil de 1,5. Le choix Rempart/Berserker et le reste du profil restent locaux au navigateur ; seuls le niveau et l’XP sont persistés en base pour ce lot.
+
 `User` conserve pseudo et e-mail uniques, avec mot de passe haché. `PlayerCharacter` appartient à un `User` et contient nom, classe (`CharacterClass`), niveau, expérience et or. Les deux seules entités Doctrine actuelles sont dans `src/Entity/`.
 
 `GET /` affiche l’accueil. Un visiteur peut s’inscrire ou se connecter ; un joueur déjà connecté peut rejoindre ses personnages directement. Après connexion, le joueur crée puis sélectionne son personnage. Symfony vérifie son propriétaire et conserve la sélection en session. Le bouton **Jouer** sélectionne le personnage et redirige vers `CharacterController::play()` qui fournit à Twig les statistiques et le catalogue de butin, puis `world.js` initialise Phaser. Il n’y a pas encore de jeton WebSocket ni de serveur de monde partagé.

@@ -1,30 +1,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { TrainingCombat } from '../public/game/combat.js';
+import { updateLevelUpBannerUi } from '../public/game/combat-ui.js';
 
-test('les notifications de niveau se succèdent sans écraser celles déjà affichées', t => {
-    const previous = globalThis.document;
+test('les notifications de niveau se succèdent sans écraser celles déjà affichées', () => {
     const toast = { hidden: true, textContent: '' };
-    globalThis.document = { getElementById: () => toast };
-    t.after(() => { if (previous === undefined) delete globalThis.document; else globalThis.document = previous; });
-    const callbacks = [];
     const combat = Object.create(TrainingCombat.prototype);
-    combat.scene = { time: { delayedCall: (delay, fn) => callbacks.push({ delay, fn }) } };
-    combat.showLevelUp(2);
-    combat.showLevelUp(1);
+    combat.levelUpBanner = toast;
+    combat.showLevelUpBanner(0, 2);
+    combat.showLevelUpBanner(1000, 1);
     for (let i = 0; i < 3; i++) {
         assert.equal(toast.hidden, false);
         assert.equal(toast.textContent, 'Vous avez prit un niveau');
-        const hide = callbacks.shift();
-        assert.equal(hide.delay, 3000);
-        hide.fn();
+        updateLevelUpBannerUi(combat, i * 3150 + 2999);
+        assert.equal(toast.hidden, false);
+        updateLevelUpBannerUi(combat, i * 3150 + 3000);
         assert.equal(toast.hidden, true);
-        const next = callbacks.shift();
-        assert.equal(next.delay, 150);
-        next.fn();
+        updateLevelUpBannerUi(combat, i * 3150 + 3149);
+        assert.equal(toast.hidden, true);
+        updateLevelUpBannerUi(combat, (i + 1) * 3150);
     }
     assert.equal(toast.hidden, true);
     assert.equal(combat.levelNotifications, 0);
-    assert.equal(combat.levelNotificationActive, false);
-    assert.equal(callbacks.length, 0);
+    assert.equal(combat.levelUpBannerUntil, undefined);
 });

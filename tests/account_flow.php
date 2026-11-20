@@ -134,8 +134,8 @@ try {
     check(htmlValue($warriorPage, '//div[@id="world"]/@data-skin') === 'lina', 'Les personnages Guerrier existants doivent conserver leur identifiant.');
     check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/warrior/south.png'), 'Le portrait du Guerrier doit utiliser son nouvel atlas.');
     check(str_contains($warriorPage->getContent(), 'data-weapon="axe"') && isset($warriorRules['baseStats']['defense']), 'Le Guerrier voit sa hache et la Défense.');
-    check($warriorRules['classKey'] === 'warrior' && !$warriorRules['ranged'] && $warriorRules['range'] === 1.5, 'La guerrière doit combattre au corps à corps.');
-    check($warriorRules['specialManaCost'] === 10 && $warriorRules['baseManaRegen'] == 2.0 && $warriorRules['specialCastMs'] === 0, 'Le barème d’énergie et d’attaque de la guerrière doit rester intact.');
+    check($warriorRules['classKey'] === 'warrior' && !$warriorRules['ranged'] && $warriorRules['range'] === 2.5, 'La guerrière doit combattre au corps à corps à 2,5 cases.');
+    check($warriorRules['specialManaCost'] === 7 && $warriorRules['baseManaRegen'] == 0.8 && $warriorRules['specialCastMs'] === 0, 'Le barème d’énergie et d’attaque de la guerrière doit rester intact.');
     check($warriorRules['resourceName'] === 'Énergie' && $warriorRules['specialName'] === 'Attaque chargée', 'La guerrière doit conserver son énergie et ses compétences de mêlée.');
     check($warriorRules['initialStatPoints'] === 0 && $warriorRules['initialSpellPoints'] === 0, 'Aucun point gratuit au niveau 1.');
     check($warriorRules['progress'] === ['level' => 1, 'xp' => 0], 'La base doit initialiser le personnage au niveau 1.');
@@ -153,10 +153,10 @@ try {
     $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
     check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
     check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
-    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 7.5, 'La baguette doit porter à 7,5 cases.');
+    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5.0, 'La baguette doit porter à 5 cases.');
     check($mageRules['specialRange'] == 15.0 && $mageRules['wandDamageMultiplier'] == 0.5, 'Le mage doit lancer ses sorts à 15 cases et tirer à demi-puissance à la baguette.');
     check(htmlValue($magePage, '//*[@data-sheet-basic-damage]') === '6 dégâts', 'La fiche doit afficher les dégâts réduits avant le démarrage du jeu.');
-    check($mageRules['specialManaCost'] === 18 && $mageRules['baseManaRegen'] == 1.0 && $mageRules['specialCastMs'] === 1000, 'Le mage doit avoir sa régénération réduite, ses coûts relevés et son cast d’une seconde.');
+    check($mageRules['specialManaCost'] === 14 && $mageRules['baseManaRegen'] == 0.4 && $mageRules['specialCastMs'] === 1000, 'Le mage doit avoir sa régénération réduite, ses coûts ajustés et son cast d’une seconde.');
     check($mageRules['resourceName'] === 'Mana' && $mageRules['specialName'] === 'Boule de feu', 'Le mage doit conserver son mana et ses sorts.');
     foreach ([$warriorRules, $mageRules] as $rules) {
         check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Le tirage du butin doit couvrir exactement 100 %.');
@@ -173,7 +173,9 @@ try {
         $rules = json_decode(htmlValue($game, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
         check($class === $rules['classKey'] && $class === htmlValue($game, '//div[@id="world"]/@data-skin'), 'La nouvelle classe doit accéder à son apparence.');
         check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Les nouvelles classes conservent un butin valide.');
-        check(isset($rules['baseStats']['dexterity']) === ($class !== 'warlock'), 'La Dextérité est réservée au Voleur et au Chasseur.');
+        check(count($rules['baseStats']) === 6, 'Toutes les classes exposent les six caractéristiques.');
+        if ($class === 'hunter') check($rules['resourceName'] === 'Mana' && $rules['range'] == 7.0, 'Le Chasseur utilise le Mana à 7 cases.');
+        if ($class === 'warlock') check($rules['specialCastMs'] === 750 && $rules['range'] == 5.0, 'Le Démoniste incante Corruption à 5 cases.');
     }
 
     $progressPath = $warriorRules['progressUrl'];

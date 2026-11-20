@@ -1552,22 +1552,57 @@ body.game-fullscreen .masthead {
     background: linear-gradient(to right, transparent 24.5%, #ffe7ad 24.5% 25.5%, transparent 25.5% 64.5%, #ffe7ad 64.5% 65.5%, transparent 65.5%);
 }
 
-.level-notification {
-    position: fixed;
-    top: 22%;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 30;
-    max-width: calc(100vw - 2rem);
-    padding: .8rem 1.2rem;
-    border: 2px solid #d9b36a;
-    background: #172523ee;
-    color: #ffe5a4;
-    text-align: center;
-    font-weight: bold;
-    pointer-events: none;
-}
-
 .target-hud[data-boss="true"] .target-thresholds {
     display: block;
+}
+
+.level-up-banner {
+    position: fixed;
+    top: 4.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    padding: .55rem 1.35rem;
+    border: 2px solid var(--gold);
+    background: linear-gradient(180deg, #2d2219f2 0%, #181310f7 100%);
+    color: #ffe8a3;
+    font: bold 1.05rem Georgia, serif;
+    letter-spacing: .03em;
+    box-shadow: 0 6px 20px #000000cc, 0 0 18px #f0c78155;
+    pointer-events: none;
+    animation: levelUpPop .35s ease-out;
+}
+
+.level-up-banner[hidden] {
+    display: none;
+}
+
+@keyframes levelUpPop {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -8px) scale(.96);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .level-up-banner {
+        animation: none;
+    }
+}
+
+.warrior-spec-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .45rem;
+}
+
+.warrior-spec-actions button[data-selected="true"] {
+    border-color: var(--gold);
+    background: #362a1d;
+    color: #ffe8a3;
 }

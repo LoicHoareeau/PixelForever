@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { applyTechnique, updateClassCombat } from '../public/game/class-combat.js';
+import { starterTalents } from '../public/game/class-talents.js';
 import { TrainingCombat } from '../public/game/combat.js';
 import { allocateStat, basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent, getUnlockedActiveSpells, loadProgress } from '../public/game/progression.js';
 import { zones, tileSize } from '../public/game/exploration.js';
@@ -33,13 +34,13 @@ function combat(classKey = 'warlock') {
     return { instance, target };
 }
 
-test('dextérité et défense ont leurs effets et leurs classes propres', () => {
-    const stats = { basicDamage: 10, specialDamage: 18, health: 50, mana: 25, range: 8 };
+test('dextérité et défense sont disponibles sur les 6 stats et agissent sur leurs bonus propres', () => {
+    const stats = { basicDamage: 10, specialDamage: 18, health: 50, mana: 25, range: 7 };
     for (const classKey of ['rogue', 'hunter']) {
         const progress = createInitialProgress(5);
         const rules = { ...stats, classKey, ranged: classKey === 'hunter' };
         const baseline = computeCharacterStats(rules, progress);
-        assert.equal(allocateStat(progress, 'defense', classKey), false);
+        assert.equal(allocateStat(progress, 'defense', classKey), true);
         assert.equal(allocateStat(progress, 'dexterity', classKey), true);
         assert.equal(computeCharacterStats(rules, progress).basicDamage, baseline.basicDamage + 2);
         assert.equal(basicWeaponProfile(rules, progress, baseline, tileSize).ranged, classKey === 'hunter');
@@ -47,7 +48,7 @@ test('dextérité et défense ont leurs effets et leurs classes propres', () => 
     const progress = createInitialProgress(5);
     assert.equal(allocateStat(progress, 'defense', 'warrior'), true);
     assert.ok(computeCharacterStats({ ...stats, classKey: 'warrior' }, progress).physicalMitigation > 0);
-    assert.equal(allocateStat(progress, 'dexterity', 'warlock'), false);
+    assert.equal(allocateStat(progress, 'dexterity', 'warlock'), true);
 });
 
 test('la hache s’équipe, se sauvegarde et disparaît quand le Guerrier repasse aux poings', () => {
@@ -100,7 +101,7 @@ test('Drain de vie pulse quatre fois et interrompt les pulsations restantes au d
     instance.updateClassCast(2000);
     assert.equal(target.health, 400);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 37);
+    assert.equal(instance.mana, 36);
     assert.ok(instance.spellCooldowns.has('drain_life'));
 
     instance.spellCooldowns.clear();
@@ -110,7 +111,7 @@ test('Drain de vie pulse quatre fois et interrompt les pulsations restantes au d
     assert.equal(instance.cancelCastOnMove(), true);
     assert.equal(instance.pending, null);
     assert.equal(target.health, 375);
-    assert.equal(instance.mana, 24);
+    assert.equal(instance.mana, 22);
 });
 
 test('Immolation conserve la ressource et sa recharge si la cible est trop loin ou si le mana manque', () => {
@@ -133,10 +134,23 @@ test('Immolation conserve la ressource et sa recharge si la cible est trop loin 
     instance.updateClassCast(1000);
     assert.equal(target.health, 450);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 39);
+    assert.equal(instance.mana, 37);
     instance.castTalentSpell(talent, 1001);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 39);
+    assert.equal(instance.mana, 37);
+});
+
+test('les invocations et malédictions du Démoniste ont un temps d’incantation', () => {
+    const summonImp = starterTalents.warlock[0];
+    const summonSuccubus = findTalent('warlock', 'summon_succubus').talent;
+    const agony = findTalent('warlock', 'agony').talent;
+    assert.ok(summonImp.technique.castMs > 0);
+    assert.ok(summonSuccubus.technique.castMs > 0);
+    assert.ok(agony.technique.castMs > 0);
+    const { instance } = combat();
+    instance.castTalentSpell(summonImp, 0);
+    assert.equal(instance.pending.kind, 'classCast');
+    assert.equal(instance.pending.end, summonImp.technique.castMs);
 });
 
 test('les invocations sont exclusives, le diablotin tire à distance et le marcheur récupère l’aggro', () => {

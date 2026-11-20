@@ -68,22 +68,20 @@ enum CharacterClass: string
     public function attackRange(): float
     {
         return match ($this) {
-            self::Warrior => 1.5,
-            self::Mage => 7.5,
-            self::Warlock => 7.0,
-            self::Rogue => 1.5,
-            self::Hunter => 8.0,
+            self::Warrior, self::Rogue => 2.5,
+            self::Mage, self::Warlock => 5.0,
+            self::Hunter => 7.0,
         };
     }
 
     public function specialManaCost(): int
     {
         return match ($this) {
-            self::Warrior => Character::SPECIAL_MANA_COST,
-            self::Mage => 18,
-            self::Warlock => 13,
+            self::Warrior => 7,
             self::Rogue => 8,
-            self::Hunter => 11,
+            self::Hunter => 10,
+            self::Mage => 14,
+            self::Warlock => 14,
         };
     }
 
@@ -92,7 +90,7 @@ enum CharacterClass: string
         return match ($this) {
             self::Warrior, self::Rogue => 0,
             self::Mage => 1000,
-            self::Warlock => 0,
+            self::Warlock => 750,
             self::Hunter => 430,
         };
     }
@@ -118,46 +116,87 @@ enum CharacterClass: string
         return match ($this) {
             self::Warrior => [
                 'strength' => 8,
+                'dexterity' => 5,
                 'intelligence' => 4,
-                'vitality' => 8,
                 'spirit' => 5,
+                'vitality' => 8,
                 'defense' => 6,
             ],
             self::Mage => [
                 'strength' => 4,
+                'dexterity' => 5,
                 'intelligence' => 8,
-                'vitality' => 5,
                 'spirit' => 8,
+                'vitality' => 5,
+                'defense' => 4,
             ],
-            self::Warlock => ['strength' => 4, 'intelligence' => 9, 'vitality' => 6, 'spirit' => 7],
-            self::Rogue => ['strength' => 5, 'intelligence' => 4, 'vitality' => 6, 'spirit' => 5, 'dexterity' => 9],
-            self::Hunter => ['strength' => 5, 'intelligence' => 4, 'vitality' => 7, 'spirit' => 6, 'dexterity' => 8],
+            self::Warlock => [
+                'strength' => 4,
+                'dexterity' => 5,
+                'intelligence' => 9,
+                'spirit' => 7,
+                'vitality' => 6,
+                'defense' => 4,
+            ],
+            self::Rogue => [
+                'strength' => 5,
+                'dexterity' => 9,
+                'intelligence' => 4,
+                'spirit' => 5,
+                'vitality' => 6,
+                'defense' => 5,
+            ],
+            self::Hunter => [
+                'strength' => 5,
+                'dexterity' => 8,
+                'intelligence' => 4,
+                'spirit' => 6,
+                'vitality' => 7,
+                'defense' => 5,
+            ],
         };
     }
 
     /**
-     * Retourne les points gagnés naturellement à chaque montée de niveau.
+     * Retourne les points gagnés naturellement à chaque montée de niveau (priorités par classe).
      *
-     * @return array<string, int>
+     * @return array<string, float>
      */
     public function levelGrowthStats(): array
     {
         return match ($this) {
             self::Warrior => [
-                'strength' => 2,
-                'intelligence' => 1,
-                'vitality' => 2,
-                'spirit' => 1,
-                'defense' => 0,
+                'strength' => 1.0,
+                'defense' => 0.6,
+                'vitality' => 0.35,
+                'dexterity' => 0.15,
+                'intelligence' => 0.15,
+                'spirit' => 0.15,
             ],
-            self::Mage => [
-                'strength' => 1,
-                'intelligence' => 2,
-                'vitality' => 1,
-                'spirit' => 2,
+            self::Mage, self::Warlock => [
+                'intelligence' => 1.0,
+                'spirit' => 0.6,
+                'vitality' => 0.35,
+                'strength' => 0.15,
+                'dexterity' => 0.15,
+                'defense' => 0.15,
             ],
-            self::Warlock => ['strength' => 1, 'intelligence' => 2, 'vitality' => 1, 'spirit' => 2],
-            self::Rogue, self::Hunter => ['strength' => 1, 'intelligence' => 1, 'vitality' => 1, 'spirit' => 1, 'dexterity' => 2],
+            self::Rogue => [
+                'dexterity' => 1.0,
+                'strength' => 0.6,
+                'vitality' => 0.35,
+                'intelligence' => 0.15,
+                'spirit' => 0.15,
+                'defense' => 0.15,
+            ],
+            self::Hunter => [
+                'dexterity' => 1.0,
+                'spirit' => 0.6,
+                'intelligence' => 0.35,
+                'strength' => 0.15,
+                'vitality' => 0.15,
+                'defense' => 0.15,
+            ],
         };
     }
 
@@ -167,9 +206,8 @@ enum CharacterClass: string
     public function baseManaRegen(): float
     {
         return match ($this) {
-            self::Warrior, self::Rogue => 2.0,
-            self::Mage, self::Warlock => 1.0,
-            self::Hunter => 1.6,
+            self::Warrior, self::Rogue => 0.8,
+            self::Mage, self::Warlock, self::Hunter => 0.4,
         };
     }
 
@@ -177,8 +215,7 @@ enum CharacterClass: string
     {
         return match ($this) {
             self::Warrior, self::Rogue => 'Énergie',
-            self::Hunter => 'Concentration',
-            default => 'Mana',
+            self::Mage, self::Warlock, self::Hunter => 'Mana',
         };
     }
 

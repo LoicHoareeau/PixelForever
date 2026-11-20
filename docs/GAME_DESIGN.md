@@ -14,19 +14,32 @@ Les cinq classes commencent sur la place du Bastion et s’y relèvent après un
 
 Rakka, l’intendante de la grande halle, confie la quête des sangliers. Granm à la forge, Vesha près de sa hutte et Drok au marché ont chacun un dialogue. Leurs ateliers pourront accueillir la forge, l’herboristerie et le commerce dans une version future.
 
+## Caractéristiques et spécialisations
+
+Les six caractéristiques sont disponibles pour toutes les classes. La Défense réduit les coups physiques. La croissance par niveau donne +1 à la priorité principale, +0,6 à la deuxième, +0,35 à la troisième et +0,15 aux autres. Les fractions sont conservées dans les calculs de bonus.
+
+| Classe | Priorités |
+| --- | --- |
+| Guerrier | Force → Défense → Vitalité |
+| Voleur | Dextérité → Force → Vitalité |
+| Chasseur | Dextérité → Esprit → Intelligence |
+| Mage et Démoniste | Intelligence → Esprit → Vitalité |
+
+Dès le N.10, la fiche du Guerrier propose Rempart (+3 Défense, puis Défense → Vitalité → Force) ou Berserker (+3 Force, puis Force → Vitalité → Défense). Le choix est unique et sauvegardé localement. La croissance spécialisée commence au N.11, sans réécrire les niveaux précédents. La persistance de ce choix en base reste à réaliser avec le profil complet.
+
 ## Classes et attaques
 
 | Classe / équipement | Attaque de base gratuite | Portée |
 | --- | --- | --- |
-| Guerrier · Épée de fer, Hache de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 1,5 case |
-| Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 7,5 cases avant bonus |
-| Mage · Bâton des saules | Coup de bâton | 1,5 case |
-| Démoniste · Grimoire | Trait d’ombre | 7 cases |
-| Voleur · Dagues | Coup de dague | 1,5 case |
-| Chasseur · Arc | Flèche rapide | 8 cases |
-| Arme retirée | Coup de poing | 1,5 case |
+| Guerrier · Épée de fer, Hache de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 2,5 case |
+| Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 5 cases avant bonus |
+| Mage · Bâton des saules | Coup de bâton | 2,5 case |
+| Démoniste · Grimoire | Trait d’ombre | 5 cases |
+| Voleur · Dagues | Coup de dague | 2,5 case |
+| Chasseur · Arc | Flèche rapide | 7 cases |
+| Arme retirée | Coup de poing | 2,5 case |
 
-Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, les sorts à distance et le mana (`1,0/s` de base, régénération par Esprit de `+0,14/s` par point). La baguette et le sceptre tirent en mouvement à 7,5 cases et infligent 50 % des dégâts d’auto-attaque avant Focalisation et Maîtrise des baguettes.
+Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`0,8/s` de base). Le Mage utilise Noé, les sorts à distance et le mana (`0,4/s` de base). Le Chasseur utilise aussi le mana. Seul l’Esprit ajoute de la régénération : `+0,12/s` par point gagné pour les classes à énergie, `+0,08/s` pour les classes à mana, plus les talents dédiés. La récupération est multipliée par 2,5 hors combat ; l’Intelligence ne donne aucune régénération. La baguette et le sceptre tirent en mouvement à 5 cases et infligent 50 % des dégâts d’auto-attaque avant Focalisation et Maîtrise des baguettes.
 
 Le Démoniste applique Corruption sans incantation. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse toutes les 500 ms pendant 2 s, en rendant des PV selon les dégâts infligés. Se déplacer interrompt l’incantation ou la canalisation. Une pulsation déjà jouée engage le coût et la recharge du drain.
 
@@ -40,7 +53,7 @@ La cible doit être vivante et à portée. Un coup de mêlée revérifie la port
 
 ## Talents et progression
 
-Aucun point au niveau 1. Chaque niveau suivant donne trois points de caractéristiques et un point de talent/sort, avec croissance naturelle de classe. Les rangs de sorts de base et les talents consomment le même budget. La réinitialisation des talents rend les points investis dans les talents. Les prérequis, rangs maximums et points de branche sont vérifiés.
+Aucun point au niveau 1. Chaque niveau suivant donne trois points de caractéristiques et un point de talent/sort, avec croissance naturelle de classe. Les rangs des sorts de base sont supprimés ; leurs anciens points sont rendus automatiquement à la reprise de la sauvegarde. Seuls les talents consomment ce budget. La réinitialisation des talents rend les points investis dans les talents. Les prérequis, rangs maximums et points de branche sont vérifiés.
 
 - **Guerrier** · Armes, Fureur et Protection. La Défense réduit les coups physiques. Protection donne accès à Coup de bouclier, Provocation et Rempart.
 - **Mage** · Pyromancie, Arcanes et Givre. Mur de feu, Tourbillon de feu, Déflagration et Nova de givre sont des compétences actives.

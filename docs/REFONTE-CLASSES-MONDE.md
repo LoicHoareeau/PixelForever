@@ -4,6 +4,10 @@ Cadrage du 20 novembre 2026, validé par l’utilisateur. Livrés sur la branche
 
 ## Résultat attendu
 
+État de reprise après intégration du lot `871d508` de `main` : portées d’auto-attaque 2,5/5/7, six caractéristiques, croissance priorisée, choix Rempart/Berserker au N.10, suppression des rangs de base avec remboursement et régénération par Esprit sont maintenant présents. Les identifiants internes sont `bulwark` (Rempart) et `berserker`. Les règles jouables figurent dans `GAME_DESIGN.md` ; les chiffres proposés ci-dessous ne remplacent pas ces règles.
+
+Restent notamment : reprise complète des planches d’armes en mouvement, apprivoisement et héritage des statistiques des familiers, barre W/X/C et fiche P, validation du temps de progression vers N.60, persistance du profil complet et monde partagé Symfony. La fixation des armes a reçu un ajustement d’ancrage dans le lot externe ; cela ne constitue pas encore une validation des nouvelles planches demandées.
+
 Des armes tenues correctement dans les animations, un début de jeu où les ressources imposent de choisir ses compétences, cinq classes distinctes, une progression naturelle modérée et des combats exigeants contre des monstres jusqu’à deux ou trois niveaux supérieurs. Les personnages connectés doivent réellement partager la présence des joueurs, l’état des monstres et les récompenses de combat.
 
 ## 1. Sprites et caméra

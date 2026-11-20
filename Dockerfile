@@ -5,6 +5,7 @@ RUN apt-get update \
     && docker-php-ext-install pdo_pgsql \
     && rm -rf /var/lib/apt/lists/* \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && a2enmod deflate expires headers \
     && printf 'Listen 8080\n' > /etc/apache2/ports.conf \
     && php -r 'exit(extension_loaded("pdo_sqlite") ? 0 : 1);'
 

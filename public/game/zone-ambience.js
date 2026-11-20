@@ -51,7 +51,7 @@ export function createZoneAmbience(scene, tileSize) {
     let nextFrame = 0;
     return (now, still) => {
         if (now < nextFrame) return;
-        nextFrame = now + 72;
+        nextFrame = now + 48;
         const view = scene.cameras.main.worldView;
         const left = Math.max(0, Math.floor((view.x - spacing) / spacing));
         const right = Math.min(sources[0].length - 1, Math.floor((view.right + spacing) / spacing));
@@ -68,6 +68,11 @@ export function createZoneAmbience(scene, tileSize) {
                 const rise = Math.cos(t * Math.PI * 2);
                 sprites.play(profile.kind, x + profile.drift * sweep, y + rise * profile.lift, t,
                     profile.scale * (.82 + phase * .28), 0, profile.alpha * opacity);
+                // Seconde particule déphasée pour enrichir la profondeur atmosphérique
+                const t2 = still ? (phase + .42) % 1 : (now / (profile.cycle * 1.25) + phase + .42) % 1;
+                sprites.play(profile.kind, x - profile.drift * .65 * Math.cos(t2 * Math.PI * 2),
+                    y + Math.sin(t2 * Math.PI * 2) * profile.lift * .85 - 10,
+                    t2, profile.scale * .68, 0, profile.alpha * opacity * .55);
             }
         }
     };
