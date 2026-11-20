@@ -613,7 +613,8 @@ export class Monster {
         const dx = player.x - this.sprite.x;
         const dy = player.y - this.sprite.y;
         const distance = Math.hypot(dx, dy);
-        if (!this.alert && this.scene.combat?.health > 0 && distance <= this.template.aggroRange
+        // Les monstres N.1–10 restent neutres tant qu'ils ne sont pas attaqués.
+        if (!this.alert && this.level > 10 && this.scene.combat?.health > 0 && distance <= this.template.aggroRange
             && inZone(this.template.zone, player.x, player.y)) this.pursue();
         const slowFactor = now < this.slowUntil ? 0.5 : 1;
         const baseSpeed = this.alert ? this.stats.chaseSpeed : this.stats.patrolSpeed;

@@ -351,6 +351,13 @@ import { saveProgress } from './progression.js';
                 }, { signal: keyboard.signal });
             });
 
+            this.combat.warriorSpecButtons?.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const message = this.combat.chooseWarriorSpec(button.dataset.chooseSpec);
+                    if (characterSheetStatus) characterSheetStatus.textContent = message;
+                }, { signal: keyboard.signal });
+            });
+
             this.combat.spellButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     const message = this.combat.spendSpellPoint(button.dataset.upgradeSpell);
@@ -670,20 +677,38 @@ import { saveProgress } from './progression.js';
             const style = gesture?.attack.weaponStyle ?? this.combat.weaponStyle;
             const frame = { sword: 0, axe: 1, daggers: 2, bow: 3, grimoire: 4, shield: 5 }[style];
             const attackFrame = gesture?.frame ?? 0;
-            const stance = gesture ? [-.12, -.27, -.46, -.68, .36, .73, .45, .21, .03][attackFrame] : 0;
-            const lift = gesture ? [0, 1, 4, 7, 2, -1, -2, -1, 0][attackFrame]
-                : walking ? Math.round(Math.sin(this.walkDistance / 6) * 2) : 0;
-            const back = dy < -.4;
+            const stance = gesture ? [-.10, -.24, -.42, -.60, .34, .68, .42, .18, .02][attackFrame] : 0;
+            const walkBob = walking ? Math.round(Math.sin(this.walkDistance / 6) * 1.2) : 0;
+            const lift = gesture ? [0, 1, 2, 3, 1, -1, -1, 0, 0][attackFrame] : walkBob;
+            const back = dy < -.35;
             const side = dx < -.2 ? -1 : 1;
-            const swing = style === 'axe' ? stance * 1.7 : stance;
-            const angle = ['bow', 'grimoire', 'shield'].includes(style) ? (style === 'bow' && gesture ? dy * .48 : 0)
-                : heading + (gesture ? swing * side : .76 * side);
-            const reach = gesture && attackFrame >= 4 && attackFrame < 8 ? 7 : 3;
-            const handX = Math.round(x + dx * reach + side * 6);
-            const handY = Math.round(y - 18 + dy * 5 - lift);
+
+            // Ancrages collés aux poignets/épaules pour éviter l'effet d'armes flottantes
+            const pivots = {
+                sword: [.26, .62],
+                axe: [.24, .64],
+                daggers: [.30, .58],
+                bow: [.48, .50],
+                grimoire: [.50, .56],
+                shield: [.50, .52],
+            };
+            const [ox, oy] = pivots[style] ?? [.4, .5];
+            const gripReach = style === 'bow'
+                ? (gesture && attackFrame < 4 ? 2 : 4)
+                : (style === 'grimoire' ? 2 : (gesture && attackFrame >= 4 && attackFrame < 8 ? 5 : 3));
+            const lateralOffset = style === 'bow' ? side * 3 : (style === 'grimoire' ? side * 4 : side * 4.5);
+            const bookCastLift = style === 'grimoire' && gesture ? 2 : 0;
+            const handX = Math.round(x + dx * gripReach + lateralOffset);
+            const handY = Math.round(y - 16 + dy * 3.5 - lift - bookCastLift);
+
+            const swing = style === 'axe' ? stance * 1.45 : stance;
+            const angle = ['bow', 'grimoire', 'shield'].includes(style)
+                ? (style === 'bow' ? dy * (gesture ? .42 : .18) : (style === 'grimoire' && gesture ? -.08 * side : 0))
+                : heading + (gesture ? swing * side : .62 * side);
+
             this.weaponSprite.setVisible(frame !== undefined && this.combat.health > 0);
             if (frame !== undefined) {
-                this.weaponSprite.setFrame(frame).setPosition(handX, handY)
+                this.weaponSprite.setOrigin(ox, oy).setFrame(frame).setPosition(handX, handY)
                     .setRotation(angle).setFlipX(style === 'bow' && side < 0).setDepth(y + (back ? -.2 : .2));
             }
             const shield = this.skin === 'lina' && style !== 'shield'
@@ -691,8 +716,11 @@ import { saveProgress } from './progression.js';
             const dagger = style === 'daggers';
             this.offHandSprite.setVisible(Boolean((shield || dagger) && this.combat.health > 0));
             if (shield || dagger) {
-                this.offHandSprite.setFrame(shield ? 5 : 2)
-                    .setPosition(Math.round(x + dx * 2 - side * 8), Math.round(y - 16 + dy * 2 - lift))
+                const offOrigin = shield ? pivots.shield : pivots.daggers;
+                const offX = Math.round(x + dx * 1.5 - side * (shield ? 5 : 4.5));
+                const offY = Math.round(y - 15 + dy * 2 - lift);
+                this.offHandSprite.setOrigin(offOrigin[0], offOrigin[1]).setFrame(shield ? 5 : 2)
+                    .setPosition(offX, offY)
                     .setRotation(dagger ? heading - swing * side : 0).setDepth(y + (back ? -.3 : .1));
             }
         }

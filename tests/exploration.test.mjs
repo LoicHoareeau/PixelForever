@@ -235,15 +235,21 @@ test('les attaques de mêlée frappent une fois après préparation et respecten
     }
 });
 
-test('un monstre proche engage sans attendre de recevoir un coup', () => {
-    const { combat, monster, player } = battle();
+test('les monstres N.1–10 restent neutres à proximité et les N.11+ engagent le joueur', () => {
+    const { combat, monster, player } = battle('boar');
+    monster.level = 5;
     monster.alert = false;
     monster.counterAt = Infinity;
     monster.update(100, 16, player);
-    assert.equal(monster.alert, true);
+    assert.equal(monster.alert, false);
+
+    const { monster: dragon, player: dragonPlayer } = battle('dragon');
+    dragon.level = 12;
+    dragon.alert = false;
+    dragon.update(100, 16, dragonPlayer);
+    assert.equal(dragon.alert, true);
     combat.updateMonsterCounter(monster, 100);
-    assert.ok(monster.attackEndsAt > 100);
-    assert.equal(combat.health, 500);
+    assert.equal(monster.attackEndsAt, 0);
 });
 
 test('sortir de portée, quitter la zone ou étourdir le monstre évite son attaque', () => {

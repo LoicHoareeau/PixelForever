@@ -14,7 +14,7 @@ test('la baguette tire de loin, le bâton et les mains nues frappent au contact'
     }
     for (const weapon of ['rare', null]) {
         progress.weapon = weapon;
-        assert.deepEqual(basicWeaponProfile(rules, progress, stats, 16), { ranged: false, range: 24, damage: 20 });
+        assert.deepEqual(basicWeaponProfile(rules, progress, stats, 16), { ranged: false, range: 40, damage: 20 });
     }
 });
 

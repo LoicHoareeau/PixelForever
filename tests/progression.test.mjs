@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     allocateStat,
     awardVictory,
+    chooseSpecialization,
     computeCharacterStats,
     createInitialProgress,
     getUnlockedActiveSpells,
@@ -14,6 +15,7 @@ import {
     upgradeSpell,
     xpRequired,
 } from '../public/game/progression.js';
+import { TrainingCombat } from '../public/game/combat.js';
 
 const loot = {
     health: { chance: 50 },
@@ -86,7 +88,7 @@ test('les victoires créditent le butin, le niveau, les points de stats et de so
     assert.deepEqual(progress.items, { health: 0, mana: 0, rare: 1, epic: 1 });
 });
 
-test('la répartition de points de stats et de sorts respecte le solde disponible', () => {
+test('la répartition de points de stats respecte le solde et les rangs de base sont retirés', () => {
     const progress = createInitialProgress(2);
 
     assert.equal(allocateStat(progress, 'strength'), true);
@@ -96,21 +98,19 @@ test('la répartition de points de stats et de sorts respecte le solde disponibl
     assert.equal(progress.statPoints, 0);
     assert.deepEqual(progress.allocatedStats, {
         strength: 1,
+        dexterity: 0,
         intelligence: 0,
-        vitality: 1,
         spirit: 1,
+        vitality: 1,
+        defense: 0,
     });
 
-    assert.equal(upgradeSpell(progress, 'special'), true);
+    assert.equal(upgradeSpell(progress, 'special'), false);
     assert.equal(upgradeSpell(progress, 'basic'), false);
-    assert.equal(progress.spellPoints, 0);
-    assert.deepEqual(progress.spells, {
-        basic: 1,
-        special: 2,
-    });
+    assert.equal(progress.spellPoints, 1);
 });
 
-test('les caractéristiques naturelles, investies et les rangs de sorts augmentent les dégâts et ressources', () => {
+test('les caractéristiques naturelles, l’Esprit et la spécialisation N.10 agissent sans régén issue de l’Intelligence', () => {
     const level1Stats = computeCharacterStats(warriorRules, createInitialProgress(1), 4);
     assert.equal(level1Stats.maxHealth, 60);
     assert.equal(level1Stats.maxMana, 20);
@@ -121,22 +121,40 @@ test('les caractéristiques naturelles, investies et les rangs de sorts augmente
     const progressed = createInitialProgress(1);
     progressed.level = 2;
     progressed.statPoints = 3;
-    progressed.spellPoints = 1;
     allocateStat(progressed, 'strength');
     allocateStat(progressed, 'vitality');
     allocateStat(progressed, 'spirit');
-    upgradeSpell(progressed, 'basic');
-    assert.equal(upgradeSpell(progressed, 'special'), false);
 
     const level2Stats = computeCharacterStats(warriorRules, progressed, 4);
     assert.equal(level2Stats.attributes.strength.natural, 2);
     assert.equal(level2Stats.attributes.strength.allocated, 1);
     assert.equal(level2Stats.attributes.strength.total, 11);
-    assert.equal(level2Stats.maxHealth, 76);
+    assert.equal(level2Stats.maxHealth, 75);
     assert.equal(level2Stats.maxMana, 28);
     assert.ok(level2Stats.basicDamage > level1Stats.basicDamage);
     assert.ok(level2Stats.specialDamage > level1Stats.specialDamage);
     assert.ok(level2Stats.manaRegenPerSec > level1Stats.manaRegenPerSec);
+
+    // L'Intelligence ne donne aucune régénération de mana ni pour le Guerrier ni pour le Mage
+    const mageBase = createInitialProgress(2);
+    const mageIntel = createInitialProgress(2);
+    allocateStat(mageIntel, 'intelligence');
+    allocateStat(mageIntel, 'intelligence');
+    const mageRules = { classKey: 'mage', health: 40, mana: 40, ranged: true, basicDamage: 8, specialDamage: 22, baseManaRegen: 0.4 };
+    assert.equal(
+        computeCharacterStats(mageRules, mageIntel, 0).manaRegenPerSec,
+        computeCharacterStats(mageRules, mageBase, 0).manaRegenPerSec,
+    );
+
+    // Spécialisation Guerrier N.10 (Rempart) : +3 Défense + croissance niveau 10 sans réécrire les niveaux 2..9
+    const war10 = createInitialProgress(10);
+    const beforeSpec = computeCharacterStats({ classKey: 'warrior', health: 60, mana: 20, basicDamage: 10, specialDamage: 18 }, war10, 0);
+    assert.equal(chooseSpecialization(war10, 'warrior', 'bulwark'), true);
+    const afterSpec = computeCharacterStats({ classKey: 'warrior', health: 60, mana: 20, basicDamage: 10, specialDamage: 18 }, war10, 0);
+    assert.equal(afterSpec.attributes.defense.naturalRaw, 5.8);
+    assert.equal(afterSpec.attributes.defense.specBonus, 3);
+    assert.equal(afterSpec.attributes.defense.total, 15);
+    assert.ok(afterSpec.physicalMitigation > beforeSpec.physicalMitigation);
 });
 
 test('la régénération automatique accumule progressivement les fractions sans dépasser le maximum', () => {
@@ -229,4 +247,27 @@ test('les anciens points gratuits sont retirés sans perdre le niveau, l’XP ou
     assert.equal(advanced.items.health, 7);
     assert.equal(advanced.statPoints, 7);
     assert.equal(advanced.spellPoints, 2);
+
+    // Remboursement automatique des anciens rangs de sorts de base tout en conservant les talents
+    const legacyRanks = createInitialProgress(4);
+    legacyRanks.spells = { basic: 2, special: 2 };
+    legacyRanks.talents = { w_sharp_blade: 1 };
+    globalThis.localStorage = { getItem: () => JSON.stringify(legacyRanks) };
+    const migrated = loadProgress('character', 4, { level: 4, xp: 0 }, 'warrior');
+    assert.equal(migrated.spellPoints, 2);
+    assert.equal(migrated.talents.w_sharp_blade, 1);
+    assert.deepEqual(migrated.spells, { basic: 1, special: 1 });
+});
+
+test('la montée de niveau affiche le bandeau dédié « Vous avez prit un niveau » sans être écrasée par tell()', () => {
+    const banner = { textContent: '', hidden: true };
+    const status = { textContent: '' };
+    const combat = Object.create(TrainingCombat.prototype);
+    combat.levelUpBanner = banner;
+    combat.status = status;
+    combat.showLevelUpBanner(500);
+    combat.tell('Sanglier vaincu · +50 XP');
+    assert.equal(banner.hidden, false);
+    assert.equal(banner.textContent, 'Vous avez prit un niveau');
+    assert.equal(status.textContent, 'Sanglier vaincu · +50 XP');
 });

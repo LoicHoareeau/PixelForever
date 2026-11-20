@@ -183,11 +183,7 @@ final class CharacterController extends AbstractController
                         'rarity' => 'Commun',
                     ],
                     'mana' => [
-                        'name' => match ($class->resourceName()) {
-                            'Énergie' => 'Potion d’énergie',
-                            'Concentration' => 'Potion de concentration',
-                            default => 'Potion de mana',
-                        },
+                        'name' => $class->resourceName() === 'Énergie' ? 'Potion d’énergie' : 'Potion de mana',
                         'chance' => 30,
                         'rarity' => 'Commun',
                     ],

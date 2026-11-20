@@ -1,19 +1,18 @@
-import { createCombatVfx, drawInfernoBeam } from './combat-vfx.js';
+import { createCombatVfx } from './combat-vfx.js';
 import { classAttacks } from './class-talents.js';
 import { applyTechnique, classEffect, dismissFamiliar, updateClassCombat } from './class-combat.js';
 import {
-    createMalakorTrial, isMalakorWaveHit, malakorEmberMs, malakorFirstTrialDelay, malakorIgnitionMs,
-    malakorPhases, malakorRageProgress, malakorSurgeMs, malakorThresholds, malakorTrialInterval, malakorWave, malakorWaveImpactMs,
+    createMalakorTrial, isMalakorWaveHit, malakorEmberMs, malakorFirstTrialDelay,
+    malakorPhases, malakorThresholds, malakorTrialInterval, malakorWave,
 } from './malakor.js';
-import { armorItems, armorSlots, awardArmor, toggleArmor } from './armor.js';
+import { armorItems, awardArmor, toggleArmor } from './armor.js';
 import {
     allocateStat,
     awardVictory,
     basicWeaponProfile,
-    canInvestTalent,
+    chooseSpecialization,
     computeCharacterStats,
     findTalent,
-    getBranchPoints,
     getTalentRank,
     getUnlockedActiveSpells,
     investTalent,
@@ -23,27 +22,39 @@ import {
     saveProgress,
     setProgressSync,
     statKeys,
-    talentTrees,
     upgradeSpell,
-    xpRequired,
 } from './progression.js';
 import { inZone } from './exploration.js';
 import { recordTrailQuestDefeat } from './trail-quest.js';
 import { createProgressSync } from './progress-sync.js';
-
-const impactMs = 210;
-const recoveryMs = 210;
-
-const sparks = [
-    [-10, -3],
-    [-7, 6],
-    [-3, -9],
-    [3, 9],
-    [7, -7],
-    [11, 2],
-    [0, -11],
-    [9, 6],
-];
+import {
+    refreshActionSlotsUi,
+    refreshCastBarUi,
+    refreshCharacterSheetUi,
+    refreshInventoryUi,
+    refreshTargetHudUi,
+    renderTalentTreeUi,
+    showLevelUpBannerUi,
+    updateCooldownsUi,
+    updateLevelUpBannerUi,
+} from './combat-ui.js';
+import {
+    clearFloatingTextsView,
+    drawCastCircleView,
+    drawDrainView,
+    drawEffectsView,
+    drawInfernoEmbersView,
+    drawMalakorArcView,
+    drawMalakorAuraView,
+    drawMalakorSurgeView,
+    drawMalakorTrialView,
+    drawMeleeView,
+    drawMonsterAttacksView,
+    drawSpellEffectsView,
+    recoveryMs,
+    spawnFloatingTextView,
+    updateFloatingTextsView,
+} from './combat-renderer.js';
 
 const statLabels = {
     dexterity: 'Dextérité',
@@ -108,8 +119,8 @@ export function selectNextTarget(
 }
 
 /**
- * Gère le combat temps réel multi-monstres, les 6 emplacements de sorts,
- * les arbres de talents, les potions, l'équipement et l'ATH plein écran.
+ * Gère le combat temps réel multi-monstres, les emplacements de sorts,
+ * les arbres de talents, les potions, l'équipement et la synchronisation.
  */
 export class TrainingCombat {
     constructor(scene, monsters, rules, tileSize) {
@@ -122,17 +133,21 @@ export class TrainingCombat {
         this.progress = loadProgress(this.progressKey, rules.level, rules.progress, this.classKey);
         this.progressSync = createProgressSync(rules.progressUrl, rules.progressToken, state => {
             const status = document.getElementById('progress-save-status');
+            if (!status) return;
             status.dataset.state = state;
             status.textContent = state === 'saved' ? 'Niveau enregistré' : state === 'saving' ? 'Sauvegarde en cours…'
                 : 'Sauvegarde impossible · nouvelle tentative en cours';
         });
         setProgressSync(this.progressSync);
         this.manaCarry = 0;
+        this.healthCarry = 0;
         this.ranged = rules.ranged;
         this.selectedMonster = monsters.find((m) => m.species === 'boar') ?? monsters[0];
 
         // Références de l'ATH principal et de la barre d'actions
         this.status = document.getElementById('combat-status');
+        this.levelUpBanner = document.getElementById('level-up-banner');
+        this.levelUpBannerUntil = 0;
         this.resetButton = document.getElementById('combat-reset');
         this.targetHud = document.getElementById('combat-target');
         this.targetNameLabel = document.getElementById('combat-target-name');
@@ -176,7 +191,7 @@ export class TrainingCombat {
         this.characterPointsBadge = document.getElementById('character-points-badge');
         this.talentPointsBadge = document.getElementById('talent-points-badge');
 
-        // Références de la fiche de personnage et des stats
+        // Références de la fiche de personnage, des stats et des spécialisations
         this.sheetLevelLabel = document.querySelector('[data-sheet-level]');
         this.sheetXpLabel = document.querySelector('[data-sheet-xp]');
         this.sheetWeaponLabel = document.querySelector('[data-sheet-weapon]');
@@ -188,9 +203,11 @@ export class TrainingCombat {
         this.sheetRangeLabel = document.querySelector('[data-sheet-range]');
 
         this.statPointsLabel = document.getElementById('stat-points-count');
-        this.spellPointsLabel = document.getElementById('spell-points-count');
         this.statButtons = [...document.querySelectorAll('[data-allocate-stat]')];
         this.spellButtons = [...document.querySelectorAll('[data-upgrade-spell]')];
+        this.warriorSpecCard = document.getElementById('warrior-spec-card');
+        this.warriorSpecStatus = document.getElementById('warrior-spec-status');
+        this.warriorSpecButtons = [...document.querySelectorAll('[data-choose-spec]')];
 
         // Références de la fenêtre Arbre de Talents
         this.talentTreeRoot = document.getElementById('talent-tree-branches');
@@ -206,15 +223,6 @@ export class TrainingCombat {
             this.statDetails[key] = document.querySelector(`[data-stat-detail="${key}"]`);
         }
 
-        this.spellRanks = {
-            basic: document.querySelector('[data-spell-rank="basic"]'),
-            special: document.querySelector('[data-spell-rank="special"]'),
-        };
-        this.spellDamages = {
-            basic: document.querySelector('[data-spell-damage="basic"]'),
-            special: document.querySelector('[data-spell-damage="special"]'),
-        };
-
         this.meters = ['health', 'mana', 'target-health'].map((name) => ({
             meter: document.getElementById('combat-' + name),
             value: document.getElementById('combat-' + name + '-value'),
@@ -225,13 +233,11 @@ export class TrainingCombat {
         this.rageEffect = scene.add.graphics().setDepth(effectDepth - .36);
         this.vfx = createCombatVfx(scene, effectDepth - .25);
 
-        // Cooldowns individuels par compétence + buff Berserk + VFX et textes flottants
         this.spellCooldowns = new Map();
         this.berserkUntil = 0;
         this.spellEffects = [];
         this.damageNumbers = [];
 
-        // Clic sur un monstre pour le cibler
         this.monsters.forEach((monster) => {
             monster.sprite.on('pointerdown', () => {
                 if (!monster.isAlive || this.scene.isInStarterTown?.()) return;
@@ -304,7 +310,6 @@ export class TrainingCombat {
         if (this.selectedMonster && this.selectedMonster.isAlive) {
             return this.selectedMonster;
         }
-        // Sinon cibler le monstre vivant le plus proche
         let nearest = null;
         let bestDist = Infinity;
         for (const m of this.monsters) {
@@ -329,6 +334,7 @@ export class TrainingCombat {
         this.periodicEffects?.clear();
         this.guard = null;
         this.manaCarry = 0;
+        this.healthCarry = 0;
         this.spellCooldowns.clear();
         this.berserkUntil = 0;
         this.refreshProgress();
@@ -388,7 +394,6 @@ export class TrainingCombat {
             return;
         }
 
-        // Les emplacements suivants reçoivent les techniques actives des talents.
         if (kind.startsWith('talent-')) {
             const slotIndex = Number(kind.split('-')[1]);
             const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
@@ -419,7 +424,7 @@ export class TrainingCombat {
         }
         const ranged = special ? this.ranged : this.basicWeapon.ranged;
         const range = special ? this.range : this.basicWeapon.range;
-        const dist = this.distanceTo(target);
+        const dist = this.effectiveDistanceTo(target);
         if (dist > range) {
             this.tell(`${target.name} est hors de portée. Portée : ${numberFormatter.format(range / this.tileSize)} cases.`);
             return;
@@ -491,7 +496,7 @@ export class TrainingCombat {
     }
 
     /**
-     * Interrompt une incantation longue (1 s) lorsque le personnage se déplace et rembourse le mana.
+     * Interrompt une incantation longue lorsque le personnage se déplace et rembourse la ressource.
      */
     cancelCastOnMove() {
         const pending = this.pending;
@@ -521,9 +526,6 @@ export class TrainingCombat {
         return true;
     }
 
-    /**
-     * Déclenche une zone de compétence sur le centre indiqué avec effets et secousse.
-     */
     triggerAreaSpell(slot, name, center, damage, color, radius, now, slowMs = 0) {
         const hits = this.monsters.filter((m) => m.isAlive && Math.hypot(m.sprite.x - center.x, m.sprite.y - center.y) <= radius);
         if (hits.length === 0) {
@@ -551,9 +553,6 @@ export class TrainingCombat {
         return true;
     }
 
-    /**
-     * Exécute un sort actif débloqué via l'arbre de talents.
-     */
     castTalentSpell(talent, now) {
         if (this.mustDodgeMalakor()) return;
         if (this.pending?.kind === 'classCast') {
@@ -586,7 +585,7 @@ export class TrainingCombat {
         if (talent.technique) {
             const technique = talent.technique;
             const target = technique.range ? this.getActiveTarget() : null;
-            if (technique.range && (!target?.isAlive || this.distanceTo(target) > technique.range * this.tileSize)) {
+            if (technique.range && (!target?.isAlive || this.effectiveDistanceTo(target) > technique.range * this.tileSize)) {
                 this.tell('Aucune cible à portée pour ' + talent.name + '.');
                 return;
             }
@@ -605,18 +604,22 @@ export class TrainingCombat {
             if (target) this.scene.face(target.sprite.x - x, target.sprite.y - y);
             const angle = target ? Math.atan2(target.sprite.y - y, target.sprite.x - x) : 0;
             if (technique.castMs) {
-                this.pending = this.attackVisual = { kind: 'classCast', talent, target, manaCost, cdMs, angle,
+                this.pending = this.attackVisual = {
+                    kind: 'classCast', talent, target, manaCost, cdMs, angle,
                     damage: this.stats.specialDamage * berserkMult, ranged: true, facing: this.scene.facing,
                     weaponStyle: 'grimoire', name: talent.name, start: now, end: now + technique.castMs,
-                    castMs: technique.castMs, nextPulse: now + (technique.channel ?? technique.castMs), interruptible: true };
+                    castMs: technique.castMs, nextPulse: now + (technique.channel ?? technique.castMs), interruptible: true,
+                };
                 this.refreshCastBar(now);
                 this.refreshVitals();
                 this.tell(talent.name + '…');
                 return;
             }
             this.setSlotCooldown(talent.slot, now, cdMs);
-            this.attackVisual = { start: now - 1, end: now, castMs: 1, ranged: technique.range > 3,
-                facing: this.scene.facing, weaponStyle: technique.guard ? 'shield' : this.weaponStyle };
+            this.attackVisual = {
+                start: now - 1, end: now, castMs: 1, ranged: technique.range > 3,
+                facing: this.scene.facing, weaponStyle: technique.guard ? 'shield' : this.weaponStyle,
+            };
             applyTechnique(this, technique, target, this.stats.specialDamage * berserkMult, talent.name, now, angle, talent.slot);
             this.triggerShake(technique.power > 1.3 ? 'medium' : 'small');
             this.refreshVitals();
@@ -624,7 +627,6 @@ export class TrainingCombat {
             return;
         }
 
-        // Sort d'amélioration personnelle : Berserk
         if (talent.slot === 'berserk') {
             this.mana -= manaCost;
             this.berserkUntil = now + 6000;
@@ -652,35 +654,33 @@ export class TrainingCombat {
             return;
         }
 
-        // Vérification préalable de portée avant tout lancement (et avant incantation de 1 s)
         if (talent.slot === 'fire_whirl' || talent.slot === 'frost_nova') {
-            if (this.distanceTo(target) > this.range) {
+            if (this.effectiveDistanceTo(target) > this.range) {
                 this.tell(`${target.name} est hors de portée pour ${talent.name}.`);
                 return;
             }
         } else if (talent.slot === 'fire_wall') {
-            if (this.distanceTo(target) > this.range + 16) {
+            if (this.effectiveDistanceTo(target) > this.range + 16) {
                 this.tell(`${target.name} est hors de portée pour Mur de feu.`);
                 return;
             }
         } else if (talent.slot === 'engage') {
-            if (this.distanceTo(target) > 4.5 * this.tileSize) {
+            if (this.effectiveDistanceTo(target) > 4.5 * this.tileSize) {
                 this.tell(`${target.name} est trop loin pour Engagement.`);
                 return;
             }
         } else if (talent.slot === 'shield_bash') {
-            if (this.distanceTo(target) > this.range + 6) {
+            if (this.effectiveDistanceTo(target) > this.range + 6) {
                 this.tell(`${target.name} est hors de portée pour Coup de bouclier.`);
                 return;
             }
         } else if (talent.slot === 'arcane_blast') {
-            if (this.distanceTo(target) > this.range + 1.5 * this.tileSize) {
+            if (this.effectiveDistanceTo(target) > this.range + 1.5 * this.tileSize) {
                 this.tell(`${target.name} est hors de portée pour Déflagration.`);
                 return;
             }
         }
 
-        // Sorts de feu avec temps d'incantation de 1,0 s (annulables en se déplaçant)
         if (castTimeMs > 0) {
             this.mana -= manaCost;
             this.scene.face(target.sprite.x - this.scene.position.x, target.sprite.y - this.scene.position.y);
@@ -839,9 +839,6 @@ export class TrainingCombat {
         }
     }
 
-    /**
-     * Met à jour le combat, la réapparition des monstres, la régénération et les effets visuels.
-     */
     update(now, delta) {
         for (const monster of this.monsters) {
             if (!monster.isAlive && now >= monster.respawnAt) {
@@ -865,12 +862,15 @@ export class TrainingCombat {
         }
         if (this.familiar || this.periodicEffects?.size) updateClassCombat(this, now, delta);
 
+        const inCombat = this.monsters.some((m) => m.isAlive && m.alert);
+        const dt = Math.min(delta, 100);
         if (this.health > 0 && this.mana < this.meters[1].meter.max) {
+            const regenRate = this.stats.manaRegenPerSec * (inCombat ? 1 : 2.5);
             const regenerated = regenerateResource(
                 this.mana,
                 this.meters[1].meter.max,
-                this.stats.manaRegenPerSec,
-                Math.min(delta, 100),
+                regenRate,
+                dt,
                 this.manaCarry,
             );
             this.mana = regenerated.value;
@@ -879,8 +879,21 @@ export class TrainingCombat {
                 this.refreshVitals();
             }
         }
+        if (!inCombat && this.health > 0 && this.health < this.meters[0].meter.max) {
+            const healthRegen = regenerateResource(
+                this.health,
+                this.meters[0].meter.max,
+                Math.max(1, this.stats.maxHealth * 0.025),
+                dt,
+                this.healthCarry,
+            );
+            this.health = healthRegen.value;
+            this.healthCarry = healthRegen.carry;
+            if (healthRegen.gained > 0) {
+                this.refreshVitals();
+            }
+        }
 
-        // Chaque monstre poursuit sa cible et attaque à sa propre cadence.
         for (const monster of this.monsters) {
             if (!monster.isAlive) continue;
             if (this.health > 0) {
@@ -889,7 +902,6 @@ export class TrainingCombat {
             monster.update(now, delta, this.guardianFor(monster)?.actor ?? this.scene.position);
         }
 
-        // Teinte visuelle de Berserk sur l'avatar
         if (this.health > 0) {
             if (now < this.berserkUntil) {
                 this.scene.avatar.setTint(0xffb38a);
@@ -898,72 +910,42 @@ export class TrainingCombat {
             }
         }
 
+        updateLevelUpBannerUi(this, now);
         this.refreshCastBar(now);
         this.updateFloatingTexts(now);
         this.drawEffects(now);
         this.updateCooldowns(now);
     }
 
-    /**
-     * Met à jour les indicateurs visuels de recharge sur chaque slot de la barre d'action.
-     */
     updateCooldowns(now) {
-        const slotMap = {
-            basic: this.buttons[0],
-            special: this.buttons[1],
-        };
-        const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
-        this.talentSlotButtons.forEach((btn, idx) => {
-            const talent = unlocked[idx];
-            if (talent) {
-                slotMap[talent.slot] = btn;
-            } else {
-                btn.style.setProperty('--cooldown', '0%');
-                const cdBadge = btn.querySelector('.slot-cd');
-                if (cdBadge) cdBadge.textContent = '';
-            }
-        });
-
-        for (const [key, btn] of Object.entries(slotMap)) {
-            if (!btn) continue;
-            const info = this.spellCooldowns.get(key);
-            const remaining = info ? Math.max(0, info.end - now) : 0;
-            const total = info ? Math.max(1, info.end - info.start) : 1;
-            const percent = remaining > 0 ? Math.ceil((100 * remaining) / total) : 0;
-            btn.style.setProperty('--cooldown', percent + '%');
-            const cdBadge = btn.querySelector('.slot-cd');
-            if (cdBadge) {
-                cdBadge.textContent = remaining > 0 ? (remaining / 1000).toFixed(1) + 's' : '';
-            }
-        }
+        updateCooldownsUi(this, now);
     }
 
     updateClassCast(now) {
         const cast = this.pending;
         const { talent, target } = cast;
         const technique = talent.technique;
-        if (!target.isAlive || target.trial || this.mustDodgeMalakor() || this.distanceTo(target) > technique.range * this.tileSize) {
+        const invalidTarget = technique.range && (!target?.isAlive || target.trial || this.mustDodgeMalakor()
+            || this.effectiveDistanceTo(target) > technique.range * this.tileSize);
+        if (invalidTarget) {
             this.mana = Math.min(this.stats.maxMana, this.mana + cast.manaCost);
             this.pending = this.attackVisual = null;
             this.refreshVitals();
             this.tell('Incantation interrompue · cible hors de portée.');
             return;
         }
-        while (cast.nextPulse <= cast.end && cast.nextPulse <= now && target.isAlive && !target.trial) {
+        while (cast.nextPulse <= cast.end && cast.nextPulse <= now && (!technique.range || (target.isAlive && !target.trial))) {
             if (cast.manaCost > 0) this.setSlotCooldown(talent.slot, now, cast.cdMs);
             cast.manaCost = 0;
             applyTechnique(this, technique, target, cast.damage, talent.name, now, cast.angle, talent.slot);
             cast.nextPulse += technique.channel ?? technique.castMs;
         }
-        if (cast.nextPulse > cast.end || !target.isAlive || target.trial) {
+        if (cast.nextPulse > cast.end || (technique.range && (!target.isAlive || target.trial))) {
             this.pending = null;
             if (technique.channel) this.attackVisual = null;
         }
     }
 
-    /**
-     * Consomme une potion de vie ou de mana/énergie.
-     */
     drinkPotion(type) {
         if (this.health === 0) {
             return 'Reprends l’entraînement pour boire une potion.';
@@ -998,9 +980,6 @@ export class TrainingCombat {
         return '+' + amount + (this.ranged ? ' points de mana.' : ' points d’énergie.');
     }
 
-    /**
-     * Équipe ou retire l'arme sélectionnée et recalcule aussitôt les dégâts du personnage.
-     */
     toggleWeapon(weapon) {
         if (!this.hasWeapon(weapon)) {
             return 'Cette arme est absente du sac.';
@@ -1039,18 +1018,26 @@ export class TrainingCombat {
         return (statLabels[stat] ?? stat) + ' augmentée (+1).';
     }
 
+    chooseWarriorSpec(spec) {
+        const previousMaxHealth = this.stats.maxHealth;
+        if (!chooseSpecialization(this.progress, this.classKey, spec)) {
+            return 'Spécialisation indisponible.';
+        }
+        this.refreshProgress();
+        const healthGain = Math.max(0, this.stats.maxHealth - previousMaxHealth);
+        if (this.health > 0 && healthGain > 0) {
+            this.health = Math.min(this.stats.maxHealth, this.health + healthGain);
+        }
+        saveProgress(this.progressKey, this.progress);
+        this.refreshVitals();
+        return spec === 'bulwark' ? 'Voie du Rempart choisie (+3 Défense).' : 'Voie du Berserker choisie (+3 Force).';
+    }
+
     spendSpellPoint(spell) {
         if (!upgradeSpell(this.progress, spell)) {
-            return 'Aucun point de sort disponible.';
+            return 'Les rangs de base ont été remplacés par l’arbre de talents (T).';
         }
-
-        saveProgress(this.progressKey, this.progress);
-        this.refreshProgress();
-
-        const spellName = spell === 'special' ? this.rules.specialName : this.basicName;
-        const rank = spell === 'special' ? this.stats.specialSpellRank : this.stats.basicSpellRank;
-
-        return spellName + ' passe au rang ' + rank + '.';
+        return '';
     }
 
     spendTalentPoint(talentId) {
@@ -1098,72 +1085,7 @@ export class TrainingCombat {
     }
 
     refreshInventory() {
-        this.amounts.forEach((amount) => {
-            amount.textContent = this.progress.items[amount.dataset.quantity];
-        });
-
-        this.potionButtons.forEach((button) => {
-            button.disabled = this.health === 0;
-        });
-
-        this.weaponButtons.forEach((button) => {
-            const weapon = button.dataset.weapon;
-            button.textContent = weapon === this.progress.weapon ? 'Retirer' : 'Équiper';
-            button.disabled = !this.hasWeapon(weapon);
-        });
-
-        this.weaponStates.forEach((state) => {
-            const weapon = state.dataset.weaponState;
-            const equipped = weapon === this.progress.weapon;
-            state.textContent = weapon === 'starter' || weapon === 'axe'
-                ? (equipped ? 'Équipé · +' + this.rules.weaponBonus + ' dégâts de base' : 'Dans le sac')
-                : (equipped ? '· Équipé' : '');
-        });
-
-        if (this.armorList) {
-            const owned = Object.values(armorItems).filter((piece) => piece.classKey === this.classKey && this.progress.items[piece.id] > 0);
-            const statNames = { health: 'PV', mana: 'mana', basic: 'dégâts de base', special: 'dégâts de compétence', mitigation: 'protection' };
-            if (owned.length) {
-                this.armorList.replaceChildren(...owned.map((piece) => {
-                    const item = document.createElement('li');
-                    const icon = document.createElement('img');
-                    icon.src = this.scene.armorIconPath + (piece.icon ?? piece.id) + '.png';
-                    icon.alt = '';
-                    icon.className = 'armor-icon';
-                    const description = document.createElement('div');
-                    const name = document.createElement('strong');
-                    const details = document.createElement('small');
-                    const equipped = this.progress.armor?.[piece.slot] === piece.id;
-                    name.textContent = piece.name;
-                    const bonuses = Object.entries(piece.stats).map(([stat, value]) =>
-                        '+' + (stat === 'mitigation' ? Math.round(value * 100) + ' %' : value) + ' ' + statNames[stat]);
-                    details.textContent = [armorSlots[piece.slot], 'N. ' + piece.level, ...bonuses, equipped ? 'Équipé' : ''].filter(Boolean).join(' · ');
-                    description.append(name, details);
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'quiet';
-                    button.dataset.armor = piece.id;
-                    button.disabled = this.progress.level < piece.level;
-                    button.textContent = equipped ? 'Retirer' : 'Équiper';
-                    item.append(icon, description, button);
-                    return item;
-                }));
-            } else {
-                const empty = document.createElement('li');
-                empty.textContent = 'Les gardes de la Citadelle laissent les premières coiffes et paires de gants.';
-                this.armorList.replaceChildren(empty);
-            }
-        }
-
-        this.basicLabel.textContent = this.basicName;
-        const icon = this.buttons[0].querySelector('.action-icon');
-        if (icon) {
-            const style = this.weaponStyle;
-            icon.className = 'action-icon icon-' + (['axe', 'daggers', 'bow', 'grimoire'].includes(style) ? style : this.rules.basicIcon ?? 'sword');
-        }
-        this.buttons[0].title = this.basicName
-            + ' · ' + this.basicWeapon.damage + ' dégâts'
-            + ' · Portée : ' + this.basicRangeLabel;
+        refreshInventoryUi(this);
     }
 
     get basicName() {
@@ -1204,37 +1126,10 @@ export class TrainingCombat {
         return this.rules.loot?.[weapon]?.name ?? 'Aucune';
     }
 
-    /**
-     * Met à jour les 4 emplacements de sorts de talents dans la barre d'action.
-     */
     refreshActionSlots() {
-        const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
-        this.talentSlotButtons.forEach((button, index) => {
-            const talent = unlocked[index];
-            button.hidden = index >= 4 && !talent;
-            const iconEl = button.querySelector('.action-icon');
-            const nameEl = button.querySelector('.slot-name');
-            const metaEl = button.querySelector('.slot-meta');
-            if (!talent) {
-                button.dataset.unlocked = 'false';
-                button.title = `Emplacement ${index + 3} · Débloquer un sort dans l’arbre de talents (T)`;
-                if (iconEl) iconEl.className = 'action-icon icon-locked';
-                if (nameEl) nameEl.textContent = 'Verrouillé';
-                if (metaEl) metaEl.textContent = 'Talent (T)';
-                return;
-            }
-            button.dataset.unlocked = 'true';
-            const cost = Math.max(1, Math.round((talent.manaCost ?? 6) * (1 - (this.stats?.manaCostReduction ?? 0))));
-            button.title = `${talent.name} · ${cost} ${this.rules.resourceName.toLowerCase()} · ${talent.description}`;
-            if (iconEl) iconEl.className = `action-icon ${talent.icon}`;
-            if (nameEl) nameEl.textContent = talent.name;
-            if (metaEl) metaEl.textContent = `${cost} ${this.rules.resourceName.toLowerCase()}`;
-        });
+        refreshActionSlotsUi(this);
     }
 
-    /**
-     * Recalcule les statistiques complètes du personnage et met à jour ATH, barre d'actions, fiche et talents.
-     */
     refreshProgress() {
         const { level, xp } = this.progress;
         this.stats = computeCharacterStats(this.rules, this.progress, this.weaponBonus);
@@ -1245,7 +1140,7 @@ export class TrainingCombat {
         this.meters[0].meter.max = this.stats.maxHealth;
         this.meters[1].meter.max = this.stats.maxMana;
         this.levelLabel.textContent = level;
-        this.xpMeter.max = xpRequired(level);
+        this.xpMeter.max = xpRequiredFromProgress(level);
         this.xpMeter.value = xp;
         this.xpLabel.textContent = xp + ' / ' + this.xpMeter.max;
 
@@ -1254,7 +1149,7 @@ export class TrainingCombat {
         }
 
         if (this.basicMetaLabel) {
-            this.basicMetaLabel.textContent = 'Rg ' + this.stats.basicSpellRank + ' · ' + this.basicWeapon.damage + ' dég.';
+            this.basicMetaLabel.textContent = this.basicWeapon.damage + ' dég.';
         }
 
         if (this.specialMetaLabel) {
@@ -1263,11 +1158,9 @@ export class TrainingCombat {
         }
 
         this.buttons[0].title = this.basicName
-            + ' · Rang ' + this.stats.basicSpellRank
             + ' · ' + this.basicWeapon.damage + ' dégâts'
             + ' · Portée : ' + this.basicRangeLabel;
         this.buttons[1].title = this.rules.specialName
-            + ' · Rang ' + this.stats.specialSpellRank
             + ' · ' + this.stats.specialDamage + ' dégâts'
             + ' · ' + this.rules.specialManaCost + ' ' + this.rules.resourceName.toLowerCase()
             + ' · Portée : ' + this.rangeLabel;
@@ -1278,197 +1171,13 @@ export class TrainingCombat {
     }
 
     refreshCharacterSheet() {
-        if (!this.stats) return;
-
-        if (this.characterPointsBadge) {
-            const pts = this.stats.statPoints;
-            if (pts > 0) {
-                this.characterPointsBadge.textContent = '+' + pts;
-                this.characterPointsBadge.dataset.hasPoints = 'true';
-            } else {
-                this.characterPointsBadge.textContent = '';
-                this.characterPointsBadge.dataset.hasPoints = 'false';
-            }
-        }
-
-        if (this.talentPointsBadge) {
-            const sPts = this.stats.spellPoints;
-            if (sPts > 0) {
-                this.talentPointsBadge.textContent = '+' + sPts;
-                this.talentPointsBadge.dataset.hasPoints = 'true';
-            } else {
-                this.talentPointsBadge.textContent = '';
-                this.talentPointsBadge.dataset.hasPoints = 'false';
-            }
-        }
-
-        const regenText = '+' + regenFormatter.format(this.stats.manaRegenPerSec) + '/s';
-        if (this.sheetLevelLabel) this.sheetLevelLabel.textContent = String(this.stats.level);
-        if (this.sheetXpLabel) this.sheetXpLabel.textContent = this.progress.xp + ' / ' + xpRequired(this.stats.level);
-        if (this.sheetWeaponLabel) this.sheetWeaponLabel.textContent = this.equippedWeaponName;
-        if (this.sheetMaxHealthLabel) this.sheetMaxHealthLabel.textContent = String(this.stats.maxHealth);
-        if (this.sheetMaxManaLabel) this.sheetMaxManaLabel.textContent = String(this.stats.maxMana);
-        if (this.sheetManaRegenLabel) this.sheetManaRegenLabel.textContent = regenText;
-        if (this.sheetBasicDamageLabel) this.sheetBasicDamageLabel.textContent = this.basicWeapon.damage + ' dégâts';
-        if (this.sheetSpecialDamageLabel) this.sheetSpecialDamageLabel.textContent = this.stats.specialDamage + ' dégâts';
-        if (this.sheetRangeLabel) this.sheetRangeLabel.textContent = this.basicRangeLabel;
-
-        if (this.statPointsLabel) {
-            const count = this.stats.statPoints;
-            this.statPointsLabel.textContent = count + (count > 1 ? ' points disponibles' : ' point disponible');
-        }
-        if (this.spellPointsLabel) {
-            const count = this.stats.spellPoints;
-            this.spellPointsLabel.textContent = count + (count > 1 ? ' points disponibles' : ' point disponible');
-        }
-
-        for (const key of statKeys) {
-            const detail = this.stats.attributes[key];
-            if (this.statTotals[key]) this.statTotals[key].textContent = String(detail.total);
-            if (this.statDetails[key]) {
-                this.statDetails[key].textContent = 'Base ' + detail.base
-                    + ' · Naturel +' + detail.natural
-                    + ' · Investi +' + detail.allocated;
-            }
-        }
-
-        this.statButtons.forEach((button) => {
-            button.disabled = this.stats.statPoints <= 0;
-        });
-
-        const basicStep = this.rules.basicSpellRankBonus ?? 3;
-        const specialStep = this.rules.specialSpellRankBonus ?? 5;
-        if (this.spellRanks.basic) this.spellRanks.basic.textContent = 'Rang ' + this.stats.basicSpellRank;
-        if (this.spellRanks.special) this.spellRanks.special.textContent = 'Rang ' + this.stats.specialSpellRank;
-        if (this.spellDamages.basic) {
-            const rankBonus = this.basicWeapon.ranged ? '' : ' (+' + basicStep + ' par rang)';
-            this.spellDamages.basic.textContent = this.basicWeapon.damage + ' dégâts actuels' + rankBonus;
-        }
-        if (this.spellDamages.special) {
-            this.spellDamages.special.textContent = this.stats.specialDamage
-                + ' dégâts actuels (+' + specialStep + ' par rang · Coût : '
-                + this.rules.specialManaCost + ' ' + this.rules.resourceName.toLowerCase() + ')';
-        }
-
-        this.spellButtons.forEach((button) => {
-            button.disabled = this.stats.spellPoints <= 0;
-        });
+        refreshCharacterSheetUi(this);
     }
 
-    /**
-     * Génère et met à jour l'arbre de talents à 3 branches (style RPG classique).
-     */
     renderTalentTree() {
-        if (!this.talentTreeRoot) return;
-        const tree = talentTrees[this.classKey];
-        if (!tree) return;
-
-        if (this.talentPointsModalLabel) {
-            const pts = this.stats?.spellPoints ?? this.progress.spellPoints ?? 0;
-            this.talentPointsModalLabel.textContent = `${pts} point${pts > 1 ? 's' : ''} de talent disponible${pts > 1 ? 's' : ''}`;
-        }
-
-        this.talentTreeRoot.innerHTML = '';
-
-        for (const branch of tree.branches) {
-            const branchPts = getBranchPoints(this.progress, branch);
-            const colEl = document.createElement('section');
-            colEl.className = 'talent-branch';
-            colEl.style.setProperty('--branch-accent', branch.accent);
-
-            const header = document.createElement('header');
-            header.className = 'talent-branch-header';
-            header.innerHTML = `
-                <div>
-                    <h3>${branch.name}</h3>
-                    <small>${branch.subtitle}</small>
-                </div>
-                <span class="branch-points-badge">${branchPts} pts</span>
-            `;
-            colEl.appendChild(header);
-
-            const grid = document.createElement('div');
-            grid.className = 'talent-grid';
-
-            // Lignes de connexion SVG entre talents prérequis et enfants
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('class', 'talent-connectors');
-            svg.setAttribute('viewBox', '0 0 200 240');
-            svg.setAttribute('preserveAspectRatio', 'none');
-
-            for (const talent of branch.talents) {
-                if (!talent.requires) continue;
-                const parent = branch.talents.find((t) => t.id === talent.requires);
-                if (!parent) continue;
-                const x1 = parent.col === 0 ? 50 : 150;
-                const y1 = parent.tier * 80 + 40;
-                const x2 = talent.col === 0 ? 50 : 150;
-                const y2 = talent.tier * 80 + 40;
-                const active = getTalentRank(this.progress, parent.id) > 0;
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', String(x1));
-                line.setAttribute('y1', String(y1));
-                line.setAttribute('x2', String(x2));
-                line.setAttribute('y2', String(y2));
-                line.setAttribute('stroke', active ? branch.accent : '#4a4352');
-                line.setAttribute('stroke-width', active ? '4' : '3');
-                svg.appendChild(line);
-            }
-            grid.appendChild(svg);
-
-            for (const talent of branch.talents) {
-                const rank = getTalentRank(this.progress, talent.id);
-                const maxed = rank >= talent.maxRank;
-                const available = canInvestTalent(this.progress, this.classKey, talent.id);
-                const state = maxed ? 'maxed' : (rank > 0 ? 'invested' : (available ? 'available' : 'locked'));
-
-                const node = document.createElement('button');
-                node.type = 'button';
-                node.className = `talent-node talent-${state}`;
-                node.style.gridRow = String(talent.tier + 1);
-                node.style.gridColumn = String(talent.col + 1);
-                node.dataset.talentId = talent.id;
-                node.setAttribute('aria-label', `${talent.name} · ${rank}/${talent.maxRank} · ${talent.description}`);
-                node.innerHTML = `
-                    <span class="talent-kind">${talent.type === 'active' ? 'SORT' : 'PASSIF'}</span>
-                    <span class="action-icon ${talent.icon}" aria-hidden="true"></span>
-                    <span class="talent-rank">${rank}/${talent.maxRank}</span>
-                `;
-
-                const showTip = () => {
-                    if (!this.talentTooltip) return;
-                    const reqText = talent.minBranchPoints
-                        ? `Prérequis : ${talent.minBranchPoints} pts dans ${branch.name}`
-                        : 'Palier de base';
-                    this.talentTooltip.innerHTML = `
-                        <strong>${talent.name}</strong>
-                        <span class="tooltip-type">${talent.type === 'active' ? 'Sort actif' : 'Bonus passif'} · Rang ${rank}/${talent.maxRank}</span>
-                        <p>${talent.description}</p>
-                        <small>${reqText}</small>
-                    `;
-                };
-
-                node.addEventListener('mouseenter', showTip);
-                node.addEventListener('focus', showTip);
-                node.addEventListener('click', () => {
-                    showTip();
-                    const msg = this.spendTalentPoint(talent.id);
-                    if (this.talentStatusLabel) {
-                        this.talentStatusLabel.textContent = msg;
-                    }
-                });
-
-                grid.appendChild(node);
-            }
-
-            colEl.appendChild(grid);
-            this.talentTreeRoot.appendChild(colEl);
-        }
+        renderTalentTreeUi(this);
     }
 
-    /**
-     * Applique les dégâts d'une attaque sur la cible et gère la riposte ou la défaite.
-     */
     resolveAttack(attack, now) {
         const target = attack.target;
         if (!target || !target.isAlive) {
@@ -1477,7 +1186,7 @@ export class TrainingCombat {
         if (!attack.ranged) {
             this.recovery = { ...attack, start: now };
         }
-        if (!attack.ranged && this.distanceTo(target) > attack.range) {
+        if (!attack.ranged && this.effectiveDistanceTo(target) > attack.range) {
             this.tell(`${target.name} est hors de portée. Portée : ${numberFormatter.format(attack.range / this.tileSize)} cases.`);
             return;
         }
@@ -1551,9 +1260,10 @@ export class TrainingCombat {
         }
     }
 
-    /**
-     * Crédite l'XP adaptée au niveau du monstre, le butin et la montée de niveau.
-     */
+    showLevelUpBanner(now = 0) {
+        showLevelUpBannerUi(this, now);
+    }
+
     defeatMonster(monster, now) {
         if (!monster.sprite.visible) return;
         this.periodicEffects?.delete(monster);
@@ -1584,19 +1294,15 @@ export class TrainingCombat {
             this.health = this.meters[0].meter.max;
             this.mana = this.meters[1].meter.max;
             this.manaCarry = 0;
+            this.healthCarry = 0;
             this.refreshVitals();
+            this.showLevelUpBanner(now);
         }
 
         const loot = this.rules.loot[item];
-        const levelUpText = levelUp
-            ? ` · Niveau ${this.progress.level} ! (+3 stats, +1 talent)`
-            : '';
-        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${armor ? " · " + armor.name : ""}${levelUpText}`);
+        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${armor ? ' · ' + armor.name : ''}`);
     }
 
-    /**
-     * Résout une auto-attaque ciblée, puis respecte le temps de recharge du monstre.
-     */
     mustDodgeMalakor() {
         return this.monsters?.some((monster) => monster.isBoss && monster.trial
             && inZone(monster.template.zone, this.scene.position.x, this.scene.position.y));
@@ -1783,468 +1489,17 @@ export class TrainingCombat {
             && inZone(monster.template.zone, pet.actor.x, pet.actor.y) ? pet : null;
     }
 
-    /**
-     * Dessine les animations d'attaques, sorts et télégraphies épiques en pixel art.
-     */
-    drawEffects(now) {
-        this.vfx?.begin();
-        this.rageEffect?.clear();
-        const enemyAttacking = this.monsters.some((monster) => monster.isAlive && (
-            (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
-            || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
-        ));
-        this.spellEffects = (this.spellEffects ?? []).filter((fx) => now - fx.start < fx.duration);
-        if (!this.pending && !this.recovery && this.impacts.length === 0 && this.spellEffects.length === 0 && !enemyAttacking) {
-            this.effect.clear();
-            return;
-        }
-
-        this.effect.clear();
-        this.drawMonsterAttacks(now);
-        this.drawSpellEffects(now);
-        this.impacts = this.impacts.filter((hit) => now - hit.start < impactMs);
-        const still = this.scene.motionPreference.matches;
-
-        for (const hit of this.impacts) {
-            const progress = Math.max(0, (now - hit.start) / impactMs);
-            const spread = still ? 0.65 : 0.45 + 0.9 * (1 - (1 - progress) ** 2);
-            this.effect.fillStyle(hit.color, 1 - progress);
-            for (const [dx, dy] of sparks) {
-                this.effect.fillRect(Math.round(hit.x + dx * spread), Math.round(hit.y + dy * spread), 2, 2);
-            }
-            if (progress < 0.35) {
-                this.effect.fillStyle(0xffe3a6, 0.78 - progress);
-                this.effect.fillRect(Math.round(hit.x) - 2, Math.round(hit.y) - 2, 4, 4);
-            }
-        }
-
-        if (this.recovery) {
-            const progress = (now - this.recovery.start) / recoveryMs;
-            if (progress < 1) {
-                this.drawMelee(this.recovery, progress, false);
-            } else {
-                this.recovery = null;
-            }
-        }
-
-        if (!this.pending) {
-            return;
-        }
-
-        const attack = this.pending;
-        if (attack.kind === 'classCast' && attack.talent.technique.channel) {
-            this.drawDrain(attack, now, still);
-            return;
-        }
-        if (attack.kind === 'talentCast' || attack.kind === 'classCast') {
-            this.drawCastCircle(now, attack.start, attack.castMs);
-            return;
-        }
-
-        const target = attack.target;
-        const progress = Math.max(0, (now - attack.start) / (attack.end - attack.start));
-        if (attack.ranged && target) {
-            const elapsed = now - attack.start;
-            const flightSpan = Math.max(1, attack.end - attack.start - attack.castMs);
-            const travel = Math.max(0, (elapsed - attack.castMs) / flightSpan);
-            if (elapsed < attack.castMs) {
-                if (attack.castMs >= 500) {
-                    this.drawCastCircle(now, attack.start, attack.castMs);
-                }
-                attack.x = this.scene.position.x + Math.cos(attack.angle) * 7;
-                attack.y = this.scene.position.y - 20 + Math.sin(attack.angle) * 4;
-            }
-            const x = attack.x + (target.sprite.x - attack.x) * travel;
-            const y = attack.y + (target.sprite.y - 12 - attack.y) * travel;
-            const angle = Math.atan2(target.sprite.y - 12 - attack.y, target.sprite.x - attack.x);
-            const released = elapsed >= attack.castMs;
-            const size = attack.special ? .84 : .43;
-            this.vfx?.play(attack.projectile ?? (attack.special ? 'firebolt' : 'arcane'), x, y,
-                still ? .4 : (elapsed % 220) / 220, released ? size : size * .44, angle, released ? .94 : .78);
-        } else {
-            this.drawMelee(attack, progress, true);
-        }
-    }
-
-    drawCastCircle(now, start, castMs) {
-        const progress = Math.max(0, Math.min(1, (now - start) / Math.max(1, castMs)));
-        this.vfx?.play('rune', this.scene.position.x, this.scene.position.y - 2,
-            this.scene.motionPreference.matches ? .42 : progress, .78, 0, .75 + .19 * progress);
-    }
-
-    drawDrain(cast, now, still) {
-        const { x, y } = this.scene.position;
-        const dx = cast.target.sprite.x - x;
-        const dy = cast.target.sprite.y - y + 4;
-        const phase = still ? .42 : ((now - cast.start) % 500) / 500;
-        this.vfx?.play('drain', x + dx / 2, y - 16 + dy / 2, phase, .72, Math.atan2(dy, dx),
-            .84, Math.max(.14, Math.hypot(dx, dy) / 80));
-        this.vfx?.play('curse', cast.target.sprite.x, cast.target.sprite.y - 12, phase, .64, 0, .85);
-    }
-
-    drawSpellEffects(now) {
-        if (!this.vfx) return;
-        const still = this.scene.motionPreference.matches;
-        for (const fx of this.spellEffects ?? []) {
-            const progress = Math.max(0, Math.min(1, (now - fx.start) / fx.duration));
-            const pose = still ? .42 : progress;
-            const alpha = .97 * (1 - Math.max(0, (progress - .52) / .48));
-            const radius = fx.radius ?? 42;
-            switch (fx.kind) {
-            case 'class_vfx':
-                this.vfx.play(fx.row, fx.x, fx.y, pose, fx.size, fx.angle, alpha);
-                break;
-            case 'familiar_bolt': {
-                if (!fx.target.isAlive) break;
-                const dx = fx.target.sprite.x - fx.x;
-                const dy = fx.target.sprite.y - 12 - fx.y;
-                this.vfx.play('firebolt', fx.x + dx * progress, fx.y + dy * progress, pose, .49, Math.atan2(dy, dx), .96);
-                break;
-            }
-            case 'arcane_beam': {
-                const dx = fx.targetX - fx.x;
-                const dy = fx.targetY - fx.y;
-                const angle = Math.atan2(dy, dx);
-                const extension = still ? 1 : Math.min(1, .12 + progress * 3.6);
-                const width = .90;
-                if (progress < .8) {
-                    this.vfx.play('arcane_stream', fx.x + dx * extension / 2, fx.y + dy * extension / 2,
-                        pose, width, angle, alpha, Math.max(.15, Math.hypot(dx, dy) * extension / (116 * width)));
-                }
-                if (extension === 1) this.vfx.play('arcane_burst', fx.targetX, fx.targetY, pose, .86, 0, alpha);
-                break;
-            }
-            case 'fire_whirl':
-                this.vfx.play('vortex', fx.x, fx.y - 25, pose, radius / 39, 0, alpha);
-                break;
-            case 'frost_nova':
-                this.vfx.play('frost', fx.x, fx.y - 6, pose, radius / 41, 0, alpha);
-                break;
-            case 'shield_wave':
-                this.vfx.play('ward', fx.x, fx.y, pose, radius / 36, 0, alpha);
-                break;
-            case 'cleave':
-                this.vfx.play('gilded_spin', fx.x, fx.y + 2, pose, radius / 32, 0, alpha);
-                break;
-            case 'fire_wall':
-                this.vfx.play('flame', fx.x, fx.y - 18, pose, radius / 47, 0, alpha, 1.10);
-                break;
-            case 'obsidian_impact':
-                this.vfx.play('slash', fx.x, fx.y - 5, pose, radius / 42, fx.angle, alpha);
-                if (progress > .12) {
-                    this.vfx.play('slash', fx.x, fx.y - 9, still ? .42 : Math.max(0, progress - .12),
-                        radius / 55, fx.angle + .18, alpha * .44);
-                }
-                break;
-            case 'magma_detonation':
-                for (let offset = 12; offset <= fx.riftRange; offset += 21) {
-                    const local = still ? .42 : Math.max(.06, progress - offset / fx.riftRange * .18);
-                    const scale = .68 + (offset % 4) * .09;
-                    this.vfx.play('magma', fx.x + fx.dirX * offset, fx.y + fx.dirY * offset - 30 * scale,
-                        local, scale, 0, alpha);
-                }
-                break;
-            case 'seismic_detonation':
-            case 'engage_slam':
-                this.vfx.play('seismic', fx.x, fx.y - radius / 4, pose, radius / 43, 0, alpha);
-                break;
-            case 'fireball_burst':
-                this.vfx.play('fire_burst', fx.x, fx.y - 18, pose, 1.03, 0, alpha);
-                break;
-            case 'heavy_slash':
-                this.vfx.play('ward', fx.x, fx.y, pose, .43, 0, alpha * .85);
-                break;
-            case 'berserk_aura':
-                this.vfx.play('rune', fx.x, fx.y + 4, pose, .86, 0, alpha);
-                break;
-            case 'inferno_wake':
-                this.drawInfernoEmbers(fx, now, still);
-                break;
-            }
-        }
-    }
-
-    drawMalakorArc(x, y, angle, radius, progress) {
-        const spread = Math.acos(.35);
-        this.effect.fillStyle(0xf75127, .18 + progress * .2);
-        this.effect.lineStyle(2, 0xffc06b, .9);
-        this.effect.beginPath();
-        this.effect.moveTo(x, y);
-        this.effect.arc(x, y, radius, angle - spread, angle + spread);
-        this.effect.closePath();
-        this.effect.fillPath();
-        this.effect.strokePath();
-    }
-
-    drawMalakorAura(monster, now) {
-        const still = this.scene.motionPreference?.matches;
-        const time = still ? 0 : now;
-        const x = monster.sprite.x;
-        const y = monster.sprite.y;
-        const buildup = malakorRageProgress(monster.rageStartedAt, now, malakorIgnitionMs);
-        const ignition = buildup !== null;
-        const heat = Math.max(.1, buildup ?? 1);
-        const pulse = .5 + .5 * Math.sin(time / 230);
-        const radius = 29 + 6 * pulse;
-
-        this.vfx?.play(ignition ? 'rage_ignition' : 'rage_aura', x, y - 30,
-            still ? .42 : (ignition ? heat : (time % 1700) / 1700), ignition ? 1.49 : 1.22,
-            0, ignition ? Math.sin(heat * Math.PI) * .82 : .54);
-
-        this.effect.fillStyle(0x482025, .32 * heat).fillEllipse(x, y + 2, 124, 58);
-        this.effect.fillStyle(0xe2502d, .17 * heat).fillEllipse(x, y + 2, 92, 40);
-        this.effect.fillStyle(0xff8c42, .14 * heat).fillEllipse(x, y + 2, 62, 26);
-        this.effect.lineStyle(2, 0xc3402d, .46 * heat).strokeEllipse(x, y + 2, radius * 2 + 25, radius + 13);
-        this.effect.lineStyle(1, 0xffbb70, .7 * heat).strokeEllipse(x, y + 2, radius * 2, radius);
-
-        for (let i = 0; i < 12; i++) {
-            const angle = i * Math.PI / 6 + time / 4600;
-            const u = Math.cos(angle);
-            const v = Math.sin(angle) * .48;
-            const runeX = Math.round(x + u * (radius + 7));
-            const runeY = Math.round(y + 2 + v * (radius + 7));
-            this.effect.lineStyle(1, i % 3 ? 0xffa359 : 0xffdda1, (.48 + .2 * pulse) * heat);
-            this.effect.lineBetween(runeX, runeY, runeX + u * 5 - v * 4, runeY + v * 5 + u * 2);
-            this.effect.lineBetween(runeX + u * 4, runeY + v * 4, runeX - v * 5, runeY + u * 3);
-        }
-
-        for (let i = 0; i < 6; i++) {
-            const angle = i * Math.PI / 3 + .18;
-            let previousX = x + Math.cos(angle) * 18;
-            let previousY = y + Math.sin(angle) * 10;
-            for (let segment = 1; segment <= 4; segment++) {
-                const fork = angle + Math.sin(i + segment * 2.3) * .19;
-                const distance = (16 + segment * 11) * (.6 + .4 * heat);
-                const nextX = Math.round(x + Math.cos(fork) * distance);
-                const nextY = Math.round(y + Math.sin(fork) * distance * .53);
-                this.effect.lineStyle(3, 0x341724, .7).lineBetween(previousX, previousY, nextX, nextY);
-                this.effect.lineStyle(1, segment === 1 ? 0xffbd6b : 0xcf5034, (.78 - segment * .1) * heat)
-                    .lineBetween(previousX, previousY, nextX, nextY);
-                previousX = nextX;
-                previousY = nextY;
-            }
-        }
-
-        if (still) return;
-        for (let i = 0; i < 29; i++) {
-            const life = (time / (720 + i % 6 * 85) + i * .271) % 1;
-            const angle = i * 2.39996 + life * .54;
-            const distance = 23 + i % 7 * 5 + life * 14;
-            const px = Math.round(x + Math.cos(angle) * distance);
-            const py = Math.round(y + Math.sin(angle) * distance * .42 - life * (36 + i % 5 * 9));
-            const opacity = (1 - life) * heat;
-            this.effect.fillStyle(i % 4 ? 0xff8c46 : 0xffe6a1, opacity).fillRect(px, py, i % 3 ? 2 : 3, i % 4 ? 3 : 5);
-        }
-    }
-
-    drawMalakorSurge(monster, now) {
-        const progress = malakorRageProgress(monster.rageStartedAt, now, malakorSurgeMs);
-        const layer = this.rageEffect;
-        if (progress === null || !layer) return;
-        const width = this.scene.terrain[0].length * this.tileSize;
-        const height = this.scene.terrain.length * this.tileSize;
-        const glow = Math.sin(progress * Math.PI) ** .85;
-        const still = this.scene.motionPreference?.matches;
-        layer.fillStyle(0x5b2442, glow * (still ? .11 : .21)).fillRect(0, 0, width, height);
-        layer.fillStyle(0xa53e26, glow * (still ? .06 : .14)).fillRect(0, 0, width, height);
-        if (still) return;
-
-        const { x, y } = monster.sprite;
-        const front = 34 + Math.hypot(width, height) * progress ** 2.8;
-        const power = (1 - progress) * glow;
-        const view = this.scene.cameras.main.worldView;
-        const step = Math.max(120, Math.ceil(Math.sqrt(view.width * view.height / 38) / 16) * 16);
-        for (let row = Math.max(0, Math.floor((view.y - step) / step)); row * step < Math.min(height, view.bottom + step); row++) {
-            for (let col = Math.max(0, Math.floor((view.x - step) / step)); col * step < Math.min(width, view.right + step); col++) {
-                const drift = Math.sin(col * 2.4 + row * 3.7) * 28;
-                const px = (col + .5) * step + drift + progress * 37;
-                const py = (row + .5) * step - drift - progress * 72;
-                const phase = (progress * 1.6 + (col + row * 3) * .17) % 1;
-                this.vfx?.play('cinders', px, py, phase, 1.18, -.16, glow * .54);
-            }
-        }
-        layer.lineStyle(25, 0xd43d2a, power * .28).strokeCircle(x, y, front);
-        layer.lineStyle(10, 0xff713c, power * .42).strokeCircle(x, y, front);
-        layer.lineStyle(3, 0xffba66, power * .64).strokeCircle(x, y, front);
-        layer.lineStyle(2, 0xff874b, power * .38).strokeCircle(x, y, front * .73);
-    }
-
-    drawMalakorTrial(monster, now) {
-        const { left, top, right, bottom } = monster.template.zone;
-        const x = left * this.tileSize;
-        const y = top * this.tileSize;
-        const width = (right - left + 1) * this.tileSize;
-        const height = (bottom - top + 1) * this.tileSize;
-        const wave = malakorWave(monster.trial, now);
-        this.effect.lineStyle(2, monster.phase === 3 ? 0xffb080 : 0xffd98a, .9).strokeRect(x, y, width, height);
-        if (!wave) {
-            const progress = (now - monster.trial.start) / (monster.trial.beginsAt - monster.trial.start);
-            const radius = 46 + 54 * progress;
-            this.effect.lineStyle(3, 0xffcf85, .9 - .48 * progress)
-                .strokeCircle(monster.sprite.x, monster.sprite.y, radius);
-            return;
-        }
-        this.effect.fillStyle(0x84decb, .09).fillRect(x, y, width, height);
-        const length = wave.vertical ? height : width;
-        const still = this.scene.motionPreference?.matches;
-        for (const [from, to] of wave.danger) {
-            const bounds = wave.vertical ? [from, y, to - from, height] : [x, from, width, to - from];
-            this.effect.fillStyle(wave.impact ? 0xff581e : 0x9b332b, wave.impact ? .24 : .26 + wave.progress * .25);
-            this.effect.fillRect(...bounds);
-            this.effect.lineStyle(2, 0xff905e, wave.impact ? .52 : .95).strokeRect(...bounds);
-            if (wave.impact) {
-                drawInfernoBeam(this.effect, wave, x, y, from, to, length, monster.phase === 3, still);
-                continue;
-            }
-            const center = (from + to) / 2;
-            this.effect.lineStyle(2, 0xdc7b48, .28 + wave.progress * .46);
-            this.effect.beginPath();
-            for (let step = 0; step <= length; step += 12) {
-                const offset = Math.sin(step * .162 + wave.index + center) * 6 + Math.cos(step * .07) * 3;
-                const px = wave.vertical ? center + offset : x + step;
-                const py = wave.vertical ? y + step : center + offset;
-                if (step === 0) this.effect.moveTo(px, py);
-                else this.effect.lineTo(px, py);
-            }
-            this.effect.strokePath();
-        }
-    }
-
-    drawInfernoEmbers(fx, now, still) {
-        const { zone, wave } = fx;
-        const length = (wave.vertical ? zone.bottom - zone.top + 1 : zone.right - zone.left + 1) * this.tileSize;
-        const axis = (wave.vertical ? zone.top : zone.left) * this.tileSize;
-        const elapsed = now - fx.start;
-        const alongCount = Math.ceil(length / 64) * 4;
-        const direction = wave.reverse ? -1 : 1;
-        for (const [from, to] of wave.danger) {
-            for (let index = 0; index < alongCount + 12; index++) {
-                const seed = Math.abs(Math.sin(index * 97.3 + wave.index * 41.1 + from * .127));
-                const atImpact = index >= alongCount;
-                const distance = atImpact ? length - seed * 27 : Math.min(length, Math.floor(index / 4) * 64 + seed * 61);
-                const ground = wave.reverse ? length - distance : distance;
-                const delay = malakorWaveImpactMs * (.66 + seed * .32);
-                const age = (elapsed - delay) / (fx.duration - delay);
-                if (age <= 0 || age >= 1) continue;
-                const drift = still ? 0 : age;
-                const burst = 1 - (1 - Math.min(1, drift * 5)) ** 2;
-                const hot = Math.max(0, 1 - age * 4);
-                const opacity = (1 - age) ** 1.65 * Math.min(1, age * 48) * (still ? .45 : .90);
-                const side = index % 2 === 0 ? 1 : -1;
-                const cross = from + (to - from) * (.19 + seed * .62)
-                    + side * (atImpact ? 26 : 14) * burst + Math.sin(drift * 6 + index) * 7;
-                const wind = axis + ground + direction * burst * (atImpact ? 15 + seed * 41 : 3 + seed * 13);
-                const x = Math.round(wave.vertical ? cross : wind);
-                const y = Math.round((wave.vertical ? wind : cross) - drift * (23 + seed * 44));
-                const tail = Math.round(2 + (atImpact ? 14 : 7) * seed * hot);
-                const trail = wave.reverse ? 0 : tail;
-                const size = Math.round(2 + (atImpact ? 3 : 2) * seed * hot);
-                this.effect.fillStyle(0xd43f27, opacity * .64)
-                    .fillRect(x - (wave.vertical ? 0 : trail), y - (wave.vertical ? trail : 0),
-                        wave.vertical ? size : tail, wave.vertical ? tail : size);
-                this.effect.fillStyle(hot > .60 ? 0xffedbb : seed > .6 ? 0xffac56 : 0xf16c39, opacity)
-                    .fillRect(x, y, size, size);
-            }
-        }
-    }
-
-    drawMonsterAttacks(now) {
-        for (const monster of this.monsters) {
-            if (!monster.isAlive) continue;
-
-            if (monster.isBoss && monster.phase === 3) {
-                this.drawMalakorAura(monster, now);
-                this.drawMalakorSurge(monster, now);
-            }
-
-            if (monster.trial) this.drawMalakorTrial(monster, now);
-            if (monster.echo) {
-                const { x, y, inner, radius, start, end } = monster.echo;
-                const progress = Math.max(0, Math.min(1, (now - start) / (end - start)));
-                this.effect.lineStyle(radius - inner, 0xdb5128, .22 + .24 * progress).strokeCircle(x, y, (inner + radius) / 2);
-                this.effect.lineStyle(2, 0xffc56c, .88).strokeCircle(x, y, inner).strokeCircle(x, y, radius);
-            }
-
-            const attack = monster.attackVisual;
-            if (!attack || (!attack.projectile && !attack.special && now >= attack.end + recoveryMs)) continue;
-
-            // Télégraphies au sol des attaques spéciales
-            if (attack.special) {
-                const progress = Math.max(0, Math.min(1, (now - attack.start) / Math.max(1, attack.castEnd - attack.start)));
-                if (monster.isBoss) {
-                    const still = this.scene.motionPreference.matches;
-                    const pose = still ? .4 : progress;
-                    this.vfx?.play(attack.special === 'magma_rift' ? 'firebolt' : 'rune',
-                        attack.originX, attack.originY - (attack.special === 'magma_rift' ? 34 : 0),
-                        pose, .70 + progress * .19, attack.special === 'magma_rift' ? attack.angle : 0, .72);
-                }
-                if (attack.special === 'obsidian_cleave') {
-                    this.drawMalakorArc(attack.originX, attack.originY, attack.angle, attack.radius, progress);
-                } else if (attack.special === 'seismic_ring') {
-                    const r = attack.radius ?? 78;
-                    this.effect.fillStyle(0xff4a24, 0.14 + progress * 0.18).fillEllipse(attack.originX, attack.originY, r * 2, r * 2);
-                    this.effect.lineStyle(2, 0xff9f43, 0.85).strokeEllipse(attack.originX, attack.originY, r * 2, r * 2);
-                    this.effect.lineStyle(1.5, 0xffe49c, 0.95).strokeEllipse(attack.originX, attack.originY, r * 2 * progress, r * 2 * progress);
-                } else if (attack.special === 'magma_rift') {
-                    const endX = attack.originX + attack.dirX * attack.riftRange;
-                    const endY = attack.originY + attack.dirY * attack.riftRange;
-                    this.effect.lineStyle(attack.halfWidth * 2, 0xff3b1f, 0.18 + progress * 0.22);
-                    this.effect.lineBetween(attack.originX, attack.originY, endX, endY);
-                    this.effect.lineStyle(2, 0xffc66e, 0.9);
-                    this.effect.lineBetween(attack.originX, attack.originY, endX, endY);
-                }
-                continue;
-            }
-
-            const elapsed = now - attack.start;
-            const color = monster.species === 'dragon' ? 0x7bdef2 : (monster.isBoss ? 0xff7a3d : 0xffba87);
-            this.effect.fillStyle(color, .9);
-            if (attack.projectile) {
-                const shot = attack.projectile;
-                if (now < attack.castEnd) {
-                    this.effect.fillStyle(color, .5);
-                    for (let step = 8; step <= shot.range; step += 8) {
-                        const x = shot.x + shot.dx * step;
-                        const y = shot.y + shot.dy * step;
-                        if (!this.scene.canStand(x, y)) break;
-                        this.effect.fillRect(Math.round(x) - 2, Math.round(y) - 1, 4, 2);
-                    }
-                    this.vfx?.play('frostbolt', attack.x, attack.y,
-                        this.scene.motionPreference.matches ? .4 : Math.min(1, elapsed / (attack.castEnd - attack.start)),
-                        .44, attack.angle, .8);
-                    continue;
-                }
-                const x = shot.x + shot.dx * shot.distance;
-                const y = shot.y + shot.dy * shot.distance - 8;
-                this.vfx?.play('frostbolt', x, y, this.scene.motionPreference.matches ? .4 : (elapsed % 280) / 280,
-                    .62, Math.atan2(shot.dy, shot.dx));
-            } else if (now >= attack.end) {
-                const progress = Math.min(1, (now - attack.end) / recoveryMs);
-                this.vfx?.play('slash', attack.x, attack.y, this.scene.motionPreference.matches ? .33 : progress,
-                    .37, attack.angle, .78 * (1 - progress));
-            }
-        }
-    }
-
-    drawMelee(attack, progress, windingUp) {
-        const x = this.scene.position.x + Math.cos(attack.angle) * 4;
-        const y = this.scene.position.y - 17;
-        const blade = attack.armed && !attack.staff;
-        if (!windingUp && ['axe', 'daggers'].includes(attack.weaponStyle)) {
-            this.vfx?.play(attack.weaponStyle === 'axe' ? 'axe_swing' : 'dagger', x, y,
-                this.scene.motionPreference.matches ? .42 : Math.min(.999, .17 + progress * .83),
-                attack.special ? .98 : .69, attack.angle, 1 - progress * .35);
-            return;
-        }
-        if (windingUp && (!blade || !attack.special || progress < .34)) return;
-        if (windingUp) {
-            this.vfx?.play('rune', x + Math.cos(attack.angle) * 7, y + 3, progress, .35, 0, .39);
-            return;
-        }
-        const kind = blade ? (attack.special ? 'slash' : 'steel_slash') : 'ward';
-        this.vfx?.play(kind, x, y, this.scene.motionPreference.matches ? .4 : progress,
-            attack.special ? .91 : .54, attack.angle, 1 - progress * .55);
-    }
+    drawEffects(now) { drawEffectsView(this, now); }
+    drawCastCircle(now, start, castMs) { drawCastCircleView(this, now, start, castMs); }
+    drawDrain(cast, now, still) { drawDrainView(this, cast, now, still); }
+    drawSpellEffects(now) { drawSpellEffectsView(this, now); }
+    drawMalakorArc(x, y, angle, radius, progress) { drawMalakorArcView(this, x, y, angle, radius, progress); }
+    drawMalakorAura(monster, now) { drawMalakorAuraView(this, monster, now); }
+    drawMalakorSurge(monster, now) { drawMalakorSurgeView(this, monster, now); }
+    drawMalakorTrial(monster, now) { drawMalakorTrialView(this, monster, now); }
+    drawInfernoEmbers(fx, now, still) { drawInfernoEmbersView(this, fx, now, still); }
+    drawMonsterAttacks(now) { drawMonsterAttacksView(this, now); }
+    drawMelee(attack, progress, windingUp) { drawMeleeView(this, attack, progress, windingUp); }
 
     attackPose(now) {
         const attack = this.attackVisual;
@@ -2275,68 +1530,19 @@ export class TrainingCombat {
         return Math.hypot(monster.sprite.x - this.scene.position.x, monster.sprite.y - this.scene.position.y);
     }
 
+    effectiveDistanceTo(monster) {
+        const bodyRadius = monster?.art?.width ? Math.max(0, monster.art.width / 2 - 8) : 0;
+        return Math.max(0, this.distanceTo(monster) - bodyRadius);
+    }
+
     triggerShake(tier) {
         this.scene?.cameraFeel?.triggerTier?.(tier);
     }
 
-    refreshCastBar(now) {
-        if (!this.castBar) {
-            return;
-        }
-        const pending = this.pending;
-        if (!pending || pending.castMs < 500 || now >= pending.start + pending.castMs) {
-            this.castBar.hidden = true;
-            return;
-        }
-        const elapsed = Math.max(0, now - pending.start);
-        const remainingSec = Math.max(0, (pending.start + pending.castMs - now) / 1000).toFixed(1);
-        this.castBar.hidden = false;
-        if (this.castBarName) this.castBarName.textContent = pending.name ?? 'Incantation';
-        if (this.castBarMeter) this.castBarMeter.value = Math.min(100, Math.round((elapsed * 100) / pending.castMs));
-        if (this.castBarTime) this.castBarTime.textContent = `${remainingSec}s`;
-    }
-
-    spawnFloatingText(x, y, text, color = '#ffe3a6', now = 0) {
-        if (typeof this.scene?.add?.text !== 'function' || !this.damageNumbers) {
-            return;
-        }
-        const depth = (this.scene.terrain?.length ?? 192) * this.tileSize + 20;
-        const label = this.scene.add.text(Math.round(x), Math.round(y), text, {
-            fontFamily: 'system-ui, sans-serif',
-            fontSize: '9px',
-            fontStyle: 'bold',
-            color,
-            stroke: '#101719',
-            strokeThickness: 2,
-        }).setOrigin(0.5, 1).setDepth(depth);
-        this.damageNumbers.push({ label, startY: y, start: now });
-    }
-
-    updateFloatingTexts(now) {
-        if (!this.damageNumbers || this.damageNumbers.length === 0) {
-            return;
-        }
-        const active = [];
-        for (const entry of this.damageNumbers) {
-            const elapsed = now - entry.start;
-            if (elapsed >= 650) {
-                entry.label.destroy?.();
-                continue;
-            }
-            const progress = elapsed / 650;
-            entry.label.setY(Math.round(entry.startY - progress * 14));
-            entry.label.setAlpha?.(Math.max(0, 1 - progress));
-            active.push(entry);
-        }
-        this.damageNumbers = active;
-    }
-
-    clearFloatingTexts() {
-        for (const entry of this.damageNumbers ?? []) {
-            entry.label.destroy?.();
-        }
-        this.damageNumbers = [];
-    }
+    refreshCastBar(now) { refreshCastBarUi(this, now); }
+    spawnFloatingText(x, y, text, color = '#ffe3a6', now = 0) { spawnFloatingTextView(this, x, y, text, color, now); }
+    updateFloatingTexts(now) { updateFloatingTextsView(this, now); }
+    clearFloatingTexts() { clearFloatingTextsView(this); }
 
     finish(message) {
         this.pending = null;
@@ -2357,35 +1563,7 @@ export class TrainingCombat {
         this.tell(message);
     }
 
-    refreshTargetHud() {
-        if (!this.targetHud) {
-            return;
-        }
-        const target = this.selectedMonster;
-        if (!target || !target.isAlive) {
-            this.targetHud.hidden = true;
-            this.targetHud.dataset.boss = 'false';
-            if (this.targetPhaseLabel) this.targetPhaseLabel.hidden = true;
-            return;
-        }
-        this.targetHud.hidden = false;
-        this.targetHud.dataset.boss = String(Boolean(target.isBoss));
-        if (this.targetNameLabel) this.targetNameLabel.textContent = target.name;
-        if (this.targetLevelLabel) {
-            this.targetLevelLabel.textContent = (target.isBoss ? 'BOSS · Niv. ' : 'Niv. ') + target.level;
-        }
-        if (this.targetPhaseLabel) {
-            if (target.isBoss) {
-                this.targetPhaseLabel.hidden = false;
-                this.targetPhaseLabel.textContent = `Phase ${target.phase} · ${malakorPhases[target.phase - 1]} · ${target.trial ? 'ESQUIVE' : '65 % / 25 %'}`;
-            } else {
-                this.targetPhaseLabel.hidden = true;
-            }
-        }
-        this.meters[2].meter.max = target.maxHealth;
-        this.meters[2].meter.value = target.health;
-        this.meters[2].value.textContent = target.health + ' / ' + target.maxHealth;
-    }
+    refreshTargetHud() { refreshTargetHudUi(this); }
 
     refreshVitals() {
         [this.health, this.mana].forEach((amount, index) => {
@@ -2401,4 +1579,8 @@ export class TrainingCombat {
             this.status.textContent = message;
         }
     }
+}
+
+function xpRequiredFromProgress(level) {
+    return 100 + (level - 1) * 50;
 }

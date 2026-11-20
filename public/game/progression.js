@@ -11,12 +11,10 @@ export const xpRequired = (level) => {
 
 const coreStats = ['strength', 'intelligence', 'vitality', 'spirit'];
 const dexterityClasses = ['rogue', 'hunter'];
-export const statKeys = [...coreStats, 'dexterity', 'defense'];
+export const statKeys = ['strength', 'dexterity', 'intelligence', 'spirit', 'vitality', 'defense'];
 
-function availableStats(classKey) {
-    if (classKey === 'warrior') return [...coreStats, 'defense'];
-    if (dexterityClasses.includes(classKey)) return [...coreStats, 'dexterity'];
-    return coreStats;
+function availableStats() {
+    return statKeys;
 }
 
 export const spellKeys = ['basic', 'special'];
@@ -380,46 +378,37 @@ const itemKeys = ['health', 'mana', 'rare', 'epic'];
 
 const defaultClassProfiles = {
     warrior: {
-        baseStats: {
-            strength: 8,
-            intelligence: 4,
-            vitality: 8,
-            spirit: 5,
-            defense: 6,
-        },
-        growthStats: {
-            strength: 2,
-            intelligence: 1,
-            vitality: 2,
-            spirit: 1,
-            defense: 0,
-        },
+        baseStats: { strength: 8, dexterity: 5, intelligence: 4, spirit: 5, vitality: 8, defense: 6 },
+        growthStats: { strength: 1.0, defense: 0.6, vitality: 0.35, dexterity: 0.15, intelligence: 0.15, spirit: 0.15 },
     },
     mage: {
-        baseStats: {
-            strength: 4,
-            intelligence: 8,
-            vitality: 5,
-            spirit: 8,
-        },
-        growthStats: {
-            strength: 1,
-            intelligence: 2,
-            vitality: 1,
-            spirit: 2,
-        },
+        baseStats: { strength: 4, dexterity: 5, intelligence: 8, spirit: 8, vitality: 5, defense: 4 },
+        growthStats: { intelligence: 1.0, spirit: 0.6, vitality: 0.35, strength: 0.15, dexterity: 0.15, defense: 0.15 },
     },
     warlock: {
-        baseStats: { strength: 4, intelligence: 9, vitality: 6, spirit: 7 },
-        growthStats: { strength: 1, intelligence: 2, vitality: 1, spirit: 2 },
+        baseStats: { strength: 4, dexterity: 5, intelligence: 9, spirit: 7, vitality: 6, defense: 4 },
+        growthStats: { intelligence: 1.0, spirit: 0.6, vitality: 0.35, strength: 0.15, dexterity: 0.15, defense: 0.15 },
     },
     rogue: {
-        baseStats: { strength: 5, intelligence: 4, vitality: 6, spirit: 5, dexterity: 9 },
-        growthStats: { strength: 1, intelligence: 1, vitality: 1, spirit: 1, dexterity: 2 },
+        baseStats: { strength: 5, dexterity: 9, intelligence: 4, spirit: 5, vitality: 6, defense: 5 },
+        growthStats: { dexterity: 1.0, strength: 0.6, vitality: 0.35, intelligence: 0.15, spirit: 0.15, defense: 0.15 },
     },
     hunter: {
-        baseStats: { strength: 5, intelligence: 4, vitality: 7, spirit: 6, dexterity: 8 },
-        growthStats: { strength: 1, intelligence: 1, vitality: 1, spirit: 1, dexterity: 2 },
+        baseStats: { strength: 5, dexterity: 8, intelligence: 4, spirit: 6, vitality: 7, defense: 5 },
+        growthStats: { dexterity: 1.0, spirit: 0.6, intelligence: 0.35, strength: 0.15, vitality: 0.15, defense: 0.15 },
+    },
+};
+
+export const specializationProfiles = {
+    bulwark: {
+        label: 'Rempart',
+        bonus: { defense: 3 },
+        growthStats: { defense: 1.0, vitality: 0.6, strength: 0.35, dexterity: 0.15, intelligence: 0.15, spirit: 0.15 },
+    },
+    berserker: {
+        label: 'Berserker',
+        bonus: { strength: 3 },
+        growthStats: { strength: 1.0, vitality: 0.6, defense: 0.35, dexterity: 0.15, intelligence: 0.15, spirit: 0.15 },
     },
 };
 
@@ -440,13 +429,16 @@ export function createInitialProgress(startingLevel = 1) {
         },
         weapon: 'starter',
         armor: { head: null, hands: null },
+        specialization: null,
         statPoints: Math.max(0, startingLevel - 1) * statPointsPerLevel,
         spellPoints: Math.max(0, startingLevel - 1) * spellPointsPerLevel,
         allocatedStats: {
             strength: 0,
+            dexterity: 0,
             intelligence: 0,
             vitality: 0,
             spirit: 0,
+            defense: 0,
         },
         spells: {
             basic: 1,
@@ -458,7 +450,8 @@ export function createInitialProgress(startingLevel = 1) {
 }
 
 /**
- * Normalise une sauvegarde existante pour y intégrer les champs de stats, sorts et talents.
+ * Normalise une sauvegarde existante pour y intégrer les champs de stats, talents et spécialisation.
+ * Les anciens rangs de sorts de base sont automatiquement remboursés dans spellPoints.
  */
 function normalizeProgress(saved, classKey) {
     const fallback = createInitialProgress();
@@ -471,11 +464,7 @@ function normalizeProgress(saved, classKey) {
         allocatedStats[key] = Number.isSafeInteger(value) && value >= 0 ? value : 0;
     }
 
-    const spells = {};
-    for (const key of spellKeys) {
-        const value = saved.spells?.[key];
-        spells[key] = Number.isSafeInteger(value) && value >= 1 ? value : 1;
-    }
+    const spells = { basic: 1, special: 1 };
 
     const talents = {};
     if (saved.talents && typeof saved.talents === 'object') {
@@ -493,13 +482,16 @@ function normalizeProgress(saved, classKey) {
         spentStats = 0;
     }
     const spellBudget = levelsGained * spellPointsPerLevel;
-    let spentSpells = Object.values(talents).reduce((total, value) => total + value, 0)
-        + Object.values(spells).reduce((total, value) => total + value - 1, 0);
+    let spentSpells = Object.values(talents).reduce((total, value) => total + value, 0);
     if (spentSpells > spellBudget) {
         for (const key of Object.keys(talents)) delete talents[key];
-        for (const key of spellKeys) spells[key] = 1;
         spentSpells = 0;
     }
+
+    const validSpec = classKey === 'warrior' && saved.level >= 10
+        && Object.hasOwn(specializationProfiles, saved.specialization)
+        ? saved.specialization
+        : null;
 
     const items = { ...saved.items };
     for (const id of Object.keys(armorItems)) {
@@ -515,6 +507,7 @@ function normalizeProgress(saved, classKey) {
         ...saved,
         items,
         armor,
+        specialization: validSpec,
         statPoints: statBudget - spentStats,
         spellPoints: spellBudget - spentSpells,
         allocatedStats,
@@ -649,27 +642,23 @@ export function allocateStat(progress, stat, classKey = null) {
 }
 
 /**
- * Dépense un point de sort pour augmenter le rang de l'attaque ou du sort choisi.
+ * La maîtrise des sorts de base a été supprimée au profit de l'arbre de talents.
  */
-export function upgradeSpell(progress, spell) {
-    if (progress.level <= 1 || !spellKeys.includes(spell)) {
+export function upgradeSpell() {
+    return false;
+}
+
+/**
+ * Permet à un Guerrier de niveau 10+ de choisir sa spécialisation (Rempart ou Berserker).
+ */
+export function chooseSpecialization(progress, classKey, spec) {
+    if (classKey !== 'warrior' || (progress.level ?? 1) < 10 || progress.specialization) {
         return false;
     }
-
-    if (!Number.isSafeInteger(progress.spellPoints) || progress.spellPoints <= 0) {
+    if (!Object.hasOwn(specializationProfiles, spec)) {
         return false;
     }
-
-    if (!progress.spells) {
-        progress.spells = {
-            basic: 1,
-            special: 1,
-        };
-    }
-
-    progress.spellPoints -= 1;
-    progress.spells[spell] = (progress.spells[spell] ?? 1) + 1;
-
+    progress.specialization = spec;
     return true;
 }
 
@@ -785,7 +774,7 @@ export function basicWeaponProfile(rules, progress, stats, tileSize) {
     const mage = classKey === 'mage';
     const wand = mage && progress.weapon !== null && progress.weapon !== 'rare';
     const ranged = wand || (['warlock', 'hunter'].includes(classKey) && progress.weapon !== null);
-    const range = ranged ? (rules.range + (stats.bonusRangeTiles ?? 0)) * tileSize : 1.5 * tileSize;
+    const range = ranged ? (rules.range + (stats.bonusRangeTiles ?? 0)) * tileSize : 2.5 * tileSize;
     const talents = progress.talents ?? {};
     const damage = wand
         ? Math.round((stats.basicDamage * (rules.wandDamageMultiplier ?? 1) + (talents.m_wand_focus ?? 0) * 2)
@@ -804,30 +793,40 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const growthStats = rules.growthStats ?? fallbackProfile.growthStats;
 
     const startingLevel = 1;
-    const level = progress.level ?? startingLevel;
+    const level = Math.max(1, progress.level ?? startingLevel);
     const levelsGained = Math.max(0, level - startingLevel);
+    const spec = classKey === 'warrior' && level >= 10 && specializationProfiles[progress.specialization]
+        ? specializationProfiles[progress.specialization]
+        : null;
+    const earlyLevels = spec ? Math.min(8, levelsGained) : levelsGained;
+    const specLevels = spec ? Math.max(0, levelsGained - 8) : 0;
 
     const attributes = {};
     for (const key of statKeys) {
-        const base = baseStats[key] ?? (coreStats.includes(key) ? 5 : 0);
-        const natural = levelsGained * (growthStats[key] ?? (coreStats.includes(key) ? 1 : 0));
+        const base = baseStats[key] ?? 4;
+        const baseGrowth = growthStats[key] ?? 0.15;
+        const specGrowth = spec?.growthStats?.[key] ?? baseGrowth;
+        const naturalRaw = Math.round((earlyLevels * baseGrowth + specLevels * specGrowth) * 100) / 100;
+        const specBonus = spec?.bonus?.[key] ?? 0;
         const allocated = progress.allocatedStats?.[key] ?? 0;
-        const bonus = natural + allocated;
+        const bonus = naturalRaw + specBonus + allocated;
 
         attributes[key] = {
             base,
-            natural,
+            naturalRaw,
+            natural: Math.round(naturalRaw),
+            specBonus,
             allocated,
             bonus,
-            total: base + bonus,
+            total: Math.round(base + bonus),
         };
     }
 
-    const primaryBonus = dexterityClasses.includes(classKey) ? attributes.dexterity.bonus : rules.ranged
-        ? attributes.intelligence.bonus
-        : attributes.strength.bonus;
+    const primaryBonus = dexterityClasses.includes(classKey)
+        ? attributes.dexterity.bonus
+        : (['mage', 'warlock'].includes(classKey) ? attributes.intelligence.bonus : attributes.strength.bonus);
 
-    const secondaryBonus = (rules.ranged || dexterityClasses.includes(classKey))
+    const secondaryBonus = (['mage', 'warlock'].includes(classKey) || dexterityClasses.includes(classKey))
         ? attributes.strength.bonus
         : attributes.intelligence.bonus;
 
@@ -847,49 +846,47 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const bonusRangeTiles = (t.m_arcane_blast ?? 0) > 0 ? 0.5 : 0;
 
     const equipment = armorBonuses(progress, classKey);
-    const maxHealth = equipment.health + rules.health + levelsGained * 4 + attributes.vitality.bonus * 4 + talentHealthBonus;
-    const maxMana = equipment.mana + rules.mana + levelsGained * 2 + attributes.spirit.bonus * 3 + talentManaBonus;
+    const maxHealth = Math.round(equipment.health + rules.health + levelsGained * 3 + attributes.vitality.bonus * 4 + talentHealthBonus);
+    const intelManaBonus = ['mage', 'warlock', 'hunter'].includes(classKey) ? attributes.intelligence.bonus * 2 : 0;
+    const maxMana = Math.round(equipment.mana + rules.mana + levelsGained * 1.5 + attributes.spirit.bonus * 3 + intelManaBonus + talentManaBonus);
 
-    const basicSpellRank = progress.spells?.basic ?? 1;
-    const specialSpellRank = progress.spells?.special ?? 1;
-    const basicRankStep = rules.basicSpellRankBonus ?? basicSpellRankBonus;
-    const specialRankStep = rules.specialSpellRankBonus ?? specialSpellRankBonus;
-    const basicRankBonus = (basicSpellRank - 1) * basicRankStep;
-    const specialRankBonus = (specialSpellRank - 1) * specialRankStep;
+    const basicSpellRank = 1;
+    const specialSpellRank = 1;
+    const basicRankBonus = 0;
+    const specialRankBonus = 0;
 
-    const basicDamage = rules.basicDamage
+    const basicDamage = Math.round(
+        rules.basicDamage
         + levelsGained
         + primaryBonus * 2
         + secondaryBonus
-        + basicRankBonus
         + talentBasicBonus
-        + weaponBonus + equipment.basic;
+        + weaponBonus
+        + equipment.basic,
+    );
 
     const rawSpecialDamage = rules.specialDamage
         + levelsGained * 2
         + primaryBonus * 2
         + secondaryBonus
-        + specialRankBonus
-        + talentSpecialBonus + equipment.special;
+        + talentSpecialBonus
+        + equipment.special;
     const specialDamage = Math.round(rawSpecialDamage * talentSpecialMultiplier);
 
-    const baseRegen = rules.baseManaRegen ?? (classKey === 'mage' ? 1 : 2);
-    const rawRegen = ['mage', 'warlock'].includes(classKey)
-        ? baseRegen
-            + levelsGained * 0.08
-            + attributes.spirit.bonus * 0.14
-            + attributes.intelligence.bonus * 0.04
-            + talentRegenBonus
-        : baseRegen
-            + levelsGained * 0.3
-            + attributes.spirit.bonus * 0.4
-            + attributes.intelligence.bonus * 0.2
-            + talentRegenBonus;
-    const manaRegenPerSec = Math.round(rawRegen * 10) / 10;
+    // La régénération dépend uniquement de l'Esprit (et des talents dédiés), jamais de l'Intelligence ni du niveau.
+    const isEnergyClass = ['warrior', 'rogue'].includes(classKey);
+    const baseRegen = rules.baseManaRegen ?? (isEnergyClass ? 0.8 : 0.4);
+    const spiritRate = isEnergyClass ? 0.12 : 0.08;
+    const rawRegen = baseRegen + attributes.spirit.bonus * spiritRate + talentRegenBonus;
+    const manaRegenPerSec = Math.round(rawRegen * 100) / 100;
+
+    const effectiveDefense = Math.max(0, attributes.defense.bonus + Math.max(0, attributes.defense.base - 4));
+    const physicalMitigation = effectiveDefense > 0 ? Math.min(.45, effectiveDefense / (45 + effectiveDefense)) : 0;
 
     return {
         level,
         levelsGained,
+        specialization: spec ? progress.specialization : null,
         attributes,
         maxHealth,
         maxMana,
@@ -903,7 +900,7 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         cooldownReduction,
         manaCostReduction,
         damageReduction: Math.min(.60, damageReduction + equipment.mitigation),
-        physicalMitigation: classKey === 'warrior' ? Math.min(.40, attributes.defense.bonus / (42 + attributes.defense.bonus)) : 0,
+        physicalMitigation,
         bonusRangeTiles,
         statPoints: progress.statPoints ?? 0,
         spellPoints: progress.spellPoints ?? 0,

@@ -21,30 +21,30 @@ const blade = 'icon-sword';
 const arrow = 'icon-bolt';
 const shield = 'icon-shield';
 
-const imp = active('summon_imp', 'Invoquer le diablotin', rune, 8, 4500,
-    'Invoque un diablotin lanceur de flammes. Remplace ton familier actif.', { summon: 'imp', vfx: 'summon' });
+const imp = active('summon_imp', 'Invoquer le diablotin', rune, 10, 4500,
+    'Invoque un diablotin lanceur de flammes (incantation 1,2 s). Remplace ton familier actif.', { summon: 'imp', castMs: 1200, vfx: 'summon' });
 export const starterTalents = { warlock: [imp] };
 
 export const classTalents = {
     warlock: { branches: [
         branch('affliction', 'Affliction', 'Malédictions & Drain', '#bf7be6',
             passive('wl_affliction', 'Tourment', '+12 % de dégâts périodiques par rang.', rune),
-            active('agony', 'Malédiction d’agonie', rune, 9, 6700, 'Inflige des dégâts croissants pendant six secondes.',
-                { range: 7, vfx: 'curse', dot: { ticks: 6, scale: .18, ramp: .15 } }),
-            active('drain_life', 'Drain de vie', rune, 13, 7200, 'Canalise pendant 2 s. Chaque pulsation inflige des dégâts et rend des PV.',
-                { range: 7, castMs: 2000, channel: 500, power: .25, healing: .45, vfx: 'drain' })),
+            active('agony', 'Malédiction d’agonie', rune, 11, 6700, 'Incante 0,65 s et inflige des dégâts croissants pendant six secondes.',
+                { range: 5, castMs: 650, vfx: 'curse', dot: { ticks: 6, scale: .18, ramp: .15 } }),
+            active('drain_life', 'Drain de vie', rune, 14, 7200, 'Canalise pendant 2 s. Chaque pulsation inflige des dégâts et rend des PV.',
+                { range: 5, castMs: 2000, channel: 500, power: .25, healing: .45, vfx: 'drain' })),
         branch('demonology', 'Démonologie', 'Pactes & Familiers', '#d97b89',
             passive('wl_bond', 'Pacte de sang', '+10 % de dégâts du familier par rang.', rune),
-            active('summon_succubus', 'Invoquer la succube', rune, 9, 4500, 'Invoque une succube qui entrave ta cible.',
-                { summon: 'succubus', vfx: 'summon' }),
-            active('summon_void', 'Invoquer le marcheur du Vide', rune, 11, 4500, 'Invoque un gardien qui amortit une partie des coups que tu reçois.',
-                { summon: 'void', vfx: 'summon' })),
+            active('summon_succubus', 'Invoquer la succube', rune, 11, 4500, 'Incante 1,2 s et invoque une succube qui entrave ta cible.',
+                { summon: 'succubus', castMs: 1200, vfx: 'summon' }),
+            active('summon_void', 'Invoquer le marcheur du Vide', rune, 13, 4500, 'Incante 1,2 s et invoque un gardien qui amortit une partie des coups reçus.',
+                { summon: 'void', castMs: 1200, vfx: 'summon' })),
         branch('destruction', 'Destruction', 'Braises & Chaos', '#ed9658',
             passive('wl_ruin', 'Ruine', '+5 % aux dégâts directs de tes sorts par rang.', 'icon-fire'),
-            active('immolate', 'Immolation', 'icon-fire', 11, 6200, 'Brûle la cible à l’impact, puis pendant quatre secondes.',
-                { range: 7, castMs: 1000, power: .5, vfx: 'fireball_burst', dot: { ticks: 4, scale: .17 } }),
-            active('chaos_bolt', 'Trait du chaos', rune, 16, 9300, 'Déchaîne un impact d’ombre et de braise.',
-                { range: 7.5, castMs: 1500, power: 1.6, vfx: 'chaos' })),
+            active('immolate', 'Immolation', 'icon-fire', 13, 6200, 'Incante 1 s et brûle la cible à l’impact, puis pendant quatre secondes.',
+                { range: 5, castMs: 1000, power: .5, vfx: 'fireball_burst', dot: { ticks: 4, scale: .17 } }),
+            active('chaos_bolt', 'Trait du chaos', rune, 18, 9300, 'Incante 1,5 s et déchaîne un impact d’ombre et de braise.',
+                { range: 6, castMs: 1500, power: 1.6, vfx: 'chaos' })),
     ] },
     rogue: { branches: [
         branch('assassination', 'Assassinat', 'Poison & Saignement', '#91ab68',

@@ -34,12 +34,22 @@
         {
             key: 'strength',
             label: 'Force',
-            effect: warrior ? 'Augmente fortement les dégâts de mêlée' : 'Renforce légèrement les attaques physiques'
+            effect: warrior ? 'Augmente fortement les dégâts de mêlée' : 'Renforce les attaques au corps à corps'
+        },
+        {
+            key: 'dexterity',
+            label: 'Dextérité',
+            effect: combat.classKey in ['rogue', 'hunter'] ? 'Augmente les dégâts des dagues et de l’arc' : 'Adresse et précision physique'
         },
         {
             key: 'intelligence',
             label: 'Intelligence',
-            effect: warrior ? 'Renforce légèrement la compétence et la régénération' : 'Augmente les dégâts des sorts et la régénération'
+            effect: combat.classKey in ['mage', 'warlock'] ? 'Augmente les dégâts des sorts et la réserve de mana' : 'Renforce les techniques magiques'
+        },
+        {
+            key: 'spirit',
+            label: 'Esprit',
+            effect: '+3 ' ~ resource ~ ' max et augmente la régénération'
         },
         {
             key: 'vitality',
@@ -47,17 +57,11 @@
             effect: '+4 PV maximum par point'
         },
         {
-            key: 'spirit',
-            label: 'Esprit',
-            effect: '+3 ' ~ resource ~ ' max et régénération accrue'
+            key: 'defense',
+            label: 'Défense',
+            effect: 'Réduit les dégâts physiques (rendement décroissant)'
         }
     ] %}
-    {% if combat.baseStats.dexterity is defined %}
-        {% set statDefinitions = statDefinitions|merge([{key: 'dexterity', label: 'Dextérité', effect: 'Augmente les dégâts des dagues et de l’arc'}]) %}
-    {% endif %}
-    {% if combat.baseStats.defense is defined %}
-        {% set statDefinitions = statDefinitions|merge([{key: 'defense', label: 'Défense', effect: 'Réduit les dégâts physiques reçus'}]) %}
-    {% endif %}
 
     <section class="game-viewport" aria-label="Val-des-Saules">
         <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
@@ -148,7 +152,8 @@
                 </div>
             </div>
 
-            {# Journal de combat flottant, barre d'incantation et bouton de résurrection #}
+            {# Bandeau dédié de montée de niveau + Journal flottant #}
+            <div id="level-up-banner" class="level-up-banner" role="status" aria-live="polite" hidden></div>
             <div class="floating-feedback">
                 <div id="cast-bar" class="cast-bar" role="status" hidden>
                     <div class="cast-bar-header">
@@ -198,7 +203,7 @@
                                     <kbd>1</kbd>
                                     <span class="action-icon icon-{{ combat.basicIcon }}" aria-hidden="true"></span>
                                     <span class="slot-name" id="combat-basic-name">{{ basic }}</span>
-                                    <small class="slot-meta" id="combat-basic-meta">Rg 1 · {{ initialBasicDamage }}</small>
+                                    <small class="slot-meta" id="combat-basic-meta">{{ initialBasicDamage }} dég.</small>
                                     <span class="slot-cd" aria-hidden="true"></span>
                                 </button>
 
@@ -507,9 +512,11 @@
                     <p class="sheet-note">
                         Croissance naturelle par niveau :
                         +{{ growthStats.strength }} Force ·
+                        +{{ growthStats.dexterity }} Dextérité ·
                         +{{ growthStats.intelligence }} Intelligence ·
+                        +{{ growthStats.spirit }} Esprit ·
                         +{{ growthStats.vitality }} Vitalité ·
-                        +{{ growthStats.spirit }} Esprit.
+                        +{{ growthStats.defense }} Défense.
                     </p>
                     <ul class="stat-list">
                         {% for stat in statDefinitions %}
@@ -532,51 +539,19 @@
                     </ul>
                 </section>
 
-                <section class="sheet-card sheet-spells" aria-labelledby="sheet-spells-title">
+                <section id="warrior-spec-card" class="sheet-card warrior-spec-card" aria-labelledby="warrior-spec-title" hidden>
                     <div class="sheet-card-heading">
-                        <h3 id="sheet-spells-title">Maîtrise des sorts de base</h3>
-                        <span id="spell-points-count" class="points-pill">{{ combat.initialSpellPoints }} point disponible</span>
+                        <h3 id="warrior-spec-title">Spécialisation de Guerrier (N.10)</h3>
                     </div>
-                    <ul class="spell-list">
-                        <li class="spell-row">
-                            <span class="action-icon icon-{{ combat.basicIcon }}" aria-hidden="true"></span>
-                            <div class="spell-info">
-                                <div class="spell-title">
-                                    <strong>{{ basic }}</strong>
-                                    <span class="spell-rank-badge" data-spell-rank="basic">Rang 1</span>
-                                </div>
-                                <small data-spell-damage="basic">
-                                    {{ initialBasicDamage }} dégâts actuels{% if warrior %} (+{{ combat.basicSpellRankBonus }} par rang){% endif %}
-                                </small>
-                            </div>
-                            <button
-                                type="button"
-                                class="quiet"
-                                data-upgrade-spell="basic"
-                            >
-                                Améliorer (+1)
-                            </button>
-                        </li>
-                        <li class="spell-row">
-                            <span class="action-icon icon-{{ combat.specialIcon }}" aria-hidden="true"></span>
-                            <div class="spell-info">
-                                <div class="spell-title">
-                                    <strong>{{ combat.specialName }}</strong>
-                                    <span class="spell-rank-badge" data-spell-rank="special">Rang 1</span>
-                                </div>
-                                <small data-spell-damage="special">
-                                    {{ combat.specialDamage }} dégâts actuels (+{{ combat.specialSpellRankBonus }} par rang · Coût : {{ combat.specialManaCost }} {{ resource }})
-                                </small>
-                            </div>
-                            <button
-                                type="button"
-                                class="quiet"
-                                data-upgrade-spell="special"
-                            >
-                                Améliorer (+1)
-                            </button>
-                        </li>
-                    </ul>
+                    <p id="warrior-spec-status" class="sheet-note">Choisis ta voie dès le niveau 10 :</p>
+                    <div class="warrior-spec-actions">
+                        <button type="button" class="quiet" data-choose-spec="bulwark">
+                            Guerrier Rempart (+3 Défense · Défense &gt; Vitalité &gt; Force)
+                        </button>
+                        <button type="button" class="quiet" data-choose-spec="berserker">
+                            Guerrier Berserker (+3 Force · Force &gt; Vitalité &gt; Défense)
+                        </button>
+                    </div>
                 </section>
             </div>
 

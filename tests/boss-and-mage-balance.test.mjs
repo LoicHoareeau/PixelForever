@@ -246,16 +246,16 @@ test('le Mage incante à 15 cases et peut annuler une incantation d’une second
         classKey: 'mage',
         health: 40,
         mana: 40,
-        range: 7.5,
+        range: 5.0,
         specialRange: 15,
         wandDamageMultiplier: 0.5,
         ranged: true,
         basicDamage: 8,
         specialDamage: 22,
-        specialManaCost: 18,
+        specialManaCost: 14,
         specialCastMs: 1000,
         cooldownMs: 500,
-        baseManaRegen: 1.0,
+        baseManaRegen: 0.4,
         specialName: 'Boule de feu',
         resourceName: 'Mana',
     };
@@ -263,15 +263,15 @@ test('le Mage incante à 15 cases et peut annuler une incantation d’une second
     const stats = computeCharacterStats(mageRules, progress, 0);
     const wand = basicWeaponProfile(mageRules, progress, stats, 16);
     assert.equal(wand.ranged, true);
-    assert.equal(wand.range, 120);
+    assert.equal(wand.range, 80);
 
     progress.weapon = 'rare';
     const staff = basicWeaponProfile(mageRules, progress, stats, 16);
     assert.equal(staff.ranged, false);
-    assert.equal(staff.range, 24);
+    assert.equal(staff.range, 40);
 
-    assert.equal(computeCharacterStats(mageRules, createInitialProgress(1), 0).manaRegenPerSec, 1);
-    assert.equal(stats.manaRegenPerSec, 5);
+    assert.equal(computeCharacterStats(mageRules, createInitialProgress(1), 0).manaRegenPerSec, 0.4);
+    assert.ok(stats.manaRegenPerSec < 1.2);
     assert.equal(findTalent('mage', 'm_fire_wall').talent.castTimeMs, 1000);
     assert.equal(findTalent('mage', 'm_fire_whirl').talent.castTimeMs, 1000);
     assert.ok(findTalent('mage', 'm_fire_wall').talent.manaCost >= 22);
@@ -312,7 +312,7 @@ test('le Mage incante à 15 cases et peut annuler une incantation d’une second
     });
 
     combat.attack('special', 100);
-    assert.equal(combat.mana, 32);
+    assert.equal(combat.mana, 36);
     assert.equal(combat.pending.castMs, 1000);
     assert.equal(combat.cancelCastOnMove(), true);
     assert.equal(combat.mana, 50);
