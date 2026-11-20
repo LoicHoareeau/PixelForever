@@ -3,7 +3,6 @@ export const columns = 256;
 export const rows = 252;
 export const cliffTile = 35;
 export const seaTile = 36;
-export const questNpc = { x: 224, y: 190, range: 48 };
 
 // ---------------------------------------------------------------------------
 // Zones agrandies avec couloirs tampons pour gradients progressifs
@@ -96,6 +95,10 @@ export function buildTerrain(clearing) {
     road(22, 18, 24, 56);
     road(22, 54, 35, 56);
     road(102, 15, 104, 120);
+    road(98, 35, 104, 36); // Porte est du Bastion de Braise
+    road(79, 17, 80, 25);
+    road(79, 48, 80, 50);
+    road(79, 49, 104, 50);
     road(100, 118, 111, 120);
     road(103, 70, 168, 72);
     road(166, 46, 168, 96);

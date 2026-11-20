@@ -230,7 +230,7 @@ export class TrainingCombat {
         // Clic sur un monstre pour le cibler
         this.monsters.forEach((monster) => {
             monster.sprite.on('pointerdown', () => {
-                if (!monster.isAlive) return;
+                if (!monster.isAlive || this.scene.isInStarterTown?.()) return;
                 this.selectMonster(monster);
                 this.tell(`Cible : ${monster.name} (Niv. ${monster.level}).`);
             });
@@ -273,6 +273,10 @@ export class TrainingCombat {
      */
     cycleTarget(direction = 1) {
         if (this.health <= 0) {
+            return null;
+        }
+        if (this.scene.isInStarterTown?.()) {
+            this.tell('La porte est mène à la route de la clairière, où tu pourras cibler des ennemis.');
             return null;
         }
 
@@ -345,7 +349,8 @@ export class TrainingCombat {
             m.respawnAt = Infinity;
             m.place(m.patrol[index % m.patrol.length], m.level);
         });
-        this.selectMonster(this.monsters.find((m) => m.species === 'boar') ?? this.monsters[0]);
+        const inTown = this.scene.isInStarterTown?.();
+        this.selectMonster(inTown ? null : (this.monsters.find((m) => m.species === 'boar') ?? this.monsters[0]));
         this.targetHud.hidden = true;
 
         this.buttons.forEach((button) => {
@@ -356,7 +361,8 @@ export class TrainingCombat {
         this.refreshInventory();
         this.refreshActionSlots();
         this.updateCooldowns(0);
-        this.tell('Suis le sentier vers le littoral, le cimetière, les montagnes et les Terres dévastées (Tab pour cibler).');
+        this.tell(inTown ? 'Approche-toi de Rakka dans le Bastion et parle-lui (E).'
+            : 'Suis le sentier vers le littoral, le cimetière, les montagnes et les Terres dévastées (Tab pour cibler).');
     }
 
     /**
@@ -364,6 +370,10 @@ export class TrainingCombat {
      */
     attack(kind, now) {
         if (this.health === 0) {
+            return;
+        }
+        if (this.scene.isInStarterTown?.()) {
+            this.tell('Le Bastion de Braise est une zone sûre. Sors par la porte est pour combattre.');
             return;
         }
         if (this.mustDodgeMalakor()) {
@@ -1527,7 +1537,7 @@ export class TrainingCombat {
         this.refreshVitals();
         if (this.health === 0) {
             this.scene.avatar.setTint(0xbb6666);
-            this.finish(`${monster.name} (N.${monster.level}) t’a vaincu. Relève-toi au camp.`);
+            this.finish(`${monster.name} (N.${monster.level}) t’a vaincu. Relève-toi au Bastion.`);
             return;
         }
         this.tell(`${monster.name} t’inflige ${taken} dégâts.`);
