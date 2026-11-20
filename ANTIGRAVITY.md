@@ -13,6 +13,7 @@ Ce document décrit les vérifications à appliquer au dépôt actuel. Les ancie
 
 - Apparences conservées : Lina Guerrier, Noé Mage, mêmes portraits et cycles de marche.
 - Combat : baguette/Sceptre à cinq cases, bâton à 1,5 case ; Boule de feu garde sa portée au bâton. Base gratuite, mana/recharge pour les compétences, prérequis de talents et bonus de baguette limités à ses tirs.
+- Sorts du Mage : vérifier à distance avec chaque arme, zones de Tourbillon/Nova centrées sur la cible et absence de dépense sans cible vivante à portée. Les archives `pixel` ne contiennent pas encore de cycle d’incantation dédié.
 - Animation : un tir du Mage utilise une incantation, pas sa frappe à la lanterne. Vérifier directions, cadence à 30 FPS, sorts de talents et impacts.
 - Monde : plein écran, caméra suiveuse, falaises bloquantes, chemins accessibles ; sangliers N.1–5, squelettes N.5–10, dragons N.10–20 dans leurs zones.
 - Progression : aucun point au N.1, +3 caractéristiques / +1 talent à chaque montée suivante ; niveau/XP en base, reste de la progression encore local au navigateur.

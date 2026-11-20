@@ -55,6 +55,8 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 
 L’attaque de base ne consomme pas de ressource. Le bâton ne transforme pas les sorts du mage en coups de mêlée : Boule de feu garde sa portée de 5 cases. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent uniquement les auto-attaques à la baguette. La seconde exige la maîtrise et cinq points dans Arcanes.
 
+Les sorts de zone du Mage se lancent également à distance : Tourbillon de feu et Nova de givre sont centrés sur la cible sélectionnée, pas sur le mage. L’arme équipée ne réduit la portée d’aucun sort.
+
 Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L’arme de départ ajoute 4 dégâts de base ; les armes rares et épiques ajoutent 7 et 11. Le niveau, les caractéristiques, les rangs et les talents modifient ensuite les statistiques.
 
 ### Progression et butin

@@ -376,21 +376,33 @@ export class TrainingCombat {
 
         const target = this.getActiveTarget();
 
-        // Sorts de zone centrés sur le joueur : Taillade, Tourbillon de feu, Nova de givre
+        if (talent.slot !== 'cleave' && (!target || !target.isAlive)) {
+            this.tell('Aucune cible à portée.');
+            return;
+        }
+
+        // Taillade reste en mêlée ; les zones du mage sont lancées sur sa cible.
         if (talent.slot === 'cleave' || talent.slot === 'fire_whirl' || talent.slot === 'frost_nova') {
+            const rangedArea = talent.slot !== 'cleave';
+            if (rangedArea && this.distanceTo(target) > this.range) {
+                this.tell(`${target.name} est hors de portée pour ${talent.name}.`);
+                return;
+            }
+            const center = rangedArea ? target.sprite : this.scene.position;
             const radius = talent.slot === 'cleave' ? 38 : 54;
-            const hits = this.monsters.filter((m) => m.isAlive && this.distanceTo(m) <= radius);
+            const hits = this.monsters.filter((m) => m.isAlive && Math.hypot(m.sprite.x - center.x, m.sprite.y - center.y) <= radius);
             if (hits.length === 0) {
                 this.tell(`Aucun ennemi à portée pour ${talent.name}.`);
                 return;
             }
             this.mana -= manaCost;
+            if (rangedArea) this.scene.face(center.x - this.scene.position.x, center.y - this.scene.position.y);
             this.setSlotCooldown(talent.slot, now, cdMs);
             const color = talent.slot === 'frost_nova' ? 0x78ccf0 : (talent.slot === 'fire_whirl' ? 0xff7b2f : 0xffe09e);
             const mult = talent.slot === 'fire_whirl' ? 1.25 : (talent.slot === 'frost_nova' ? 0.75 : 0.95);
             const dmg = Math.round(this.stats.specialDamage * mult * berserkMult);
 
-            this.impacts.push({ x: this.scene.position.x, y: this.scene.position.y - 10, color, start: now });
+            this.impacts.push({ x: center.x, y: center.y - 10, color, start: now });
             for (const m of hits) {
                 if (talent.slot === 'frost_nova') {
                     m.slowUntil = now + 2500;
@@ -398,11 +410,6 @@ export class TrainingCombat {
                 this.applyDamageToMonster(m, dmg, talent.name, color, now);
             }
             this.refreshVitals();
-            return;
-        }
-
-        if (!target) {
-            this.tell('Aucune cible à portée.');
             return;
         }
 

@@ -14,7 +14,7 @@ function combat(weapon = 'starter') {
         classKey: 'mage', ranged: true, tileSize: 16, health: 40, mana: 40, readyAt: 0,
         scene: { position: { x: 0, y: 0 }, facing: 'east', face() {} },
         targetHud: {}, refreshTargetHud() {}, refreshVitals() {}, setSlotCooldown() {}, tell() {},
-        getActiveTarget: () => ({ name: 'Sanglier', sprite: { x: 40, y: 0 } }), distanceTo: () => 40,
+        getActiveTarget: () => ({ name: 'Sanglier', isAlive: true, sprite: { x: 40, y: 0 } }), distanceTo: () => 40,
     });
     return instance;
 }
@@ -42,7 +42,7 @@ test('un sort de talent du mage joue aussi une incantation avec un bâton équip
     const instance = combat('rare');
     instance.spellCooldowns = new Map();
     instance.impacts = [];
-    instance.monsters = [{ isAlive: true }];
+    instance.monsters = [{ isAlive: true, sprite: { x: 40, y: 0 } }];
     instance.applyDamageToMonster = () => {};
     instance.setSlotCooldown = TrainingCombat.prototype.setSlotCooldown;
     instance.castTalentSpell({ slot: 'frost_nova', name: 'Nova de givre', manaCost: 7 }, 0);

@@ -19,6 +19,8 @@ Le Guerrier utilise Lina, la mêlée et l’énergie. Le Mage utilise Noé et le
 
 L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer Boule de feu à distance. L’attaque de base reste disponible sans mana ; Boule de feu et Attaque chargée coûtent initialement 10 points de ressource. Les talents peuvent réduire les coûts et délais. La cadence de base est de 500 ms, avec préparation et impact ; aucune seconde attaque de base ne part pendant l’attaque en cours.
 
+Tous les sorts offensifs du Mage ciblent à distance, quelle que soit son arme. Tourbillon de feu et Nova de givre se déclenchent autour de la cible sélectionnée, dans un rayon de 54 px, à cinq cases de portée de lancement avant bonus. Mur de feu couvre 38 px autour de la cible et porte à six cases ; Déflagration porte à 6,5 cases. Nova ralentit pendant 2,5 secondes. Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste une zone de mêlée du Guerrier, centrée sur lui.
+
 La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Une défaite permet de se relever au camp en gardant la progression.
 
 ## Talents et progression
@@ -35,6 +37,8 @@ Les bonus de baguette ne renforcent ni les coups de bâton, ni les sorts, ni les
 ## Animations de combat
 
 L’auto-attaque à distance et les sorts du Mage utilisent une pose d’incantation orientée et des effets magiques. La planche Noé `attack.png`, issue de « Frappe à la lanterne », sert aux coups de contact et ne doit pas être utilisée pour représenter un tir de baguette. Les poses d’incantation dérivent du sprite existant, sans redessiner le personnage.
+
+Les exports `pixel` vérifiés contiennent « Frappe à la lanterne » pour Noé et « Coup de marteau » pour Lina. Aucun cycle d’incantation dédié n’y est présent. Une future animation magique complète devra utiliser un export dédié, en conservant l’apparence du personnage ; le geste orienté actuel est une adaptation des poses existantes.
 
 La préparation et la fin du geste sont cadencées pour rester lisibles à 30 FPS. Le projectile suit sa propre trajectoire vers la cible. Les compétences de talents déclenchent aussi un geste. Les directions nord utilisent des poses orientées ; les frappes existantes restent disponibles pour le Guerrier et le bâton. Les fichiers Markdown n’interviennent pas dans ce choix à l’exécution : `combat.js` et `world.js` l’appliquent.
 
