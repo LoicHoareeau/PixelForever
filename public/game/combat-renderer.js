@@ -1,5 +1,6 @@
 import { drawInfernoBeam } from './combat-vfx.js';
 import { bowGrip } from './equipped-art.js';
+import { warlockAuraState, drawWarlockAura } from './warlock-vfx.js';
 import { malakorIgnitionMs, malakorRageProgress, malakorSurgeMs, malakorWave, malakorWaveImpactMs } from './malakor.js';
 
 export const impactMs = 210;
@@ -19,17 +20,19 @@ const sparks = [
 export function drawEffectsView(combat, now) {
     combat.vfx?.begin();
     combat.rageEffect?.clear();
+    const darkAura = warlockAuraState(combat,now);
     const enemyAttacking = combat.monsters.some((monster) => monster.isAlive && (
         (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
         || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
     ));
     combat.spellEffects = (combat.spellEffects ?? []).filter((fx) => now - fx.start < fx.duration);
-    if (!combat.pending && !combat.recovery && combat.impacts.length === 0 && combat.spellEffects.length === 0 && !enemyAttacking) {
+    if (!combat.pending && !combat.recovery && combat.impacts.length === 0 && combat.spellEffects.length === 0 && !enemyAttacking && !darkAura) {
         combat.effect.clear();
         return;
     }
 
     combat.effect.clear();
+    if (darkAura) drawWarlockAura(combat,darkAura,now);
     combat.drawMonsterAttacks(now);
     combat.drawSpellEffects(now);
     combat.impacts = combat.impacts.filter((hit) => now - hit.start < impactMs);

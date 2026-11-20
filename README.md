@@ -4,7 +4,7 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Le prototype jouable utilise Phaser 3.90.0, Twig et JavaScript. Les règles PHP historiques de `src/Game/` ne remplacent pas le moteur de combat actuel du navigateur.
 
-Le Chasseur, le Voleur et le Démoniste disposent de planches équipées intégrant l’arc, les dagues et le grimoire aux animations. La corde se tend à deux mains, la flèche part de l’arc à la décoche et les pages du livre tournent pendant l’incantation. Les personnages d’origine sont conservés. [Animations et génération des planches](docs/FRONTEND.md)
+Le Chasseur porte son arc verticalement au repos et le tend à deux mains pour tirer. Le Voleur tient des dagues courtes, abaissées au repos. Le Démoniste lance sa magie directement, entouré de volutes d’ombre violettes pendant ses sorts, sans livre visible. Les personnages d’origine sont conservés. [Animations et génération des planches](docs/FRONTEND.md)
 
 ## Aperçu
 
@@ -68,7 +68,7 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 | Guerrier · épée, croc ou Hache de fer | Coup en mêlée | 2,5 case |
 | Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 2,5 case |
-| Démoniste · Grimoire | Trait d’ombre | 5 cases |
+| Démoniste · Focalisation d’ombre | Trait d’ombre | 5 cases |
 | Voleur · Dagues | Coup de dague | 2,5 case |
 | Chasseur · Arc | Flèche rapide | 7 cases |
 | Mains nues | Coup de poing | 2,5 case |

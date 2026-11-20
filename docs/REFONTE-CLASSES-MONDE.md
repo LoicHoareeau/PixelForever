@@ -8,7 +8,7 @@ Cadrage du 20 novembre 2026, validé par l’utilisateur. Livrés sur la branche
 
 Le lot suivant ajoute l’apprivoisement, l’héritage des statistiques des familiers, la barre W/X/C et la fiche P. La créature apprivoisée est sauvegardée localement ; sa persistance serveur reste liée au futur profil complet.
 
-Le lot armes remplace les objets séparés des trois nouvelles classes par neuf planches équipées, avec arc retravaillé et prise à deux mains, dagues tenues et livre animé. Les visages, cheveux et apparences sources sont conservés. Le départ de la flèche est synchronisé à la poignée et à la décoche. Les planches et le passage équipé/mains nues ont été vérifiés dans le moteur.
+Le lot armes remplace les objets séparés des nouvelles classes. À la demande de révision visuelle, l’arc se porte verticalement au repos, les dagues sont raccourcies et le livre du Démoniste est supprimé. Sa magie est représentée par une aura sombre et violette, des volutes et une libération d’énergie. Les visages, cheveux et apparences sources sont conservés. Le départ de la flèche reste synchronisé à la poignée et à la décoche.
 
 Restent notamment : calibration des monstres, des ressources et des familiers, validation du temps de progression vers N.60, persistance du profil complet et monde partagé Symfony.
 
@@ -16,7 +16,7 @@ Des armes tenues correctement dans les animations, un début de jeu où les ress
 
 ## 1. Sprites et caméra
 
-Régénérer les planches de classes avec une prise en main cohérente de l’arc, des dagues et du grimoire, dans chaque direction et pour chaque phase de marche/attaque. Les armes doivent suivre les mains et passer devant ou derrière le corps selon la pose, avec des pivots propres à l’objet. Vérifier les planches en mouvement, pas seulement une image immobile. Préserver les identités visuelles des personnages déjà appréciés et la cohérence PixelLab des décors.
+Régénérer les planches de classes avec une prise en main cohérente de l’arc et des dagues dans chaque direction. Pour le Démoniste, représenter directement la magie noire autour du personnage, sans livre visible. Vérifier le mouvement et les effets en jeu. Préserver les identités visuelles des personnages déjà appréciés et la cohérence PixelLab des décors.
 
 Proposition : zoom par défaut ×2, pixels nets et caméra toujours bornée au monde. Le réglage actuel est dans `public/game/exploration.js`, fonction `cameraZoom`, ligne 52 au commit examiné. `public/game/world.js:104` l’applique avec `cam.setZoom(...)`.
 

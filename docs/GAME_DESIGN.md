@@ -34,7 +34,7 @@ Dès le N.10, la fiche du Guerrier propose Rempart (+3 Défense, puis Défense �
 | Guerrier · Épée de fer, Hache de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 2,5 case |
 | Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 2,5 case |
-| Démoniste · Grimoire | Trait d’ombre | 5 cases |
+| Démoniste · Focalisation d’ombre | Trait d’ombre | 5 cases |
 | Voleur · Dagues | Coup de dague | 2,5 case |
 | Chasseur · Arc | Flèche rapide | 7 cases |
 | Arme retirée | Coup de poing | 2,5 case |
@@ -73,7 +73,9 @@ Les bonus de baguette s’appliquent aux tirs de baguette. Les techniques active
 
 ## Animations de combat
 
-Le Chasseur utilise un arc recourbé en bois avec ligatures et embouts clairs. Sa prise à deux mains, la tension de la corde et la décoche font partie des images du personnage. Le Voleur tient des dagues d’acier aux gardes dorées ; le Démoniste porte un grimoire violet orné et tourne ses pages pendant l’incantation. Ces armes sont intégrées aux planches équipées, avec passage derrière le corps dans les directions de dos. Les pieds restent au même niveau entre repos, marche et attaque. L’apparence de base, le visage et les cheveux sont conservés ; les images d’origine du Mage et du Guerrier ne sont pas remplacées.
+Le Chasseur porte un arc recourbé verticalement au repos ; son bras s’étend à la visée, puis la corde se tend avant la décoche. Le Voleur tient des dagues courtes vers le bas et les ramène progressivement vers cette position après la frappe. Les mains d’origine sont préservées au repos, sans paumes carrées ajoutées par-dessus les armes. Les pieds restent au même niveau entre repos, marche et attaque. L’apparence de base, le visage et les cheveux sont conservés ; les images d’origine du Mage et du Guerrier ne sont pas remplacées.
+
+Le Démoniste ne porte plus de grimoire visible. Essence de cendres, Sceau des saules et Sceau de Saphyr sont des focalisations d’ombre, avec les mêmes bonus que les anciens objets. Une aura de volutes violettes et de fragments sombres accompagne ses incantations et canalisations, avec de l’énergie près des mains et une poussée à la libération. Elle suit le personnage puis disparaît en 420 ms après la fin du sort. Une interruption ou la mort l’arrête. Le mouvement réduit conserve des volutes fixes et retire les fragments mobiles.
 
 L’auto-attaque à distance et les sorts du Mage utilisent une pose d’incantation orientée et des effets magiques. La planche Noé `attack.png`, issue de « Frappe à la lanterne », sert aux coups de contact et ne doit pas être utilisée pour représenter un tir de baguette. Les poses d’incantation dérivent du sprite existant, sans redessiner le personnage.
 
@@ -119,6 +121,6 @@ Chaque tirage accorde une coiffe ou des gants de la classe jouée. Malakor donne
 
 Le compte, les personnages, le niveau et l’XP sont en base. Sac, équipement, allocations et quête sont locaux au navigateur. Le niveau 2 demande 100 XP puis les seuils augmentent de 50 par niveau. Le bestiaire actuel monte aux gardiens N.60 et le client accepte des personnages jusqu’au N.9 999.
 
-Le monde partagé, la validation serveur des combats, la persistance complète, les marchands, haches, boucliers, livres et armures restent des objectifs. Ils ne doivent pas être présentés comme disponibles dans l’interface actuelle.
+Le monde partagé, la validation serveur des combats, la persistance complète, les marchands et les autres emplacements d’équipement restent des objectifs. Ils ne doivent pas être présentés comme disponibles dans l’interface actuelle.
 
 Voir le [front-end](FRONTEND.md) et le [back-end](BACKEND.md).

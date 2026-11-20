@@ -131,7 +131,7 @@ final class CharacterController extends AbstractController
         [$basic, $special, $weapon, $basicIcon, $specialIcon, $rareName, $epicName, $rareIcon, $epicIcon, $usage] = match ($class) {
             CharacterClass::Warrior => ['Coup d’épée', 'Attaque chargée', 'Épée de fer', 'sword', 'charge', 'Lame des saules', 'Croc de Saphyr', 'blade', 'fang', 'Corps à corps'],
             CharacterClass::Mage => ['Trait arcanique', 'Boule de feu', 'Baguette de braise', 'bolt', 'fire', 'Bâton des saules', 'Sceptre de Saphyr', 'staff', 'wand', 'Corps à corps'],
-            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Grimoire de cendres', 'bolt', 'rune', 'Codex des saules', 'Codex de Saphyr', 'grimoire', 'grimoire', 'Grimoire · à distance'],
+            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Essence de cendres', 'bolt', 'rune', 'Sceau des saules', 'Sceau de Saphyr', 'shadow-focus', 'shadow-focus', 'Focalisation d’ombre · à distance'],
             CharacterClass::Rogue => ['Coup de dague', 'Entaille venimeuse', 'Dagues de fer', 'sword', 'charge', 'Dagues des saules', 'Dagues de Saphyr', 'daggers', 'daggers', 'Dagues · corps à corps'],
             CharacterClass::Hunter => ['Flèche rapide', 'Tir perforant', 'Arc de frêne', 'bolt', 'charge', 'Arc des saules', 'Arc de Saphyr', 'bow', 'bow', 'Arc · à distance'],
         };

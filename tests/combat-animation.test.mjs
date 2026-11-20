@@ -106,7 +106,7 @@ test('les armes intégrées suivent toutes les poses et disparaissent à mains n
         columns: 256, rows: 252, tileSize: 16, equippedWeaponStyles,
     });
     const directions = ['east','south-east','south','south-west','west','north-west','north','north-east'];
-    for (const [skin, style] of Object.entries({ hunter: 'bow', rogue: 'daggers', warlock: 'grimoire' })) {
+    for (const [skin, style] of Object.entries({ hunter: 'bow', rogue: 'daggers', warlock: 'shadow' })) {
         const scene = Object.create(sceneClass.prototype);
         let gesture = null;
         let visible;

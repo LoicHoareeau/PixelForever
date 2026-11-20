@@ -1,4 +1,4 @@
-export const equippedWeaponStyles = { hunter: 'bow', rogue: 'daggers', warlock: 'grimoire' };
+export const equippedWeaponStyles = { hunter: 'bow', rogue: 'daggers', warlock: 'shadow' };
 
 export function bowGrip(position, facing) {
     const index = ['east','south-east','south','south-west','west','north-west','north','north-east'].indexOf(facing);

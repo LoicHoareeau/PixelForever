@@ -618,7 +618,7 @@ export class TrainingCombat {
                 this.pending = this.attackVisual = {
                     kind: 'classCast', talent, target, manaCost, cdMs, angle,
                     damage: this.stats.specialDamage * berserkMult, ranged: true, facing: this.scene.facing,
-                    weaponStyle: 'grimoire', name: talent.name, start: now, end: now + technique.castMs,
+                    weaponStyle: this.weaponStyle, name: talent.name, start: now, end: now + technique.castMs,
                     castMs: technique.castMs, nextPulse: now + (technique.channel ?? technique.castMs), interruptible: true,
                 };
                 this.refreshCastBar(now);
@@ -842,7 +842,7 @@ export class TrainingCombat {
             start: now,
             end: now + durationMs,
         });
-        if (slotKey !== 'basic' && slotKey !== 'special') {
+        if (slotKey !== 'basic' && slotKey !== 'special' && this.pending?.kind !== 'classCast') {
             this.attackVisual = {
                 start: now, end: now + 210, castMs: 180,
                 ranged: this.ranged, facing: this.scene.facing,
@@ -1119,7 +1119,7 @@ export class TrainingCombat {
     get weaponStyle() {
         if (!this.equipped) return 'fist';
         if (this.progress.weapon === 'axe') return 'axe';
-        return { warrior: 'sword', rogue: 'daggers', hunter: 'bow', warlock: 'grimoire', mage: 'wand' }[this.classKey];
+        return { warrior: 'sword', rogue: 'daggers', hunter: 'bow', warlock: 'shadow', mage: 'wand' }[this.classKey];
     }
 
     get weaponBonus() {

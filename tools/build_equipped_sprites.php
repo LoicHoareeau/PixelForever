@@ -79,7 +79,7 @@ function bow(GdImage $im, array $grip, array $aim, float $draw, bool $arrow): ar
     $limbs = [[-5,-12],[-2,-10],[0,-6],[1,-3],[0,0],[1,3],[0,6],[-2,10],[-5,12]];
     for ($i = 1; $i < count($limbs); $i++) {
         $a = $point(...$limbs[$i - 1]); $b = $point(...$limbs[$i]);
-        stroke($im, $a, $b, OUTLINE, 4);
+        stroke($im, $a, $b, OUTLINE, 3);
         stroke($im, $a, $b, 0x805034, 2);
         stroke($im, [$a[0] + 1, $a[1]], [$b[0] + 1, $b[1]], 0xcb9d68);
     }
@@ -104,48 +104,16 @@ function bow(GdImage $im, array $grip, array $aim, float $draw, bool $arrow): ar
 function dagger(GdImage $im, array $grip, float $angle): void
 {
     $dx = cos($angle); $dy = sin($angle);
-    $p = static fn ($f, $t) => [$grip[0] + $dx * $f - $dy * $t, $grip[1] + $dy * $f + $dx * $t];
+    $p = static function ($f, $t) use ($grip, $dx, $dy) {
+        $f = $f > 2 ? 2 + ($f - 2) * .68 : $f;
+        return [$grip[0] + $dx * $f - $dy * $t, $grip[1] + $dy * $f + $dx * $t];
+    };
     poly($im, [...$p(-3,-1),...$p(2,-2),...$p(12,-1),...$p(15,0),...$p(10,3),...$p(2,2),...$p(-3,1)], OUTLINE);
     poly($im, [...$p(3,-1),...$p(13,0),...$p(9,2),...$p(3,1)], 0x8ba7b0);
     stroke($im, $p(3,-1), $p(12,0), 0xe0e6d9);
     stroke($im, $p(1,-3), $p(1,3), 0xb89259);
     stroke($im, $p(-2,0), $p(1,0), 0x79513f, 2);
     imagesetpixel($im, (int) round($p(2,0)[0]), (int) round($p(2,0)[1]), 0x8ac0bd);
-}
-
-function book(GdImage $im, array $left, array $right, int $pose): void
-{
-    if ($pose < 0) {
-        [$x,$y] = $left;
-        poly($im, [$x-2,$y-12,$x+8,$y-14,$x+10,$y-12,$x+10,$y-1,$x,$y+1,$x-2,$y-1], OUTLINE);
-        poly($im, [$x,$y-11,$x+8,$y-12,$x+9,$y-11,$x+9,$y-2,$x+1,$y], 0x76445f);
-        stroke($im, [$x+1,$y-10], [$x+7,$y-11], 0xbe9a61);
-        stroke($im, [$x+1,$y-1], [$x+8,$y-3], 0xc5af87);
-        stroke($im, [$x+1,$y-11], [$x+1,$y-2], 0x4a2c44);
-        poly($im, [$x+5,$y-9,$x+7,$y-6,$x+5,$y-4,$x+3,$y-6], 0xdbbc79);
-        imagesetpixel($im, (int) round($x+5), (int) round($y-6), 0xb2cfbf);
-        return;
-    }
-    $cx = ($left[0] + $right[0]) / 2;
-    $y = max($left[1], $right[1]);
-    $w = max(7, min(11, ($right[0] - $left[0]) / 2));
-    poly($im, [$cx-$w-1,$y-9,$cx,$y-7,$cx+$w+1,$y-10,$cx+$w+1,$y,$cx,$y+2,$cx-$w-1,$y], OUTLINE);
-    poly($im, [$cx-$w,$y-8,$cx,$y-6,$cx+$w,$y-9,$cx+$w,$y-1,$cx,$y+1,$cx-$w,$y-1], 0x643b55);
-    poly($im, [$cx-$w+1,$y-8,$cx,$y-6,$cx+$w-1,$y-9,$cx+$w-1,$y-2,$cx,$y,$cx-$w+1,$y-2], 0xd5bb87);
-    stroke($im, [$cx-$w+2,$y-7], [$cx-1,$y-5], 0xf0dfb0);
-    stroke($im, [$cx+1,$y-6], [$cx+$w-2,$y-8], 0xf0dfb0);
-    stroke($im, [$cx,$y-6], [$cx,$y], 0x855c48);
-    foreach ([-1,1] as $side) {
-        for ($line = 0; $line < 3; $line++) stroke($im, [$cx+$side*3,$y-4+$line*2], [$cx+$side*($w-2),$y-5+$line*2], 0x956957);
-        imagesetpixel($im, (int) round($cx+$side*$w), (int) round($y-1), 0xe1b85c);
-    }
-    // Le feuillet tourne, le livre reste posé sur les deux paumes.
-    if ($pose >= 1 && $pose <= 6) {
-        $turn = [0,6,4,1,-2,-5,-7][$pose];
-        poly($im, [$cx,$y-7,$cx+$turn,$y-11,$cx+$turn,$y-4,$cx,$y], 0xf1dfb0);
-        stroke($im, [$cx,$y-7], [$cx+$turn,$y-11], 0xb09c78);
-        imagesetpixel($im, (int) $cx + 2, (int) $y - 4, 0xe3a2e1);
-    }
 }
 
 function equipped(GdImage $body, string $skin, int $direction, int $pose, int $foot): GdImage
@@ -171,27 +139,30 @@ function equipped(GdImage $body, string $skin, int $direction, int $pose, int $f
             $draw = [0,2,4,5,0,.5,0,0,0][$pose];
             $pull = bow($gear, $grip, $aim, $draw, $pose < 4);
             $shoulder = [$center + ($aim[0] < 0 ? 5 : -5), $foot - 25];
-            arm($gear, $shoulder, [$center - $aim[0] * 4, $foot - 19], $pull);
-            arm($gear, [$center + ($aim[0] < 0 ? -5 : 5), $foot - 25], [$center + $aim[0] * 6, $foot - 19], $grip);
+            arm($gear, $shoulder, [$center - $aim[0] * 7, $foot - 24], $pull);
+            arm($gear, [$center + ($aim[0] < 0 ? -5 : 5), $foot - 25], [$center + $aim[0] * 8, $foot - 24 + $aim[1] * 5], $grip);
             palm($gear, $pull);
-        } else bow($gear, $grip, $aim, 0, false);
-        palm($gear, $grip);
+        } else bow($gear, $grip, [$aim[0] < -.3 ? -1 : 1, 0], 0, false);
+        if ($pose>=0) palm($gear, $grip);
     } elseif ($skin === 'rogue') {
-        $swing = $pose < 0 ? 0 : [-.1,-.3,-.55,-.3,.25,.65,.35,.1,0][$pose];
-        if ($left) { dagger($gear, $left, $direction * M_PI / 4 + .9 - $swing); palm($gear, $left); }
-        if ($right) { dagger($gear, $right, $direction * M_PI / 4 + .4 + $swing); palm($gear, $right); }
-    } else {
-        $support = $left ?? $right;
-        if (!$support && $back) return $body;
-        if (!$support) throw new RuntimeException('Main du Démoniste introuvable.');
-        book($gear, $support, $right ?? $support, $pose);
-        if ($left) palm($gear, $left);
-        if ($right && $pose >= 0) palm($gear, $right);
+        $reach = $pose < 0 ? 0 : [0,.2,.5,.8,1,.85,.5,.2,0][$pose];
+        foreach ([[$left,M_PI/2+.22],[$right,M_PI/2-.22]] as [$grip,$restAngle]) {
+            if (!$grip) continue;
+            $delta = $direction*M_PI/4 - $restAngle;
+            $angle = $restAngle + atan2(sin($delta),cos($delta)) * $reach;
+            dagger($gear,$grip,$angle);
+        }
     }
     imagealphablending($out, true);
     if ($back) imagecopy($out, $gear, 0,0,0,0,imagesx($out),imagesy($out));
     imagecopy($out, $body, 0,0,0,0,imagesx($out),imagesy($out));
     if (!$back) imagecopy($out, $gear, 0,0,0,0,imagesx($out),imagesy($out));
+    if ($skin==='rogue' || ($skin==='hunter' && $pose<0)) {
+        foreach (array_filter([$left,$right]) as [$hx,$hy]) {
+            $hx=(int)round($hx)-2; $hy=(int)round($hy)-2;
+            imagecopy($out,$body,$hx,$hy,$hx,$hy,5,5);
+        }
+    }
     // La tête et le col passent devant une extrémité d'arme qui les croise.
     imagecopy($out,$body,0,0,0,0,imagesx($body),$foot-27);
     for ($y = 0; $y < imagesy($out); $y++) for ($x = 0; $x < imagesx($out); $x++) {
@@ -244,3 +215,13 @@ foreach (['hunter','rogue','warlock'] as $skin) {
     }
 }
 echo in_array('--check', $argv, true) ? "Planches équipées vérifiées.\n" : "Planches équipées générées pour Chasseur, Voleur et Démoniste.\n";
+
+if (!in_array('--check',$argv,true)) {
+    $icon=canvas(40,32);
+    foreach ([[11,0x23152f],[8,0x4a285e],[5,0x925bba],[2,0xd8b4e9]] as [$radius,$color]) {
+        poly($icon,[20,16-$radius,20+$radius,16,20,16+$radius,20-$radius,16],$color);
+    }
+    stroke($icon,[10,21],[27,8],0x7b9f95);
+    stroke($icon,[12,23],[29,10],0xc9e0b9);
+    imagepng($icon,ART.'/items/shadow-focus.png',9);
+}

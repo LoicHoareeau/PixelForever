@@ -32,7 +32,9 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-Pour `hunter`, `rogue` et `warlock`, `idle-equipped.png`, `walk-equipped.png` et `attack-equipped.png` intègrent l’arme au personnage. Cellules de 64 × 64 px : repos 512 × 64, marche 512 × 512, attaque 576 × 512. Les pieds sont alignés à y=54 et l’origine Phaser vaut 56/64 ; passer du repos à la marche ou au tir ne fait pas sauter le personnage. À mains nues, les planches originales sont utilisées et aucun ancien sprite d’arme séparé n’est dessiné pour ces trois classes.
+Pour `hunter` et `rogue`, `idle-equipped.png`, `walk-equipped.png` et `attack-equipped.png` intègrent l’arme au personnage. Les fichiers de `warlock` contiennent désormais le corps sans livre. Cellules de 64 × 64 px : repos 512 × 64, marche 512 × 512, attaque 576 × 512. Les pieds sont alignés à y=54 et l’origine Phaser vaut 56/64 ; passer du repos à la marche ou au tir ne fait pas sauter le personnage. À mains nues, les planches originales sont utilisées et aucun ancien sprite d’arme séparé n’est dessiné pour ces trois classes.
+
+Le style du Démoniste est `shadow`. `warlock-vfx.js` calcule l’enveloppe de son aura depuis `attackVisual`, y compris sa dissipation après résolution lorsque `pending` est vide. `combat-renderer.js` maintient ce rendu pendant la queue visuelle sans toucher au calcul des dégâts ou de la ressource. Le mouvement réduit fixe la pose des textures et supprime les fragments. `php tests/warlock_art.php` vérifie que les huit poses au repos correspondent pixel par pixel au corps d’origine sans objet ajouté.
 
 `tools/build_equipped_sprites.php` compose les neuf planches à partir des corps existants, sans réécrire ces sources. Après régénération des corps via `tools/build_class_sprites.php`, lancer `php tools/build_equipped_sprites.php`. `php tools/build_equipped_sprites.php --check` vérifie leur reproductibilité pixel par pixel, la préservation du visage et des cheveux et l’absence d’arme coupée sur les bords. `equipped-art.js` donne la prise de l’arc au combat et aux VFX pour éviter un décalage entre la corde et le projectile.
 
