@@ -16,9 +16,13 @@ La carte de 256 × 252 tuiles de 16 px (4 096 × 4 032 px) forme une péninsule 
 
 Le Guerrier utilise Lina et le Mage Noé. Leurs portraits suivent la règle PHP `CharacterClass::skin()` et leurs planches de marche sont conservées.
 
+`starter-town.js` place `bastion-de-braise.png` entre la clairière et la route du cimetière. Cette maquette peinte en pixel art est composée dans un calque de 608 × 405 px dont les bords se fondent dans le terrain. Les bâtiments, le tambour et les palissades ont des collisions au sol. Les quatre habitants utilisent l’atlas `bastion-habitants.png` et sont triés en profondeur au pied comme les personnages jouables.
+
 ## Éclairage
 
 `world-lighting.js` transforme les poids de `biome-gradient.js` en couleurs ambiantes. Une carte de référence échantillonnée à raison d’un pixel par tuile est interpolée autour de la caméra. La couche `MULTIPLY` assombrit terrain et sprites et s’éclaircit sous les sources. Une seconde couche `ADD`, limitée à 36 % d’opacité globale, colore les halos. Les textures de travail sont dimensionnées à la zone visible avec marge et actualisées à environ 30 Hz. Le rendu utilise les modes de fusion de Phaser sur WebGL. En Canvas, la fusion multiplicative est vérifiée sur le contexte 2D à l’initialisation. Un masque translucide conserve le terrain visible si cette fusion est indisponible.
+
+Au Bastion, les braseros et le foyer de la forge émettent de la lumière chaude, des flammes et des braises. La cheminée laisse monter une fumée légère. Les charmes de Vesha éclairent sa hutte en turquoise. En mouvement réduit, les sources et les particules gardent une pose fixe.
 
 Les lanternes, la cabane et les fissures fournissent les sources fixes. Le personnage actif, les incantations, leurs impacts et la Rage de Malakor fournissent les sources mobiles. Les télégraphies, jauges et textes de combat sont dessinés au-dessus des deux couches. La préférence de mouvement réduit fixe le scintillement et l’intensité des halos de sorts pendant leur présence.
 
@@ -48,7 +52,7 @@ Les sept atlas d’origine de `public/game/val-des-saules/monsters/` contiennent
 
 Le dragon annonce une ligne de tir pendant sa préparation. Le rendu du souffle suit la position réelle du projectile, qui avance par petits pas de collision pour détecter le joueur et le décor même lors d’une image lente.
 
-`quest_early.png` représente l’habitante du hameau. Le clic, `E` ou le bouton de quête à proximité ouvre un dialogue au clavier. La quête demande trois sangliers après acceptation et récompense deux potions de vie au retour, une seule fois. Le marqueur est `!` doré, puis `?` gris, puis `?` doré, puis caché ; le texte donne aussi l’état. La quête reste locale au personnage.
+`E`, le bouton de l’ATH ou le clic permettent de parler à un habitant à portée. Rakka ouvre le dialogue de quête. Les autres habitants répondent dans le statut de jeu. La quête demande trois sangliers après acceptation et donne deux potions de vie au retour une seule fois. Le marqueur passe de `!` doré à `?` gris, puis `?` doré, et disparaît après la remise. La quête reste locale au personnage.
 
 ## Interface et commandes par défaut
 

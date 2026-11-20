@@ -4,7 +4,13 @@
 
 ## Boucle de jeu
 
-Créer un Guerrier ou un Mage → parler au PNJ → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
+Créer un Guerrier ou un Mage → apparaître au Bastion de Braise → parler à Rakka → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
+
+## Bastion de Braise
+
+Les deux classes commencent sur la place du Bastion et s’y relèvent après une défaite. Les monstres restent dans leurs zones de patrouille et le combat est désactivé en ville. Les palissades aux bannières de cuir, la forge de roche sombre et les tentes du marché donnent au Bastion une identité de clan orc originale dans le Val-des-Saules. La porte est rejoint la route principale. La porte nord offre un raccourci vers le chemin de la clairière.
+
+Rakka, l’intendante de la grande halle, confie la quête des sangliers. Granm à la forge, Vesha près de sa hutte et Drok au marché ont chacun un dialogue. Leurs ateliers pourront accueillir la forge, l’herboristerie et le commerce dans une version future.
 
 ## Classes et attaques
 
@@ -21,7 +27,7 @@ L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer
 
 Boule de feu, Tourbillon de feu et Nova de givre portent à 15 cases avant bonus, quelle que soit l’arme équipée. Tourbillon de feu (28 mana, incantation de 1 s) et Nova de givre (20 mana) touchent dans un rayon de 54 px autour de la cible. Mur de feu (22 mana, incantation de 1 s) porte à 16 cases et couvre 38 px autour de la cible. Déflagration (15 mana) porte à 16,5 cases avant bonus. Se déplacer pendant une incantation l’annule et rembourse le mana. Nova ralentit pendant 2,5 secondes (`0,625 s` sur Malakor). Sans cible vivante ou hors de portée, le sort ne dépense ni mana ni recharge. Taillade reste centrée sur le Guerrier.
 
-La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Une défaite permet de se relever au camp en gardant la progression.
+La cible doit être vivante et à portée. Un coup de mêlée revérifie la portée à l’impact. Une cible morte ne reçoit pas un second crédit de défaite. Après une défaite, le personnage se relève au Bastion et garde sa progression.
 
 ## Talents et progression
 
@@ -65,7 +71,7 @@ La lumière ambiante évolue avec le biome. La clairière reste diurne, le cimet
 
 ## Quête et butin
 
-L’habitante du hameau propose **Sécuriser le sentier** : accepter, vaincre trois sangliers, puis revenir pour recevoir deux potions de vie une seule fois. `!` doré : disponible ; `?` gris : en cours ; `?` doré : à rendre ; aucun marqueur après remise. Le dialogue donne aussi l’état en texte.
+Rakka propose **Sécuriser le sentier** au Bastion. Une fois la quête acceptée, vaincre trois sangliers puis revenir la voir pour recevoir deux potions de vie une seule fois. Le marqueur affiche `!` doré, `?` gris en cours et `?` doré au retour. Le dialogue indique aussi l’état de la quête.
 
 Chaque défaite crédite de l’XP selon l’espèce/niveau et un tirage personnel : vie 47 %, ressource 30 %, arme rare 15 %, arme épique 5 %, écaille 2 %, cœur 1 %. Le catalogue comprend les six objets PixelLab : Lame des saules, Bâton des saules, Croc de Saphyr, Sceptre de Saphyr, Écaille de Saphyr et Cœur de flamme bleue. Les deux derniers sont des matériaux sans usage d’équipement actuel. Le choix des armes dépend de la classe. Le tirage de base est commun aux espèces. Le tirage d’armure s’y ajoute selon le monstre vaincu.
 

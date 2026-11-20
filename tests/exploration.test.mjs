@@ -11,13 +11,13 @@ import {
     groundWalkable,
     inZone,
     isCoastBorderTile,
-    questNpc,
     rocks,
     rows,
     seaTile,
     tileSize,
     zones,
 } from '../public/game/exploration.js';
+import { isInStarterTown, nearestTownResident, questNpc, starterSpawn, townObstacles, townResidents } from '../public/game/starter-town.js';
 import { treePositions } from '../public/game/clearing-art.js';
 import { regionalScenery } from '../public/game/regional-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
@@ -28,7 +28,7 @@ const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/
 const terrain = buildTerrain(clearing);
 const obstacles = [
     [112, 130, 56, 26],
-    [questNpc.x - 4, questNpc.y - 5, 8, 6],
+    ...townObstacles,
     ...treePositions(terrain).map(([x, y]) => [x - 2, y - 4, 4, 5]),
     ...[[160, 177], [271, 163], [286, 224], [148, 231], [306, 231]].map(([x, y]) => [x - 1, y - 3, 3, 4]),
     ...rocks.map(([x, y]) => [(x + .5) * 16 - 20, (y + .5) * 16 - 7, 40, 8]),
@@ -79,12 +79,14 @@ test('les quatre rebords côtiers (mer et falaises) bloquent le passage et borde
 test('le départ, les belvédères côtiers et les patrouilles sont accessibles malgré les obstacles', () => {
     assert.equal(terrain.length, rows);
     assert.ok(terrain.every(row => row.length === columns));
-    assert.ok(canStand(184, 190));
-    assert.ok(canStand(248, 207));
+    assert.ok(canStand(starterSpawn.x, starterSpawn.y));
+    assert.ok(isInStarterTown(starterSpawn.x, starterSpawn.y));
+    assert.equal(nearestTownResident(starterSpawn), questNpc);
+    assert.ok(Object.values(zones).every(zone => !inZone(zone, starterSpawn.x, starterSpawn.y)));
     assert.equal(canStand(-1, 100), false);
     assert.equal(canStand(columns * tileSize, 100), false);
     assert.equal(canStand(100, rows * tileSize), false);
-    const start = [11, 11];
+    const start = [Math.floor(starterSpawn.x / tileSize), Math.floor(starterSpawn.y / tileSize)];
     const visited = new Set([start.join(',')]);
     const queue = [start];
     for (let i = 0; i < queue.length; i++) {
@@ -97,6 +99,12 @@ test('le départ, les belvédères côtiers et les patrouilles sont accessibles 
             }
         }
     }
+    for (const resident of townResidents) {
+        assert.ok(queue.some(([x, y]) => nearestTownResident({ x: (x + .5) * tileSize, y: (y + .5) * tileSize }) === resident),
+            `${resident.name} inaccessible`);
+    }
+    assert.ok(visited.has('99,36'), 'la porte est doit rejoindre la route');
+    assert.equal(canStand(1006, starterSpawn.y), false, 'la palissade ouest doit bloquer le passage');
     for (const lookout of coastalLookouts) {
         assert.ok(visited.has(lookout.centerCell.join(',')), `${lookout.name} inaccessible`);
     }
@@ -106,6 +114,17 @@ test('le départ, les belvédères côtiers et les patrouilles sont accessibles 
             assert.ok(visited.has([x, y].join(',')), `${template.label} inaccessible en ${x},${y}`);
         }
     }
+});
+
+test('le Bastion bloque le ciblage et les attaques avant toute dépense', () => {
+    const combat = Object.assign(Object.create(TrainingCombat.prototype), {
+        scene: { isInStarterTown: () => true }, health: 40, mana: 40, readyAt: 0, tell() {},
+    });
+    assert.equal(combat.cycleTarget(), null);
+    combat.attack('special', 100);
+    assert.equal(combat.mana, 40);
+    assert.equal(combat.readyAt, 0);
+    assert.equal(combat.pending, undefined);
 });
 
 test('le zoom reste modéré et la carte couvre le viewport, même après redimensionnement', () => {
