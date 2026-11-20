@@ -43,7 +43,10 @@ export function malakorWave(trial, now) {
         const to = Math.min(x + lanePeriod, end);
         if (to > from) danger.push([from, to]);
     }
-    return { index, vertical, danger, progress: Math.min(1, progress / warningMs), impact: progress >= warningMs };
+    return {
+        index, vertical, danger, progress: Math.min(1, progress / warningMs),
+        impact: progress >= warningMs, impactProgress: Math.max(0, (progress - warningMs) / impactMs),
+    };
 }
 
 export function isMalakorWaveHit(wave, player) {

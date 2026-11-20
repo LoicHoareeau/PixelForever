@@ -1,3 +1,4 @@
+import { createCombatVfx } from './combat-vfx.js';
 import { createMalakorTrial, isMalakorWaveHit, malakorPhases, malakorThresholds, malakorTrialInterval, malakorWave } from './malakor.js';
 import { armorItems, armorSlots, awardArmor, toggleArmor } from './armor.js';
 import {
@@ -54,7 +55,7 @@ const regenFormatter = new Intl.NumberFormat('fr-FR', {
 const tabTargetMaxDistance = 560;
 
 /**
- * Sélectionne la cible vivante suivante à portée autour du joueur par distance croissante.
+ * Sélectionne la cible vivante la plus proche ou recule dans la liste triée par distance.
  */
 export function selectNextTarget(
     monsters,
@@ -88,14 +89,14 @@ export function selectNextTarget(
     if (candidates.length === 0) {
         return null;
     }
+    if (direction >= 0) return candidates[0];
 
     const currentIndex = candidates.indexOf(currentTarget);
     if (currentIndex === -1) {
-        return direction < 0 ? candidates[candidates.length - 1] : candidates[0];
+        return candidates[candidates.length - 1];
     }
 
-    const step = direction < 0 ? -1 : 1;
-    const nextIndex = (currentIndex + step + candidates.length) % candidates.length;
+    const nextIndex = (currentIndex - 1 + candidates.length) % candidates.length;
     return candidates[nextIndex];
 }
 
@@ -212,7 +213,9 @@ export class TrainingCombat {
             value: document.getElementById('combat-' + name + '-value'),
         }));
 
-        this.effect = scene.add.graphics().setDepth(scene.terrain.length * tileSize + 1);
+        const effectDepth = scene.terrain.length * tileSize + 1;
+        this.effect = scene.add.graphics().setDepth(effectDepth);
+        this.vfx = createCombatVfx(scene, effectDepth - .25);
 
         // Cooldowns individuels par compétence + buff Berserk + VFX et textes flottants
         this.spellCooldowns = new Map();
@@ -262,7 +265,7 @@ export class TrainingCombat {
     }
 
     /**
-     * Fait tourner la cible sélectionnée entre les monstres vivants à proximité (Tab / Shift+Tab).
+     * Tab reprend le plus proche. Maj+Tab recule parmi les monstres vivants à proximité.
      */
     cycleTarget(direction = 1) {
         if (this.health <= 0) {
@@ -1602,6 +1605,7 @@ export class TrainingCombat {
      * Dessine les animations d'attaques, sorts et télégraphies épiques en pixel art.
      */
     drawEffects(now) {
+        this.vfx?.begin();
         const enemyAttacking = this.monsters.some((monster) => monster.isAlive && (
             (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
             || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
@@ -1646,7 +1650,7 @@ export class TrainingCombat {
 
         const attack = this.pending;
         if (attack.kind === 'talentCast') {
-            this.drawCastCircle(now, attack.start, attack.castMs, attack.color);
+            this.drawCastCircle(now, attack.start, attack.castMs);
             return;
         }
 
@@ -1658,137 +1662,91 @@ export class TrainingCombat {
             const travel = Math.max(0, (elapsed - attack.castMs) / flightSpan);
             if (elapsed < attack.castMs) {
                 if (attack.castMs >= 500) {
-                    this.drawCastCircle(now, attack.start, attack.castMs, attack.color);
+                    this.drawCastCircle(now, attack.start, attack.castMs);
                 }
                 attack.x = this.scene.position.x + Math.cos(attack.angle) * 7;
                 attack.y = this.scene.position.y - 20 + Math.sin(attack.angle) * 4;
-                if (attack.armed) {
-                    this.effect.fillStyle(0x916b52, 1);
-                    this.strokePixels(attack.x, attack.y + 11, -1.35, attack.staff ? 16 : 9, 2);
-                }
             }
-            const dx = target.sprite.x - attack.x;
-            const dy = target.sprite.y - 12 - attack.y;
-            const tailSteps = attack.special ? 5 : 3;
-            for (let index = tailSteps; index > 0; index--) {
-                const tail = Math.max(0, travel - index * 0.045);
-                this.effect
-                    .fillStyle(attack.color, 0.65 - index * 0.1)
-                    .fillRect(Math.round(attack.x + dx * tail) - 1, Math.round(attack.y + dy * tail) - 1, 3, 3);
-            }
-            const x = Math.round(attack.x + dx * travel);
-            const y = Math.round(attack.y + dy * travel);
-            const size = elapsed < attack.castMs ? 1 + Math.floor((elapsed / attack.castMs) * 2) : (attack.special ? 4 : 3);
-            const core = Math.max(1, size * 2 - 2);
-            this.effect
-                .fillStyle(attack.color, 1)
-                .fillRect(x - size + 1, y - size, core, size * 2)
-                .fillRect(x - size, y - size + 1, size * 2, core);
-            this.effect.fillStyle(attack.special ? 0xffe1a0 : 0xf3eaff, 1).fillRect(x - 1, y - 1, 2, 2);
-            if ((attack.special || !still) && travel > 0) {
-                this.orbitSparks(x, y, elapsed);
-            }
+            const x = attack.x + (target.sprite.x - attack.x) * travel;
+            const y = attack.y + (target.sprite.y - 12 - attack.y) * travel;
+            const angle = Math.atan2(target.sprite.y - 12 - attack.y, target.sprite.x - attack.x);
+            const released = elapsed >= attack.castMs;
+            const size = attack.special ? .66 : .37;
+            this.vfx?.play(attack.special ? 'firebolt' : 'arcane', x, y,
+                still ? .4 : (elapsed % 220) / 220, released ? size : size * .44, angle, released ? .94 : .78);
         } else {
             this.drawMelee(attack, progress, true);
         }
     }
 
-    drawCastCircle(now, start, castMs, color) {
+    drawCastCircle(now, start, castMs) {
         const progress = Math.max(0, Math.min(1, (now - start) / Math.max(1, castMs)));
-        const cx = Math.round(this.scene.position.x);
-        const cy = Math.round(this.scene.position.y - 2);
-        const radius = 15 + Math.sin(progress * Math.PI) * 3;
-        this.effect.lineStyle(1.5, color, 0.55 + progress * 0.4);
-        this.effect.strokeEllipse(cx, cy, radius * 2, radius * 1.15);
-        for (let i = 0; i < 4; i++) {
-            const angle = now / 180 + (i * Math.PI) / 2;
-            const px = Math.round(cx + Math.cos(angle) * radius * (1 - progress * 0.35));
-            const py = Math.round(cy + Math.sin(angle) * radius * 0.58 * (1 - progress * 0.35));
-            this.effect.fillStyle(0xffeaad, 0.9).fillRect(px - 1, py - 1, 3, 3);
-        }
+        this.vfx?.play('rune', this.scene.position.x, this.scene.position.y - 2,
+            this.scene.motionPreference.matches ? .42 : progress, .78, 0, .75 + .19 * progress);
     }
 
     drawSpellEffects(now) {
+        if (!this.vfx) return;
+        const still = this.scene.motionPreference.matches;
         for (const fx of this.spellEffects ?? []) {
-            const p = Math.max(0, Math.min(1, (now - fx.start) / fx.duration));
-            const alpha = 1 - p;
-
-            if (fx.kind === 'arcane_beam') {
-                this.effect.lineStyle(3, 0xa86cf0, alpha * 0.85);
-                this.effect.lineBetween(fx.x, fx.y, fx.targetX, fx.targetY);
-                this.effect.lineStyle(1, 0xf6ebff, alpha);
-                this.effect.lineBetween(fx.x, fx.y, fx.targetX, fx.targetY);
-                this.effect.lineStyle(1.5, 0xc99eff, alpha).strokeEllipse(fx.targetX, fx.targetY, 16 + p * 22, 10 + p * 14);
-                continue;
-            }
-
-            if (fx.kind === 'fire_whirl') {
-                const r = (fx.radius ?? 54) * (0.45 + 0.55 * p);
-                this.effect.lineStyle(2, 0xff7b2f, alpha * 0.9).strokeEllipse(fx.x, fx.y, r * 2, r * 1.3);
-                for (let arm = 0; arm < 3; arm++) {
-                    const baseA = now / 90 + (arm * Math.PI * 2) / 3;
-                    for (let step = 0; step < 5; step++) {
-                        const a = baseA - step * 0.28;
-                        const dist = r * (1 - step * 0.14);
-                        const px = Math.round(fx.x + Math.cos(a) * dist);
-                        const py = Math.round(fx.y + Math.sin(a) * dist * 0.68);
-                        this.effect.fillStyle(step === 0 ? 0xffe49c : 0xff6229, alpha).fillRect(px - 2, py - 2, 4, 4);
-                    }
+            const progress = Math.max(0, Math.min(1, (now - fx.start) / fx.duration));
+            const pose = still ? .42 : progress;
+            const alpha = .97 * (1 - Math.max(0, (progress - .52) / .48));
+            const radius = fx.radius ?? 42;
+            switch (fx.kind) {
+            case 'arcane_beam': {
+                const dx = fx.targetX - fx.x;
+                const dy = fx.targetY - fx.y;
+                const angle = Math.atan2(dy, dx);
+                for (let index = 0; index < 3; index++) {
+                    const travel = still ? .8 : 1.45 * progress - index * .15;
+                    if (travel < 0 || travel > 1) continue;
+                    this.vfx.play('arcane', fx.x + dx * travel, fx.y + dy * travel, pose, .47 - index * .07, angle, alpha);
                 }
-                continue;
+                if (progress > .18 || still) this.vfx.play('arcane_burst', fx.targetX, fx.targetY, pose, .69, 0, alpha);
+                break;
             }
-
-            if (fx.kind === 'frost_nova') {
-                const r = (fx.radius ?? 54) * (0.3 + 0.7 * p);
-                this.effect.lineStyle(2, 0x8de2ff, alpha).strokeEllipse(fx.x, fx.y, r * 2, r * 1.3);
-                for (let i = 0; i < 8; i++) {
-                    const a = (i * Math.PI) / 4;
-                    const px = Math.round(fx.x + Math.cos(a) * r);
-                    const py = Math.round(fx.y + Math.sin(a) * r * 0.65);
-                    this.effect.fillStyle(0xe5fbff, alpha).fillRect(px - 2, py - 3, 4, 6);
+            case 'fire_whirl':
+                this.vfx.play('vortex', fx.x, fx.y + 5, pose, radius / 46, 0, alpha);
+                break;
+            case 'frost_nova':
+            case 'shield_wave':
+                this.vfx.play('frost', fx.x, fx.y + 5, pose, radius / 43, 0, alpha);
+                break;
+            case 'fire_wall':
+                this.vfx.play('flame', fx.x, fx.y - 16, pose, radius / 28, 0, alpha);
+                break;
+            case 'obsidian_impact':
+                this.vfx.play('slash', fx.x, fx.y - 5, pose, radius / 48, fx.angle, alpha);
+                if (progress > .12) {
+                    this.vfx.play('slash', fx.x, fx.y - 9, still ? .42 : Math.max(0, progress - .12),
+                        radius / 55, fx.angle + .18, alpha * .44);
                 }
-                continue;
-            }
-
-            if (fx.kind === 'fire_wall') {
-                const r = fx.radius ?? 38;
-                for (let i = -3; i <= 3; i++) {
-                    const px = Math.round(fx.x + i * (r / 3.5));
-                    const py = Math.round(fx.y + Math.sin(i + p * 6) * 6);
-                    const flameH = Math.round((10 + ((i + 4) % 3) * 4) * alpha);
-                    this.effect.fillStyle(0xff5e28, alpha * 0.9).fillRect(px - 2, py - flameH, 4, flameH);
-                    this.effect.fillStyle(0xffe08a, alpha).fillRect(px - 1, py - Math.max(2, flameH - 3), 2, Math.max(2, flameH - 3));
+                break;
+            case 'magma_detonation':
+                for (let offset = 12; offset <= fx.riftRange; offset += 21) {
+                    const local = still ? .42 : Math.max(.06, progress - offset / fx.riftRange * .18);
+                    this.vfx.play('magma', fx.x + fx.dirX * offset, fx.y + fx.dirY * offset - 14,
+                        local, .73 + offset / fx.riftRange * .15, 0, alpha);
                 }
-                continue;
-            }
-
-            if (fx.kind === 'obsidian_impact') {
-                const spread = Math.acos(.35);
-                for (let arc = 0; arc < 3; arc++) {
-                    const reach = fx.radius * (.55 + p * .45 - arc * .11);
-                    this.effect.lineStyle(4 - arc, [0xfff0bb, 0xffa049, 0xf65229][arc], alpha);
-                    this.effect.beginPath();
-                    this.effect.arc(fx.x, fx.y, reach, fx.angle - spread, fx.angle + spread);
-                    this.effect.strokePath();
+                break;
+            case 'seismic_detonation':
+            case 'engage_slam':
+                this.vfx.play('seismic', fx.x, fx.y, pose, radius / 46, 0, alpha);
+                if (fx.kind === 'seismic_detonation' && progress < .46) {
+                    this.vfx.play('fire_burst', fx.x, fx.y - 18, still ? .42 : progress * 1.6, .65, 0, alpha * .68);
                 }
-                continue;
+                break;
+            case 'fireball_burst':
+                this.vfx.play('fire_burst', fx.x, fx.y - 9, pose, .92, 0, alpha);
+                break;
+            case 'heavy_slash':
+                this.vfx.play('fire_burst', fx.x, fx.y - 3, pose, .51, 0, alpha);
+                break;
+            case 'berserk_aura':
+                this.vfx.play('rune', fx.x, fx.y + 4, pose, .86, 0, alpha);
+                break;
             }
-
-            if (fx.kind === 'magma_detonation') {
-                const steps = Math.floor((fx.riftRange ?? 165) / 14);
-                for (let i = 1; i <= steps; i++) {
-                    const px = Math.round(fx.x + fx.dirX * i * 14);
-                    const py = Math.round(fx.y + fx.dirY * i * 14);
-                    const h = Math.round(18 * alpha);
-                    this.effect.fillStyle(0xff5c28, alpha * 0.9).fillRect(px - 5, py - h, 10, h);
-                    this.effect.fillStyle(0xffe79b, alpha).fillRect(px - 2, py - Math.round(h * 0.7), 4, Math.round(h * 0.7));
-                }
-                continue;
-            }
-
-            const r = (fx.radius ?? 40) * (0.35 + 0.65 * p);
-            this.effect.lineStyle(2.5, fx.color ?? 0xff942f, alpha).strokeEllipse(fx.x, fx.y, r * 2, r * 2);
-            this.effect.lineStyle(1, 0xffe4a0, alpha * 0.8).strokeEllipse(fx.x, fx.y, r * 1.4, r * 0.95);
         }
     }
 
@@ -1814,6 +1772,10 @@ export class TrainingCombat {
         const heat = Math.max(.1, Math.min(1, buildup));
         const pulse = .5 + .5 * Math.sin(time / 230);
         const radius = 29 + 6 * pulse;
+
+        this.vfx?.play(ignition ? 'rage_ignition' : 'rage_aura', x, y - 30,
+            still ? .42 : (ignition ? heat : (time % 1700) / 1700), ignition ? 1.28 : 1.18,
+            0, ignition ? Math.sin(heat * Math.PI) * .82 : .54);
 
         this.effect.fillStyle(0x482025, .32 * heat).fillEllipse(x, y + 2, 124, 58);
         this.effect.fillStyle(0xe2502d, .17 * heat).fillEllipse(x, y + 2, 92, 40);
@@ -1879,16 +1841,29 @@ export class TrainingCombat {
         this.effect.fillStyle(0x84decb, .09).fillRect(x, y, width, height);
         for (const [from, to] of wave.danger) {
             const bounds = wave.vertical ? [from, y, to - from, height] : [x, from, width, to - from];
-            this.effect.fillStyle(wave.impact ? 0xff581e : 0x9b332b, wave.impact ? .58 : .26 + wave.progress * .25);
+            this.effect.fillStyle(wave.impact ? 0xff581e : 0x9b332b, wave.impact ? .29 : .26 + wave.progress * .25);
             this.effect.fillRect(...bounds);
             this.effect.lineStyle(2, wave.impact ? 0xffeab0 : 0xff905e, .95).strokeRect(...bounds);
             const center = (from + to) / 2;
-            for (let step = 18; step < (wave.vertical ? height : width); step += 24) {
-                const offset = Math.sin(step * .18 + wave.index) * 8;
+            const length = wave.vertical ? height : width;
+            this.effect.lineStyle(2, wave.impact ? 0xffbc6c : 0xdc7b48, wave.impact ? .76 : .28 + wave.progress * .46);
+            this.effect.beginPath();
+            for (let step = 0; step <= length; step += 12) {
+                const offset = Math.sin(step * .162 + wave.index + center) * 6 + Math.cos(step * .07) * 3;
                 const px = wave.vertical ? center + offset : x + step;
                 const py = wave.vertical ? y + step : center + offset;
-                this.effect.fillStyle(wave.impact ? 0xffefad : 0xff9b58, wave.impact ? .95 : .35 + wave.progress * .6)
-                    .fillRect(px - 2, py - 2, wave.impact ? 10 : 4, wave.impact ? 6 : 3);
+                if (step === 0) this.effect.moveTo(px, py);
+                else this.effect.lineTo(px, py);
+            }
+            this.effect.strokePath();
+            if (wave.impact) {
+                for (let step = 36; step < length; step += 87) {
+                    const offset = Math.sin(step * .28 + center) * 6;
+                    const px = wave.vertical ? center + offset : x + step;
+                    const py = wave.vertical ? y + step : center + offset;
+                    const pose = this.scene.motionPreference.matches ? .42 : wave.impactProgress + offset * .013;
+                    this.vfx?.play('magma', px, py - 18, pose, .89 + offset * .021, 0, .92);
+                }
             }
         }
     }
@@ -1913,6 +1888,13 @@ export class TrainingCombat {
             // Télégraphies au sol des attaques spéciales
             if (attack.special) {
                 const progress = Math.max(0, Math.min(1, (now - attack.start) / Math.max(1, attack.castEnd - attack.start)));
+                if (monster.isBoss) {
+                    const still = this.scene.motionPreference.matches;
+                    const pose = still ? .4 : progress;
+                    this.vfx?.play(attack.special === 'magma_rift' ? 'firebolt' : 'rune',
+                        attack.originX, attack.originY - (attack.special === 'magma_rift' ? 34 : 0),
+                        pose, .70 + progress * .19, attack.special === 'magma_rift' ? attack.angle : 0, .72);
+                }
                 if (attack.special === 'obsidian_cleave') {
                     this.drawMalakorArc(attack.originX, attack.originY, attack.angle, attack.radius, progress);
                 } else if (attack.special === 'seismic_ring') {
@@ -1944,85 +1926,29 @@ export class TrainingCombat {
                         if (!this.scene.canStand(x, y)) break;
                         this.effect.fillRect(Math.round(x) - 2, Math.round(y) - 1, 4, 2);
                     }
-                    this.effect.fillStyle(0xd0ffff, .95).fillRect(attack.x - 3, attack.y - 3, 6, 6);
+                    this.vfx?.play('frostbolt', attack.x, attack.y,
+                        this.scene.motionPreference.matches ? .4 : Math.min(1, elapsed / (attack.castEnd - attack.start)),
+                        .44, attack.angle, .8);
                     continue;
                 }
-                for (let tail = 16; tail > 0; tail -= 4) {
-                    const trail = Math.max(0, shot.distance - tail);
-                    this.effect.fillStyle(color, .65 - tail / 32)
-                        .fillRect(Math.round(shot.x + shot.dx * trail) - 2, Math.round(shot.y + shot.dy * trail) - 10, 4, 4);
-                }
-                const x = Math.round(shot.x + shot.dx * shot.distance);
-                const y = Math.round(shot.y + shot.dy * shot.distance);
-                this.effect.fillStyle(color, .5).fillRect(x - 5, y - 2, 10, 4);
-                this.effect.fillStyle(color, 1).fillRect(x - 4, y - 12, 8, 8);
-                this.effect.fillStyle(0xe3ffff, 1).fillRect(x - 2, y - 10, 4, 4);
-            } else {
-                const progress = Math.min(1, elapsed / (attack.end - attack.start));
-                const angle = attack.angle + (this.scene.motionPreference.matches ? 0 : -.65 + progress * 1.3);
-                this.strokePixels(attack.x, attack.y, angle, monster.isBoss ? 18 + progress * 20 : 8 + progress * 12, monster.isBoss ? 3 : 2);
+                const x = shot.x + shot.dx * shot.distance;
+                const y = shot.y + shot.dy * shot.distance - 8;
+                this.vfx?.play('frostbolt', x, y, this.scene.motionPreference.matches ? .4 : (elapsed % 280) / 280,
+                    .62, Math.atan2(shot.dy, shot.dx));
+            } else if (now >= attack.end) {
+                const progress = Math.min(1, (now - attack.end) / recoveryMs);
+                this.vfx?.play('slash', attack.x, attack.y, this.scene.motionPreference.matches ? .33 : progress,
+                    .37, attack.angle, .78 * (1 - progress));
             }
         }
     }
 
     drawMelee(attack, progress, windingUp) {
-        const still = this.scene.motionPreference.matches;
-        const angle = attack.angle + (still
-            ? (windingUp ? -1 : 0.4)
-            : (windingUp ? -0.35 - 0.95 * progress : -1.25 + 2.55 * progress));
-        const x = this.scene.position.x + Math.cos(attack.angle) * 5;
-        const y = this.scene.position.y - 19;
-        const length = attack.armed ? (attack.staff ? 23 : attack.special ? 23 : 18) : 7;
-
-        if (attack.armed) {
-            this.effect.fillStyle(attack.staff ? 0x573d29 : 0x443443, 1);
-            this.strokePixels(x, y, angle, length, 3);
-            this.effect.fillStyle(attack.staff ? 0xbc8c51 : windingUp ? 0xc2af8d : attack.color, 1);
-            this.strokePixels(x, y, angle, length, 1);
-        } else {
-            this.effect
-                .fillStyle(0xe8ad84, 1)
-                .fillRect(Math.round(x + Math.cos(angle) * length) - 2, Math.round(y + Math.sin(angle) * length * 0.65) - 2, 4, 4);
-        }
-
-        if (!windingUp && !still) {
-            const trailSteps = attack.special ? 11 : 8;
-            this.effect.fillStyle(attack.color, 0.9 * (1 - progress));
-            for (let step = 0; step < trailSteps; step++) {
-                const trail = angle - step * 0.11;
-                this.effect.fillRect(
-                    Math.round(x + Math.cos(trail) * length) - 1,
-                    Math.round(y + Math.sin(trail) * length * 0.65) - 1,
-                    attack.special ? 4 : 3,
-                    attack.special ? 4 : 3,
-                );
-                if (attack.special && step < 7) {
-                    this.effect.fillStyle(0xffde94, 0.7 * (1 - progress)).fillRect(
-                        Math.round(x + Math.cos(trail) * (length + 5)) - 1,
-                        Math.round(y + Math.sin(trail) * (length + 5) * 0.65) - 1,
-                        2,
-                        2,
-                    );
-                }
-            }
-        }
-    }
-
-    strokePixels(x, y, angle, length, width) {
-        const dx = Math.cos(angle);
-        const dy = Math.sin(angle) * 0.65;
-        for (let step = 0; step <= length; step++) {
-            const inset = Math.floor(width / 2);
-            this.effect.fillRect(Math.round(x + dx * step) - inset, Math.round(y + dy * step) - inset, width, width);
-        }
-    }
-
-    orbitSparks(x, y, elapsed) {
-        this.effect.fillStyle(0xf7b75f, 0.8);
-        for (let index = 0; index < 3; index++) {
-            const angle = elapsed / 41 + index * 2.1;
-            this.effect.fillRect(Math.round(x + Math.cos(angle) * 6), Math.round(y + Math.sin(angle) * 5), 2, 2);
-        }
+        if (windingUp) return;
+        const x = this.scene.position.x + Math.cos(attack.angle) * 4;
+        const y = this.scene.position.y - 17;
+        this.vfx?.play(attack.armed ? 'slash' : 'fire_burst', x, y,
+            this.scene.motionPreference.matches ? .4 : progress, attack.special ? .75 : .47, attack.angle, 1 - progress * .7);
     }
 
     attackPose(now) {

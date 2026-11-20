@@ -42,6 +42,8 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 - Carte plein écran de 256 × 252 tuiles de 16 px, caméra suiveuse et zoom ×1 sur les écrans usuels. Les falaises délimitent le littoral.
 - Sangliers N.1–5, squelettes N.5–10 et dragons N.10–20. À l’est des montagnes, le chemin traverse les Terres dévastées (N.21–35) et rejoint Malakor (N.40). Au sud du Trône d’Obsidienne, une route côtière relie le Marais des Scories, les Remparts de Basalte et le Cap du Gouffre (N.41–60).
 - Le cimetière mêle pavés usés, mausolées sculptés, stèles moussues et saules à lichen. Les Terres dévastées alternent cendre striée, basalte, arbres calcinés et arches incandescentes. Les textures se fondent dans le terrain voisin.
+- La lumière change progressivement entre la clairière diurne, le cimetière froid et les côtes volcaniques. Lanternes, fissures, sorts et Rage de Malakor éclairent leur voisinage. Pollens, brumes, flocons et braises animent les biomes.
+- Les sorts et les techniques de Malakor jouent des cycles pixel art pour la charge, le projectile ou l’impact.
 - Les monstres ont huit orientations et des animations propres à leur famille. Le souffle du dragon et les techniques des gardiens côtiers signalent au sol les zones à esquiver.
 - Quête du PNJ : accepter, vaincre trois sangliers, puis revenir recevoir deux potions de vie. `!` doré disponible, `?` gris en cours, `?` doré à rendre.
 
