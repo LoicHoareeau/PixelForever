@@ -100,6 +100,7 @@ test('le départ, les belvédères côtiers et les patrouilles sont accessibles 
         assert.ok(visited.has(lookout.centerCell.join(',')), `${lookout.name} inaccessible`);
     }
     for (const template of Object.values(monsterTemplates)) {
+        assert.ok(template.patrolCells.length >= 10, `${template.label} doit avoir au moins 10 points de patrouille`);
         for (const [x, y] of template.patrolCells) {
             assert.ok(visited.has([x, y].join(',')), `${template.label} inaccessible en ${x},${y}`);
         }

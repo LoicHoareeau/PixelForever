@@ -3,6 +3,7 @@ import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
 import { monsterArt } from './monster-art.js';
 import { buildTerrain, cameraZoom, coastalLookouts, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
+import { transitionZoneLabel } from './biome-gradient.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
 
@@ -119,20 +120,36 @@ import { saveProgress } from './progression.js';
                 new Monster(this, 'boar', tileSize, 0),
                 new Monster(this, 'boar', tileSize, 1),
                 new Monster(this, 'boar', tileSize, 2),
+                new Monster(this, 'boar', tileSize, 3),
                 new Monster(this, 'boar', tileSize, 4),
+                new Monster(this, 'boar', tileSize, 6),
+                new Monster(this, 'boar', tileSize, 8),
                 new Monster(this, 'skeleton', tileSize, 0),
+                new Monster(this, 'skeleton', tileSize, 1),
+                new Monster(this, 'skeleton', tileSize, 2),
                 new Monster(this, 'skeleton', tileSize, 3),
-                new Monster(this, 'skeleton', tileSize, 6),
+                new Monster(this, 'skeleton', tileSize, 4),
+                new Monster(this, 'skeleton', tileSize, 5),
                 new Monster(this, 'dragon', tileSize, 0),
-                new Monster(this, 'dragon', tileSize, 4),
+                new Monster(this, 'dragon', tileSize, 2),
+                new Monster(this, 'dragon', tileSize, 5),
+                new Monster(this, 'dragon', tileSize, 8),
+                new Monster(this, 'dragon', tileSize, 10),
                 new Monster(this, 'imp', tileSize, 0),
+                new Monster(this, 'imp', tileSize, 1),
                 new Monster(this, 'imp', tileSize, 2),
+                new Monster(this, 'imp', tileSize, 3),
                 new Monster(this, 'imp', tileSize, 4),
+                new Monster(this, 'imp', tileSize, 6),
                 new Monster(this, 'hound', tileSize, 0),
+                new Monster(this, 'hound', tileSize, 1),
                 new Monster(this, 'hound', tileSize, 2),
                 new Monster(this, 'hound', tileSize, 4),
+                new Monster(this, 'hound', tileSize, 5),
                 new Monster(this, 'fiend', tileSize, 0),
+                new Monster(this, 'fiend', tileSize, 1),
                 new Monster(this, 'fiend', tileSize, 2),
+                new Monster(this, 'fiend', tileSize, 4),
                 new Monster(this, 'fiend', tileSize, 5),
             ];
 
@@ -496,7 +513,7 @@ import { saveProgress } from './progression.js';
             const zone = Object.values(zones).find(z => inZone(z, this.position.x, this.position.y))
                 ?? coastalLookouts.find(lookout => inZone(lookout, this.position.x, this.position.y));
             const label = document.getElementById('current-zone');
-            const name = zone?.name ?? 'Sentier des Saules';
+            const name = zone?.name ?? transitionZoneLabel(this.position.x, this.position.y, tileSize);
             if (label && label.textContent !== name) label.textContent = name;
         }
 

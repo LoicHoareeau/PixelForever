@@ -1,28 +1,28 @@
 export const tileSize = 16;
-export const columns = 224;
-export const rows = 160;
+export const columns = 256;
+export const rows = 192;
 export const cliffTile = 35;
 export const seaTile = 36;
 export const questNpc = { x: 224, y: 190, range: 48 };
 
 // ---------------------------------------------------------------------------
-// Zones agrandies et belvédères côtiers
+// Zones agrandies avec couloirs tampons pour gradients progressifs
 // ---------------------------------------------------------------------------
 
 export const zones = {
-    boar: { name: 'Clairière · N.1–5', left: 4, top: 4, right: 48, bottom: 38 },
-    skeleton: { name: 'Cimetière · N.5–10', left: 78, top: 46, right: 118, bottom: 80 },
-    dragon: { name: 'Montagnes · N.10–20', left: 132, top: 68, right: 172, bottom: 108 },
-    imp: { name: 'Terres dévastées · Brèche (N.21–25)', left: 173, top: 72, right: 205, bottom: 105 },
-    hound: { name: 'Terres dévastées · Plaine calcinée (N.25–30)', left: 170, top: 106, right: 204, bottom: 138 },
-    fiend: { name: 'Terres dévastées · Citadelle (N.30–35)', left: 126, top: 109, right: 169, bottom: 140 },
+    boar: { name: 'Clairière · N.1–5', left: 4, top: 4, right: 56, bottom: 44 },
+    skeleton: { name: 'Cimetière · N.5–10', left: 82, top: 52, right: 128, bottom: 92 },
+    dragon: { name: 'Montagnes · N.10–20', left: 146, top: 72, right: 188, bottom: 114 },
+    imp: { name: 'Terres dévastées · Brèche (N.21–25)', left: 200, top: 76, right: 238, bottom: 114 },
+    hound: { name: 'Terres dévastées · Plaine calcinée (N.25–30)', left: 196, top: 118, right: 236, bottom: 168 },
+    fiend: { name: 'Terres dévastées · Citadelle (N.30–35)', left: 142, top: 126, right: 192, bottom: 168 },
 };
 
 export const coastalLookouts = [
-    { name: 'Cap des Saules · Belvédère marin', left: 18, top: 38, right: 34, bottom: 50, centerCell: [25, 47] },
-    { name: 'Baie Émeraude · Belvédère Sud', left: 89, top: 81, right: 104, bottom: 107, centerCell: [96, 104] },
-    { name: 'Baie de Saphyr · Belvédère Nord-Est', left: 143, top: 42, right: 160, bottom: 67, centerCell: [151, 45] },
-    { name: 'Cap d’Obsidienne · Falaises Sud', left: 142, top: 135, right: 153, bottom: 140, centerCell: [147, 136] },
+    { name: 'Cap des Saules · Belvédère marin', left: 20, top: 44, right: 38, bottom: 58, centerCell: [28, 55] },
+    { name: 'Baie Émeraude · Belvédère Sud', left: 96, top: 93, right: 114, bottom: 122, centerCell: [104, 119] },
+    { name: 'Baie de Saphyr · Belvédère Nord-Est', left: 158, top: 44, right: 176, bottom: 71, centerCell: [167, 47] },
+    { name: 'Cap d’Obsidienne · Falaises Sud', left: 160, top: 158, right: 174, bottom: 168, centerCell: [167, 165] },
 ];
 
 export function isCoastBorderTile(tile) {
@@ -49,7 +49,7 @@ export function cameraZoom(viewWidth, viewHeight) {
 }
 
 // ---------------------------------------------------------------------------
-// Génération du terrain, chemins côtiers et péninsule mer / falaises
+// Génération du terrain, chemins inter-zones et péninsule mer / falaises
 // ---------------------------------------------------------------------------
 
 function waveNS(x) {
@@ -82,31 +82,32 @@ export function buildTerrain(clearing) {
     };
 
     // Réseau routier principal et promenades vers les belvédères marins
-    road(14, 15, 96, 17);
-    road(94, 15, 96, 62);
-    road(22, 18, 24, 48);
-    road(20, 46, 31, 48);
-    road(94, 62, 96, 105);
-    road(92, 103, 102, 105);
-    road(95, 60, 152, 62);
-    road(150, 44, 152, 88);
-    road(146, 44, 158, 46);
-    road(151, 86, 188, 88);
-    road(186, 87, 188, 124);
-    road(146, 122, 188, 124);
-    road(146, 123, 148, 137);
+    road(14, 15, 104, 17);
+    road(22, 18, 24, 56);
+    road(22, 54, 35, 56);
+    road(102, 15, 104, 120);
+    road(100, 118, 111, 120);
+    road(103, 70, 168, 72);
+    road(166, 46, 168, 96);
+    road(162, 46, 174, 48);
+    road(167, 94, 218, 96);
+    road(216, 95, 218, 144);
+    road(166, 142, 218, 144);
+    road(166, 143, 168, 166);
+    road(162, 164, 172, 166);
 
     const protectedAreas = [
         ...Object.values(zones),
         ...coastalLookouts,
-        { left: 14, top: 15, right: 96, bottom: 17 },
-        { left: 94, top: 15, right: 96, bottom: 105 },
-        { left: 95, top: 60, right: 152, bottom: 62 },
-        { left: 150, top: 44, right: 152, bottom: 88 },
-        { left: 151, top: 86, right: 188, bottom: 88 },
-        { left: 186, top: 87, right: 188, bottom: 124 },
-        { left: 146, top: 122, right: 188, bottom: 124 },
-        { left: 146, top: 123, right: 148, bottom: 137 },
+        { left: 14, top: 15, right: 104, bottom: 17 },
+        { left: 22, top: 18, right: 35, bottom: 56 },
+        { left: 100, top: 15, right: 111, bottom: 120 },
+        { left: 103, top: 70, right: 168, bottom: 72 },
+        { left: 162, top: 46, right: 174, bottom: 96 },
+        { left: 167, top: 94, right: 218, bottom: 96 },
+        { left: 216, top: 95, right: 218, bottom: 144 },
+        { left: 166, top: 142, right: 218, bottom: 144 },
+        { left: 162, top: 143, right: 172, bottom: 166 },
     ];
 
     const isProtected = (x, y) => protectedAreas.some((box) => pointInBox(x, y, box, 4));
@@ -117,48 +118,48 @@ export function buildTerrain(clearing) {
         }
 
         // Littoral Nord et Baie de Saphyr
-        if (x <= 51) {
+        if (x <= 58) {
             if (y < 1) {
                 return true;
             }
-        } else if (x <= 102) {
+        } else if (x <= 112) {
             if (y < Math.min(10, 7 + waveNS(x))) {
                 return true;
             }
-        } else if (x <= 138) {
-            if (y < Math.min(28, 22 + waveNS(x))) {
+        } else if (x <= 152) {
+            if (y < Math.min(34, 26 + waveNS(x))) {
                 return true;
             }
-        } else if (x <= 176) {
-            if (y < Math.min(35, 30 + waveNS(x))) {
+        } else if (x <= 194) {
+            if (y < Math.min(38, 33 + waveNS(x))) {
                 return true;
             }
-        } else if (y < Math.min(54, 46 + waveNS(x))) {
+        } else if (y < Math.min(60, 52 + waveNS(x))) {
             return true;
         }
 
         // Littoral Ouest et Baie Émeraude du Sud-Ouest
-        if (y >= 44 && x < 13 + waveEW(y)) {
+        if (y >= 50 && x < 14 + waveEW(y)) {
             return true;
         }
-        if (x <= 46 && y >= 57 + waveNS(x)) {
+        if (x <= 54 && y >= 65 + waveNS(x)) {
             return true;
         }
-        if (x > 46 && x <= 74 && y >= 65 + waveNS(x)) {
+        if (x > 54 && x <= 84 && y >= 76 + waveNS(x)) {
             return true;
         }
-        if (x > 74 && x <= 116 && y >= 113 + waveNS(x)) {
+        if (x > 84 && x <= 128 && y >= 129 + waveNS(x)) {
             return true;
         }
-        if (x > 116 && x <= 125 && y >= 116 + (x - 116) * 3) {
+        if (x > 128 && x <= 140 && y >= 132 + (x - 128) * 3) {
             return true;
         }
-        if (x > 125 && y >= 145 + waveNS(x)) {
+        if (x > 140 && y >= 175 + waveNS(x)) {
             return true;
         }
 
         // Littoral Est (mer de Saphyr vers mer d'obsidienne)
-        return x >= 210 + waveEW(y);
+        return x >= 243 + waveEW(y);
     };
 
     const seaMask = Array.from({ length: rows }, () => Array(columns).fill(false));
@@ -206,31 +207,39 @@ export function groundWalkable(terrain, x, y) {
 }
 
 // ---------------------------------------------------------------------------
-// Obstacles placés dans les zones agrandies (hors chemins et patrouilles)
+// Obstacles placés dans les zones agrandies et zones de transition
 // ---------------------------------------------------------------------------
 
 export const graves = [
-    [80, 52], [84, 52], [88, 52], [80, 56], [85, 56], [90, 56],
-    [100, 50], [105, 50], [110, 50], [100, 56], [106, 56], [113, 54],
-    [81, 65], [86, 65], [90, 65], [82, 70], [88, 70], [83, 76],
-    [101, 66], [106, 66], [112, 66], [103, 72], [112, 73], [105, 77],
+    [84, 57], [89, 57], [94, 57], [99, 57],
+    [84, 62], [90, 62], [95, 62], [100, 62],
+    [108, 56], [113, 56], [120, 56], [124, 56],
+    [107, 63], [113, 63], [119, 63], [125, 63],
+    [84, 74], [91, 74], [96, 74], [100, 74],
+    [85, 80], [92, 80], [97, 86], [85, 86],
+    [107, 76], [113, 76], [120, 76], [125, 80],
+    [107, 83], [112, 85], [120, 86], [125, 86],
 ];
 
 export const cemeteryRuins = [
-    [80, 48], [91, 48], [115, 48], [79, 59],
-    [79, 77], [91, 77], [115, 77], [116, 63],
+    [84, 54], [97, 54], [125, 54], [83, 69],
+    [126, 67], [84, 89], [97, 89], [125, 89], [126, 78],
 ];
 
 export const wastelandRuins = [
-    [175, 74], [184, 74], [202, 76], [202, 92], [192, 102], [175, 103],
-    [173, 108], [202, 110], [202, 128], [191, 136], [172, 135],
-    [166, 111], [129, 111], [129, 128], [142, 138], [165, 137],
+    [202, 78], [214, 78], [234, 79], [235, 92], [233, 108], [203, 111],
+    [199, 120], [233, 121], [233, 138], [231, 154], [202, 155], [188, 128],
+    [145, 128], [145, 148], [154, 160], [186, 160],
+    // Monolithes en lisière Montagnes -> Terres dévastées
+    [193, 84], [194, 104], [158, 119], [179, 120],
 ];
 
 export const rocks = [
-    [134, 70], [140, 70], [146, 70], [156, 70], [163, 70], [169, 70],
-    [134, 79], [141, 80], [158, 79], [169, 77], [169, 85],
-    [134, 89], [144, 91], [157, 91], [169, 92], [141, 95],
-    [135, 102], [139, 106], [147, 106], [155, 106], [162, 106], [168, 102],
-    [158, 97], [165, 98], [136, 84], [162, 85],
+    [148, 75], [154, 75], [161, 75], [172, 75], [179, 75], [185, 76],
+    [148, 84], [157, 83], [174, 84], [185, 85],
+    [148, 92], [160, 91], [175, 91], [185, 91],
+    [148, 102], [156, 101], [173, 101], [184, 102],
+    [149, 111], [156, 112], [165, 111], [175, 111], [184, 110],
+    // Contreforts rocheux en lisière des Montagnes
+    [136, 64], [140, 77], [138, 86], [141, 97], [155, 63], [177, 64],
 ];
