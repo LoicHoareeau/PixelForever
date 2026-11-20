@@ -1,5 +1,8 @@
-import { createCombatVfx } from './combat-vfx.js';
-import { createMalakorTrial, isMalakorWaveHit, malakorPhases, malakorThresholds, malakorTrialInterval, malakorWave } from './malakor.js';
+import { createCombatVfx, drawInfernoBeam } from './combat-vfx.js';
+import {
+    createMalakorTrial, isMalakorWaveHit, malakorEmberMs, malakorFirstTrialDelay, malakorIgnitionMs,
+    malakorPhases, malakorRageProgress, malakorSurgeMs, malakorThresholds, malakorTrialInterval, malakorWave, malakorWaveImpactMs,
+} from './malakor.js';
 import { armorItems, armorSlots, awardArmor, toggleArmor } from './armor.js';
 import {
     allocateStat,
@@ -215,6 +218,7 @@ export class TrainingCombat {
 
         const effectDepth = scene.terrain.length * tileSize + 1;
         this.effect = scene.add.graphics().setDepth(effectDepth);
+        this.rageEffect = scene.add.graphics().setDepth(effectDepth - .36);
         this.vfx = createCombatVfx(scene, effectDepth - .25);
 
         // Cooldowns individuels par compétence + buff Berserk + VFX et textes flottants
@@ -1385,7 +1389,10 @@ export class TrainingCombat {
         monster.syncOverlays();
 
         const enteredPhase = typeof monster.checkBossPhase === 'function' && monster.checkBossPhase();
-        if (enteredPhase) this.startMalakorTrial(monster, now, monster.phase === 3);
+        if (enteredPhase) {
+            if (monster.phase === 3) this.startMalakorRage(monster, now);
+            else this.startMalakorTrial(monster, now);
+        }
 
         if (this.selectedMonster === monster) {
             this.refreshTargetHud();
@@ -1465,11 +1472,22 @@ export class TrainingCombat {
             && inZone(monster.template.zone, this.scene.position.x, this.scene.position.y));
     }
 
-    startMalakorTrial(monster, now, transform = false) {
+    startMalakorRage(monster, now) {
+        monster.cancelAttack();
+        monster.poseRecovery = monster.echo = null;
+        monster.rageStartedAt = now;
+        monster.pursue();
+        monster.nextTrialAt = monster.counterAt = now + malakorFirstTrialDelay;
+        this.refreshTargetHud();
+        this.triggerShake('large');
+        this.tell('Rage de la Brèche · Prépare-toi au balayage !');
+    }
+
+    startMalakorTrial(monster, now) {
         monster.cancelAttack();
         monster.poseRecovery = monster.echo = null;
         monster.stunUntil = monster.slowUntil = 0;
-        monster.trial = createMalakorTrial(monster.phase, now, transform);
+        monster.trial = createMalakorTrial(monster.phase, now);
         if (this.pending) {
             const refund = this.pending.manaCost ?? 0;
             this.mana = Math.min(this.meters[1].meter.max, this.mana + refund);
@@ -1481,7 +1499,7 @@ export class TrainingCombat {
         }
         monster.pursue();
         this.refreshTargetHud();
-        this.triggerShake(transform ? 'large' : 'medium');
+        this.triggerShake('medium');
         this.tell(malakorPhases[monster.phase - 1] + ' · Traverse l’arène par les bandes sûres !');
     }
 
@@ -1497,6 +1515,7 @@ export class TrainingCombat {
         const wave = malakorWave(monster.trial, now);
         if (!wave?.impact || wave.index === monster.trial.lastImpact) return;
         monster.trial.lastImpact = wave.index;
+        this.spellEffects.push({ kind: 'inferno_wake', zone: monster.template.zone, wave, start: now, duration: malakorEmberMs });
         this.triggerShake('medium');
         if (isMalakorWaveHit(wave, this.scene.position)) this.takeMonsterHit(monster, monster.phase === 3 ? 570 : 385, now);
     }
@@ -1607,6 +1626,7 @@ export class TrainingCombat {
      */
     drawEffects(now) {
         this.vfx?.begin();
+        this.rageEffect?.clear();
         const enemyAttacking = this.monsters.some((monster) => monster.isAlive && (
             (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
             || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
@@ -1751,6 +1771,9 @@ export class TrainingCombat {
             case 'berserk_aura':
                 this.vfx.play('rune', fx.x, fx.y + 4, pose, .86, 0, alpha);
                 break;
+            case 'inferno_wake':
+                this.drawInfernoEmbers(fx, now, still);
+                break;
             }
         }
     }
@@ -1772,9 +1795,9 @@ export class TrainingCombat {
         const time = still ? 0 : now;
         const x = monster.sprite.x;
         const y = monster.sprite.y;
-        const ignition = monster.trial?.transform && now < monster.trial.beginsAt;
-        const buildup = ignition ? (now - monster.trial.start) / (monster.trial.beginsAt - monster.trial.start) : 1;
-        const heat = Math.max(.1, Math.min(1, buildup));
+        const buildup = malakorRageProgress(monster.rageStartedAt, now, malakorIgnitionMs);
+        const ignition = buildup !== null;
+        const heat = Math.max(.1, buildup ?? 1);
         const pulse = .5 + .5 * Math.sin(time / 230);
         const radius = 29 + 6 * pulse;
 
@@ -1828,6 +1851,38 @@ export class TrainingCombat {
         }
     }
 
+    drawMalakorSurge(monster, now) {
+        const progress = malakorRageProgress(monster.rageStartedAt, now, malakorSurgeMs);
+        const layer = this.rageEffect;
+        if (progress === null || !layer) return;
+        const width = this.scene.terrain[0].length * this.tileSize;
+        const height = this.scene.terrain.length * this.tileSize;
+        const glow = Math.sin(progress * Math.PI) ** .85;
+        const still = this.scene.motionPreference?.matches;
+        layer.fillStyle(0x5b2442, glow * (still ? .11 : .21)).fillRect(0, 0, width, height);
+        layer.fillStyle(0xa53e26, glow * (still ? .06 : .14)).fillRect(0, 0, width, height);
+        if (still) return;
+
+        const { x, y } = monster.sprite;
+        const front = 34 + Math.hypot(width, height) * progress ** 2.8;
+        const power = (1 - progress) * glow;
+        const view = this.scene.cameras.main.worldView;
+        const step = Math.max(120, Math.ceil(Math.sqrt(view.width * view.height / 38) / 16) * 16);
+        for (let row = Math.max(0, Math.floor((view.y - step) / step)); row * step < Math.min(height, view.bottom + step); row++) {
+            for (let col = Math.max(0, Math.floor((view.x - step) / step)); col * step < Math.min(width, view.right + step); col++) {
+                const drift = Math.sin(col * 2.4 + row * 3.7) * 28;
+                const px = (col + .5) * step + drift + progress * 37;
+                const py = (row + .5) * step - drift - progress * 72;
+                const phase = (progress * 1.6 + (col + row * 3) * .17) % 1;
+                this.vfx?.play('cinders', px, py, phase, 1.18, -.16, glow * .54);
+            }
+        }
+        layer.lineStyle(25, 0xd43d2a, power * .28).strokeCircle(x, y, front);
+        layer.lineStyle(10, 0xff713c, power * .42).strokeCircle(x, y, front);
+        layer.lineStyle(3, 0xffba66, power * .64).strokeCircle(x, y, front);
+        layer.lineStyle(2, 0xff874b, power * .38).strokeCircle(x, y, front * .73);
+    }
+
     drawMalakorTrial(monster, now) {
         const { left, top, right, bottom } = monster.template.zone;
         const x = left * this.tileSize;
@@ -1844,14 +1899,19 @@ export class TrainingCombat {
             return;
         }
         this.effect.fillStyle(0x84decb, .09).fillRect(x, y, width, height);
+        const length = wave.vertical ? height : width;
+        const still = this.scene.motionPreference?.matches;
         for (const [from, to] of wave.danger) {
             const bounds = wave.vertical ? [from, y, to - from, height] : [x, from, width, to - from];
-            this.effect.fillStyle(wave.impact ? 0xff581e : 0x9b332b, wave.impact ? .29 : .26 + wave.progress * .25);
+            this.effect.fillStyle(wave.impact ? 0xff581e : 0x9b332b, wave.impact ? .24 : .26 + wave.progress * .25);
             this.effect.fillRect(...bounds);
-            this.effect.lineStyle(2, wave.impact ? 0xffeab0 : 0xff905e, .95).strokeRect(...bounds);
+            this.effect.lineStyle(2, 0xff905e, wave.impact ? .52 : .95).strokeRect(...bounds);
+            if (wave.impact) {
+                drawInfernoBeam(this.effect, wave, x, y, from, to, length, monster.phase === 3, still);
+                continue;
+            }
             const center = (from + to) / 2;
-            const length = wave.vertical ? height : width;
-            this.effect.lineStyle(2, wave.impact ? 0xffbc6c : 0xdc7b48, wave.impact ? .76 : .28 + wave.progress * .46);
+            this.effect.lineStyle(2, 0xdc7b48, .28 + wave.progress * .46);
             this.effect.beginPath();
             for (let step = 0; step <= length; step += 12) {
                 const offset = Math.sin(step * .162 + wave.index + center) * 6 + Math.cos(step * .07) * 3;
@@ -1861,15 +1921,43 @@ export class TrainingCombat {
                 else this.effect.lineTo(px, py);
             }
             this.effect.strokePath();
-            if (wave.impact) {
-                for (let step = 36; step < length; step += 87) {
-                    const offset = Math.sin(step * .28 + center) * 6;
-                    const px = wave.vertical ? center + offset : x + step;
-                    const py = wave.vertical ? y + step : center + offset;
-                    const pose = this.scene.motionPreference.matches ? .42 : wave.impactProgress + offset * .013;
-                    const scale = .91 + offset * .019;
-                    this.vfx?.play('magma', px, py - 28 * scale, pose, scale, 0, .92);
-                }
+        }
+    }
+
+    drawInfernoEmbers(fx, now, still) {
+        const { zone, wave } = fx;
+        const length = (wave.vertical ? zone.bottom - zone.top + 1 : zone.right - zone.left + 1) * this.tileSize;
+        const axis = (wave.vertical ? zone.top : zone.left) * this.tileSize;
+        const elapsed = now - fx.start;
+        const alongCount = Math.ceil(length / 64) * 4;
+        const direction = wave.reverse ? -1 : 1;
+        for (const [from, to] of wave.danger) {
+            for (let index = 0; index < alongCount + 12; index++) {
+                const seed = Math.abs(Math.sin(index * 97.3 + wave.index * 41.1 + from * .127));
+                const atImpact = index >= alongCount;
+                const distance = atImpact ? length - seed * 27 : Math.min(length, Math.floor(index / 4) * 64 + seed * 61);
+                const ground = wave.reverse ? length - distance : distance;
+                const delay = malakorWaveImpactMs * (.66 + seed * .32);
+                const age = (elapsed - delay) / (fx.duration - delay);
+                if (age <= 0 || age >= 1) continue;
+                const drift = still ? 0 : age;
+                const burst = 1 - (1 - Math.min(1, drift * 5)) ** 2;
+                const hot = Math.max(0, 1 - age * 4);
+                const opacity = (1 - age) ** 1.65 * Math.min(1, age * 48) * (still ? .45 : .90);
+                const side = index % 2 === 0 ? 1 : -1;
+                const cross = from + (to - from) * (.19 + seed * .62)
+                    + side * (atImpact ? 26 : 14) * burst + Math.sin(drift * 6 + index) * 7;
+                const wind = axis + ground + direction * burst * (atImpact ? 15 + seed * 41 : 3 + seed * 13);
+                const x = Math.round(wave.vertical ? cross : wind);
+                const y = Math.round((wave.vertical ? wind : cross) - drift * (23 + seed * 44));
+                const tail = Math.round(2 + (atImpact ? 14 : 7) * seed * hot);
+                const trail = wave.reverse ? 0 : tail;
+                const size = Math.round(2 + (atImpact ? 3 : 2) * seed * hot);
+                this.effect.fillStyle(0xd43f27, opacity * .64)
+                    .fillRect(x - (wave.vertical ? 0 : trail), y - (wave.vertical ? trail : 0),
+                        wave.vertical ? size : tail, wave.vertical ? tail : size);
+                this.effect.fillStyle(hot > .60 ? 0xffedbb : seed > .6 ? 0xffac56 : 0xf16c39, opacity)
+                    .fillRect(x, y, size, size);
             }
         }
     }
@@ -1878,7 +1966,10 @@ export class TrainingCombat {
         for (const monster of this.monsters) {
             if (!monster.isAlive) continue;
 
-            if (monster.isBoss && monster.phase === 3) this.drawMalakorAura(monster, now);
+            if (monster.isBoss && monster.phase === 3) {
+                this.drawMalakorAura(monster, now);
+                this.drawMalakorSurge(monster, now);
+            }
 
             if (monster.trial) this.drawMalakorTrial(monster, now);
             if (monster.echo) {

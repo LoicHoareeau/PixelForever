@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { armorBonuses, armorItems, awardArmor, toggleArmor } from '../public/game/armor.js';
-import { createMalakorTrial, isMalakorWaveHit, malakorAtlasColumns, malakorFrameSize, malakorWave } from '../public/game/malakor.js';
+import {
+    createMalakorTrial, isMalakorWaveHit, malakorAtlasColumns, malakorEmberMs, malakorFirstTrialDelay,
+    malakorFrameSize, malakorRageProgress, malakorSurgeMs, malakorWave, malakorWaveImpactMs,
+} from '../public/game/malakor.js';
 import { CameraFeel } from '../public/game/camera-feel.js';
 import { TrainingCombat } from '../public/game/combat.js';
 import { buildTerrain, tileSize, zones } from '../public/game/exploration.js';
@@ -109,16 +112,16 @@ test('Malakor (Boss N.40) dispose d’un atlas 128px valide, de trois phases et 
     boss.health = 9000;
     assert.equal(boss.checkBossPhase(), true);
     assert.equal(boss.phase, 3);
-    boss.trial = createMalakorTrial(3, 4100, true);
+    boss.rageStartedAt = 4100;
     boss.renderPose(4400);
     assert.equal(boss.sprite.texture.key, 'malakor-rage-actions');
     assert.equal(boss.checkBossPhase(), false);
 });
 
 test('les vagues de Rage alternent d’axe, conservent des bandes sûres et bloquent les attaques sans coût', () => {
-    const trial = createMalakorTrial(3, 5000, true);
+    const trial = createMalakorTrial(3, 5000);
     const first = malakorWave(trial, trial.beginsAt);
-    const second = malakorWave(trial, trial.beginsAt + 1680);
+    const second = malakorWave(trial, trial.beginsAt + 1320 + malakorWaveImpactMs);
     assert.equal(first.vertical, true);
     assert.equal(second.vertical, false);
     assert.ok(first.danger.length > 4);
@@ -134,6 +137,65 @@ test('les vagues de Rage alternent d’axe, conservent des bandes sûres et bloq
     assert.equal(combat.mana, 40);
     assert.equal(combat.readyAt, 11);
     assert.equal(combat.pending, undefined);
+});
+
+test('le balayage laisse des braises trois secondes après le passage des rayons et ne frappe qu’une fois', () => {
+    const trial = createMalakorTrial(3, 5000);
+    const hit = trial.beginsAt + 1320;
+    const wave = malakorWave(trial, hit);
+    const [from, to] = wave.danger[1];
+    const boss = { trial, template: { zone: zones.breach_lord }, phase: 3, counterAt: Infinity };
+    const combat = Object.create(TrainingCombat.prototype);
+    let hitCount = 0;
+    Object.assign(combat, {
+        monsters: [], spellEffects: [], impacts: [], pending: null, recovery: null,
+        effect: { clear() {} }, drawSpellEffects() {}, drawMonsterAttacks() {},
+        scene: { position: { x: (from + to) / 2, y: (zones.breach_lord.top + 5) * tileSize }, motionPreference: {} },
+        takeMonsterHit() { hitCount++; },
+    });
+    combat.updateMalakorTrial(boss, hit);
+    combat.updateMalakorTrial(boss, hit + 100);
+    assert.equal(hitCount, 1);
+    assert.equal(combat.spellEffects.length, 1);
+    assert.equal(combat.spellEffects[0].kind, 'inferno_wake');
+    assert.equal(combat.spellEffects[0].duration - malakorWaveImpactMs, 3000);
+    combat.drawEffects(hit + malakorEmberMs - 1);
+    assert.equal(combat.spellEffects.length, 1);
+    combat.drawEffects(hit + malakorEmberMs);
+    assert.equal(combat.spellEffects.length, 0);
+});
+
+test('la Rage déclenche la déferlante visuelle avant de programmer la première vague', () => {
+    const boss = new Monster(mockScene, 'breach_lord', tileSize, 0);
+    boss.phase = 2;
+    boss.health = 9015;
+    const now = 5000;
+    const combat = Object.create(TrainingCombat.prototype);
+    Object.assign(combat, {
+        monsters: [boss], scene: { position: { x: boss.sprite.x + 14, y: boss.sprite.y } },
+        health: 1000, stats: {}, impacts: [], spellEffects: [],
+        spawnFloatingText() {}, refreshTargetHud() {}, tell() {},
+    });
+    combat.applyDamageToMonster(boss, 300, 'Test', 0xffffff, now);
+    assert.equal(boss.phase, 3);
+    assert.equal(boss.rageStartedAt, now);
+    assert.equal(boss.trial, null);
+    assert.equal(combat.mustDodgeMalakor(), false);
+    assert.equal(malakorRageProgress(boss.rageStartedAt, now + malakorSurgeMs / 2, malakorSurgeMs), .5);
+
+    combat.updateMonsterCounter(boss, now + malakorFirstTrialDelay - 1);
+    assert.equal(boss.trial, null);
+    assert.equal(boss.attackVisual, null);
+    assert.equal(combat.health, 1000);
+    combat.updateMonsterCounter(boss, now + malakorFirstTrialDelay);
+    assert.ok(boss.trial);
+    assert.equal(combat.mustDodgeMalakor(), true);
+    assert.equal(malakorWave(boss.trial, boss.trial.beginsAt).impact, false);
+    assert.equal(combat.health, 1000);
+
+    boss.respawn(combat.scene.position);
+    assert.equal(boss.rageStartedAt, null);
+    assert.equal(boss.nextTrialAt, Infinity);
 });
 
 test('les deux récompenses de Malakor équipent des emplacements indépendants et respectent classe et niveau', () => {

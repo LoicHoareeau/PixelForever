@@ -61,7 +61,7 @@ test('les sorts illuminent leur impact et la Rage conserve un halo stable en mou
 
 test('les cycles animés des sorts et du boss ont une rangée distincte dans l’atlas', () => {
     const png = readFileSync(new URL('../public/game/val-des-saules/combat-vfx.png', import.meta.url));
-    const kinds = ['firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst', 'seismic', 'flame', 'magma', 'fire_burst', 'slash', 'rune', 'rage_aura', 'rage_ignition', 'mist', 'marsh_wisp', 'pollen', 'snow', 'ash', 'cinders', 'steel_slash', 'gilded_spin', 'arcane_stream', 'ward'];
+    const kinds = ['firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst', 'seismic', 'flame', 'magma', 'fire_burst', 'slash', 'rune', 'rage_aura', 'rage_ignition', 'mist', 'marsh_wisp', 'pollen', 'snow', 'ash', 'cinders', 'steel_slash', 'gilded_spin', 'arcane_stream', 'ward', 'rift_glints'];
     assert.equal(png.toString('ascii', 12, 16), 'IHDR');
     assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)],
         [vfxFrameSize * vfxFrames, vfxFrameSize * kinds.length]);

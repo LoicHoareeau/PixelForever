@@ -403,52 +403,95 @@ function shieldImpact(GdImage $image, float $p): void
     embers($image, $p, $palette, 27, 1.23);
 }
 
+function airCurrent(GdImage $image, string $kind, float $p): void
+{
+    $phase = $p * 2 * M_PI;
+    if ($kind === 'mist' || $kind === 'marsh_wisp') {
+        $green = $kind === 'marsh_wisp';
+        $palette = $green ? [0x193b39, 0x2b6356, 0x55ae89, 0x8eddac, 0xc9ffda]
+            : [0x253347, 0x3e6786, 0x618da4, 0x93bdcb, 0xc7dfeb];
+        bloom($image, 64, 76, 112, 18, $palette[2], $green ? .67 : .84);
+        for ($i = 0; $i < ($green ? 3 : 5); $i++) {
+            $wave = $phase + $i * 1.6;
+            $path = static fn ($t) => [
+                5 + 117 * $t, 68 + $i * ($green ? 5 : 2.8)
+                    + sin($t * 6.2 + $wave) * (3 + $i % 3) + sin($t * 18 + $wave) * 1.3,
+            ];
+            energyStroke($image, $path, static fn ($t) => sin($t * M_PI) ** .7 * (2 + $i % 3), $palette,
+                ($green ? .12 : .18) + sin($wave) * .04, false);
+        }
+        $count = $green ? 9 : 4;
+        for ($i = 0; $i < $count; $i++) {
+            $a = $phase + $i * 2.39;
+            $x = 16 + ($i * 19) % 97 + sin($a) * 6;
+            $y = 64 + ($i * 17) % 30 - 12 - cos($a) * ($green ? 8 : 4);
+            $pulse = .46 + .32 * sin($a + .7);
+            bloom($image, $x, $y, $green ? 17 : 10, $green ? 15 : 8, $palette[2], $pulse);
+            ellipse($image, $x, $y, $green ? 3 : 2, 2, colorAt($palette[4], $pulse));
+            if ($green && $i % 3 === 0) ellipse($image, $x + 3, $y + 4, 2, 1, colorAt($palette[3], $pulse * .56));
+        }
+        return;
+    }
+
+    if ($kind === 'snow' || $kind === 'ash') {
+        $snow = $kind === 'snow';
+        $palette = $snow ? [0x283c62, 0x406d95, 0x7eb1ce, 0xc3e1ec, 0xf1ffff]
+            : [0x2c253a, 0x493951, 0x75647f, 0xafa1bf, 0xc8bfcf];
+        for ($i = 0; $i < 4; $i++) {
+            $wave = $phase + $i * 2.09;
+            $path = static fn ($t) => [4 + 119 * $t, 40 + $i * 9 + $t * ($snow ? 22 : 11)
+                + sin($t * ($snow ? 4 : 7) + $wave) * (5 + $i % 3)];
+            energyStroke($image, $path, static fn ($t) => sin(M_PI * $t) ** .82 * (1.2 + $i % 2),
+                $palette, .15 + .08 * sin($wave), false);
+        }
+        for ($i = 0; $i < 24; $i++) {
+            $a = $phase + $i * 2.39;
+            $x = 10 + $i * 31 % 105 + cos($a) * 7;
+            $y = 20 + $i * 19 % 83 + sin($a) * 6;
+            $pulse = .20 + sin($a) ** 2 * ($snow ? .62 : .39);
+            jewel($image, $x, $y, ($snow ? 2.5 : 1.7) + $i % 4, $snow ? .26 : .12,
+                array_map(static fn ($rgb) => colorAt($rgb, $pulse), $palette));
+        }
+        return;
+    }
+
+    if ($kind === 'pollen') {
+        $palette = [0x3f4a39,0x6d713c,0xa6a957,0xeace85,0xfff2bc];
+        for ($i = 0; $i < 15; $i++) {
+            $a = $phase + $i * 2.39996;
+            $x = 14 + $i * 19 % 101 + sin($a) * (5 + $i % 4);
+            $y = 20 + $i * 17 % 80 + cos($a) * 9;
+            $pulse = .21 + sin($a + .4) ** 2 * .64;
+            if ($i % 3 === 0) {
+                bloom($image, $x, $y, 13, 10, $palette[3], $pulse * .65);
+                jewel($image, $x, $y, 4.1, sin($a) * .7, array_map(static fn ($rgb) => colorAt($rgb, $pulse), $palette));
+            } else {
+                ellipse($image, $x, $y, 2, 2, colorAt($palette[4], $pulse));
+            }
+        }
+        return;
+    }
+
+    $rift = $kind === 'rift_glints';
+    $palette = $rift ? [0x461d4f,0x783877,0xa85bb0,0xed82ce,0xffd5e1] : HOT;
+    if ($rift) bloom($image, 64, 74, 97, 27, 0xc34fbe, .48);
+    for ($i = 0; $i < 19; $i++) {
+        $age = fmod($p + $i * .381966, 1);
+        $x = 15 + $i * 32 % 98 + sin($age * 7 + $i) * (3 + $age * 6);
+        $y = 89 - $i % 4 * 7 - $age * (17 + $i % 4 * 7);
+        $pulse = sin(M_PI * $age) ** .92;
+        if ($i % 5 === 0) bloom($image, $x, $y, 14, 12, $palette[2], $pulse);
+        jewel($image, $x, $y, 1.7 + $i % 4, -1.08 - $age * .46,
+            array_map(static fn ($rgb) => colorAt($rgb, $pulse * .82), $palette));
+        if ($rift && $i % 4 === 0) ellipse($image, $x, $y, 2, 2, colorAt(0xffd09e, $pulse));
+    }
+}
+
 function drawFrame(string $kind, int $frame): GdImage
 {
     $image = canvas(CELL, CELL);
-    $p = $frame / FRAMES;
-    if ($kind === 'mist' || $kind === 'marsh_wisp') {
-        $marsh = $kind === 'marsh_wisp';
-        $palette = $marsh ? [0x645cc4ab, 0x697ed6b9, 0x5f9ee0c5] : [0x697ba8c4, 0x609ac5d7, 0x66bedcdf];
-        for ($band = 0; $band < 6; $band++) {
-            $sway = sin($p * 2 * M_PI + $band * .8);
-            $x = 19 + $band * 15 + 3 * $sway;
-            $y = 67 + ($band % 3 - 1) * ($marsh ? 6 : 4) + 2 * $sway;
-            $width = ($marsh ? 27 : 41) + 7 * $sway;
-            ellipse($image, $x, $y, $width, 5 + $band % 3, $palette[$band % 3]);
-            ellipse($image, $x + 3, $y - 1, $width * .60, 2, $palette[2]);
-        }
-        if ($marsh) {
-            for ($i = 0; $i < 7; $i++) {
-                $a = $p * 2 * M_PI + $i * 2.4;
-                $x = 18 + $i * 15 + cos($a) * 5;
-                $y = 58 - ($i * 3 % 13) + sin($a) * 6;
-                ellipse($image, $x, $y, 9, 8, 0x6764e8b3);
-                ellipse($image, $x, $y, 2, 2, 0xc7ffda);
-            }
-        }
-        return $image;
-    }
-
-    $weather = match ($kind) {
-        'pollen' => [0xeac977, 0xffedbc, 0x949a49, 1.8, -4],
-        'snow' => [0x99c7df, 0xd9f2fd, 0x6a89b4, 2.6, 7],
-        'ash' => [0xb88182, 0xe7b095, 0x74576d, 1.7, -9],
-        'cinders' => [0xe5773c, 0xffc775, 0x9d4d43, 1.9, -16],
-        default => null,
-    };
-    if ($weather) {
-        [$midtone, $bright, $shadow, $size, $speed] = $weather;
-        for ($i = 0; $i < 15; $i++) {
-            $a = $p * 2 * M_PI + $i * 2.39996;
-            $x = 18 + $i * 23 % 90 + sin($a) * (4 + $i % 4);
-            $y = 26 + $i * 19 % 76 + cos($a) * $speed;
-            $f = sin($a + .5) ** 2;
-            $alpha = (int) ((1 - $f) * 83 + 15) << 24;
-            $length = $size + ($i % 4 === 0 ? 2.25 : 0);
-            jewel($image, $x, $y, $length, $kind === 'snow' ? -.42 : -1.35,
-                [$alpha | $shadow, $alpha | $shadow, $alpha | $midtone, $alpha | $midtone, $alpha | $bright]);
-        }
+    if (in_array($kind, ['mist', 'marsh_wisp', 'pollen', 'snow', 'ash', 'cinders', 'rift_glints'], true)) {
+        airCurrent($image, $kind, $frame / FRAMES);
         return $image;
     }
 
@@ -537,7 +580,7 @@ function drawFrame(string $kind, int $frame): GdImage
     return $image;
 }
 
-$kinds = ['firebolt','arcane','frostbolt','vortex','frost','arcane_burst','seismic','flame','magma','fire_burst','slash','rune','rage_aura','rage_ignition','mist','marsh_wisp','pollen','snow','ash','cinders','steel_slash','gilded_spin','arcane_stream','ward'];
+$kinds = ['firebolt','arcane','frostbolt','vortex','frost','arcane_burst','seismic','flame','magma','fire_burst','slash','rune','rage_aura','rage_ignition','mist','marsh_wisp','pollen','snow','ash','cinders','steel_slash','gilded_spin','arcane_stream','ward','rift_glints'];
 $atlas = canvas(CELL * FRAMES, CELL * count($kinds));
 foreach ($kinds as $row => $kind) {
     for ($frame = 0; $frame < FRAMES; $frame++) {
