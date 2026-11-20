@@ -144,6 +144,8 @@ final class CharacterController extends AbstractController
                 'mana' => $class->maxMana(),
                 'resourceName' => $class->resourceName(),
                 'range' => $class->attackRange(),
+                'specialRange' => $class === CharacterClass::Mage ? 15.0 : $class->attackRange(),
+                'wandDamageMultiplier' => 0.5,
                 'ranged' => $class->attackRange() > 1.5,
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),

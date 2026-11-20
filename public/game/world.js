@@ -4,7 +4,8 @@ import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
 import { monsterArt } from './monster-art.js';
-import { buildTerrain, cameraZoom, coastalLookouts, columns, frontierSpecies, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
+import { buildTerrain, cameraZoom, coastalLookouts, columns, frontierSpecies, groundWalkable, inZone, rows, tileSize, zones } from './exploration.js';
+import { createStarterTown, isInStarterTown, nearestTownResident, questNpc, starterSpawn, townName } from './starter-town.js';
 import { transitionZoneLabel } from './biome-gradient.js';
 import { createZoneAmbience } from './zone-ambience.js';
 import { createWorldLighting } from './world-lighting.js';
@@ -54,10 +55,6 @@ import { saveProgress } from './progression.js';
     ];
     // The other frames in Noé's north-west row have stray white pixels.
     const noeNorthWestWalk = [0, 1, 2, 5, 6];
-    const spawns = {
-        lina: { x: 184, y: 190, facing: 'south-east' },
-        noe: { x: 248, y: 207, facing: 'east' },
-    };
     // IDs 0–15 and 16–31 are frames of the two PixelLab terrain transition sheets.
     const baseTiles = ['chemin', 'herbe', 'eau'];
 
@@ -73,7 +70,8 @@ import { saveProgress } from './progression.js';
             this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);
             this.load.json('terrain', 'terrain.json');
-            this.load.image('quest-early', 'quest_early.png');
+            this.load.image('starter-town', 'bastion-de-braise.png');
+            this.load.spritesheet('town-residents', 'bastion-habitants.png', { frameWidth: 48, frameHeight: 48 });
             this.load.image('environment-detailed', 'environment-detailed.png');
             this.load.image('ground-detailed', 'ground-detailed.png');
             for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
@@ -115,22 +113,20 @@ import { saveProgress } from './progression.js';
             this.terrain = buildTerrain(this.cache.json.get('terrain'));
             this.obstacles = [];
             const clearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
+            const town = createStarterTown(this);
             this.animateClearing = clearing.animate;
+            this.animateTown = town.animate;
             this.animateZoneAmbience = createZoneAmbience(this, tileSize);
-            this.lighting = createWorldLighting(this, width, height, tileSize, clearing.lights);
+            this.lighting = createWorldLighting(this, width, height, tileSize, [...clearing.lights, ...town.lights]);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
-            this.add.ellipse(questNpc.x, questNpc.y - 1, 18, 6, 0x172622, .48).setDepth(3);
-            this.npc = this.add.image(questNpc.x, questNpc.y, 'quest-early')
-                .setOrigin(.5, 1).setScale(.75).setDepth(questNpc.y).setInteractive({ useHandCursor: true });
-            this.questMarker = this.add.text(questNpc.x, questNpc.y - 48, '!', {
+            this.questMarker = this.add.text(questNpc.x, questNpc.y - 47, '!', {
                 fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold',
                 color: '#f0c781', stroke: '#19272e', strokeThickness: 3,
             }).setOrigin(.5, 1).setDepth(height + 10).setInteractive({ useHandCursor: true });
-            this.obstacles.push(new Phaser.Geom.Rectangle(questNpc.x - 4, questNpc.y - 5, 8, 6));
 
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
-            const { x, y, facing } = spawns[this.skin] ?? spawns.noe;
+            const { x, y, facing } = starterSpawn;
             this.avatar = this.add.image(x, y, this.skin + '-' + facing).setOrigin(0.5, 1).setDepth(y);
             this.position = new Phaser.Math.Vector2(x, y);
             this.facing = facing;
@@ -186,6 +182,7 @@ import { saveProgress } from './progression.js';
             this.renderAvatar(this.time.now);
 
             this.updateCameraZoom(this.scale.width, this.scale.height);
+            this.cameras.main.centerOn(x, y);
             this.scale.on('resize', (gameSize) => {
                 this.updateCameraZoom(gameSize.width, gameSize.height);
             });
@@ -278,7 +275,7 @@ import { saveProgress } from './progression.js';
             const talkToNpc = () => {
                 if (questDialog.open) { questDialog.close(); return; }
                 if (!this.canTalkToNpc()) {
-                    this.combat.tell('Approche-toi de l’habitante pour lui parler (E).');
+                    this.combat.tell('Approche-toi de Rakka pour lui parler (E).');
                     return;
                 }
                 closeOthers(questDialog);
@@ -287,8 +284,17 @@ import { saveProgress } from './progression.js';
                 questDialog.showModal();
                 if (!questAction.disabled && !questAction.hidden) questAction.focus({ preventScroll: true });
             };
-            questButton.addEventListener('click', talkToNpc, { signal: keyboard.signal });
-            this.npc.on('pointerdown', talkToNpc);
+            const talkToResident = (resident = nearestTownResident(this.position)) => {
+                if (questDialog.open || resident === questNpc) { talkToNpc(); return; }
+                if (this.combat.health <= 0) return;
+                if (!resident || Math.hypot(this.position.x - resident.x, this.position.y - resident.y) > resident.range) {
+                    this.combat.tell('Approche-toi d’un habitant pour lui parler (E).');
+                    return;
+                }
+                this.combat.tell(`${resident.name}, ${resident.role} · ${resident.dialogue}`);
+            };
+            questButton.addEventListener('click', () => talkToResident(), { signal: keyboard.signal });
+            for (const { resident, sprite } of town.occupants) sprite.on('pointerdown', () => talkToResident(resident));
             this.questMarker.on('pointerdown', talkToNpc);
             questDialog.addEventListener('close', () => {
                 if (!switchingDialog) questButton.focus({ preventScroll: true });
@@ -302,7 +308,7 @@ import { saveProgress } from './progression.js';
                 this.combat.refreshInventory();
                 this.refreshQuest();
                 questDialog.close();
-                this.combat.tell(accepted ? 'Quête acceptée : vaincs trois sangliers, puis reviens voir l’habitante.'
+                this.combat.tell(accepted ? 'Quête acceptée : sors par la porte est, puis suis la route vers la clairière.'
                     : 'Quête terminée : tu reçois deux potions de vie.');
             }, { signal: keyboard.signal });
 
@@ -429,7 +435,7 @@ import { saveProgress } from './progression.js';
                 }
                 if (event.code === 'KeyE' && !event.repeat) {
                     event.preventDefault();
-                    talkToNpc();
+                    talkToResident();
                     return;
                 }
                 if (inventory.open || (characterSheet && characterSheet.open) || (talentDialog && talentDialog.open) || questDialog.open) {
@@ -472,13 +478,14 @@ import { saveProgress } from './progression.js';
             });
             this.combat.resetButton.addEventListener('click', () => {
                 releaseKeys();
-                const spawn = spawns[this.skin] ?? spawns.noe;
+                const spawn = starterSpawn;
                 this.position.set(spawn.x, spawn.y);
                 this.facing = spawn.facing;
                 this.walkDistance = 0;
                 this.lastWalkAt = -Infinity;
                 this.combat.reset();
                 this.renderAvatar(this.time.now);
+                this.cameras.main.centerOn(spawn.x, spawn.y);
                 this.combat.buttons[0].focus({ preventScroll: true });
             }, { signal: keyboard.signal });
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -497,10 +504,15 @@ import { saveProgress } from './progression.js';
             return this.combat.health > 0 && Math.hypot(this.position.x - questNpc.x, this.position.y - questNpc.y) <= questNpc.range;
         }
 
+        isInStarterTown() {
+            return isInStarterTown(this.position.x, this.position.y);
+        }
+
         refreshQuest() {
             const quest = this.combat.progress.trailQuest;
             const state = trailQuestStatus(quest);
-            const key = state + ':' + quest.defeated;
+            const resident = nearestTownResident(this.position);
+            const key = state + ':' + quest.defeated + ':' + (resident?.name ?? '');
             if (this.questViewKey === key) return;
             this.questViewKey = key;
             const marker = trailQuestMarker(quest);
@@ -510,8 +522,9 @@ import { saveProgress } from './progression.js';
                 ready_to_turn_in: 'Rendre (E)', completed: 'Parler (E)',
             };
             const button = document.getElementById('quest-open');
-            button.textContent = labels[state];
-            button.setAttribute('aria-label', 'Habitante du hameau · ' + labels[state]);
+            const talking = resident && resident !== questNpc;
+            button.textContent = talking ? 'Parler (E)' : labels[state];
+            button.setAttribute('aria-label', talking ? 'Parler à ' + resident.name : 'Rakka · ' + labels[state]);
             if (document.getElementById('quest-dialog').open) this.renderQuestDialog();
         }
 
@@ -519,7 +532,7 @@ import { saveProgress } from './progression.js';
             const quest = this.combat.progress.trailQuest;
             const state = trailQuestStatus(quest);
             const descriptions = {
-                available: 'Les sangliers menacent notre sentier. Peux-tu en vaincre trois, puis revenir me voir ?',
+                available: 'Les sangliers menacent nos convois. Sors par la porte est, remonte la route au nord, puis prends à gauche vers la clairière. Abats trois sangliers et fais-moi ton rapport.',
                 active: 'Tu as accepté la quête. Reviens me voir quand tu auras vaincu trois sangliers.',
                 ready_to_turn_in: 'Le sentier est plus sûr grâce à toi ! Voici deux potions de vie pour te remercier.',
                 completed: 'Merci encore pour ton aide. Bonne route dans Val-des-Saules !',
@@ -536,10 +549,15 @@ import { saveProgress } from './progression.js';
         update(time, delta) {
             if (!this.combat) return;
             this.moveFromKeys(time, delta);
+            if (this.isInStarterTown() && this.combat.selectedMonster) {
+                this.combat.selectMonster(null);
+                this.combat.targetHud.hidden = true;
+            }
             this.combat.update(time, delta);
             this.refreshQuest();
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
+            this.animateTown(time, this.motionPreference.matches);
             this.animateZoneAmbience(time, this.motionPreference.matches);
             this.lighting.update(time, this.motionPreference.matches);
             const { offsetX, offsetY } = this.cameraFeel.update(delta, this.motionPreference.matches);
@@ -547,7 +565,8 @@ import { saveProgress } from './progression.js';
             const zone = Object.values(zones).find(z => inZone(z, this.position.x, this.position.y))
                 ?? coastalLookouts.find(lookout => inZone(lookout, this.position.x, this.position.y));
             const label = document.getElementById('current-zone');
-            const name = zone?.name ?? transitionZoneLabel(this.position.x, this.position.y, tileSize);
+            const name = this.isInStarterTown() ? townName + ' · Zone sûre'
+                : (zone?.name ?? transitionZoneLabel(this.position.x, this.position.y, tileSize));
             if (label && label.textContent !== name) label.textContent = name;
         }
 

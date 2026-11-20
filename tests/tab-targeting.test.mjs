@@ -182,6 +182,9 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         createZoneAmbience: () => () => {},
         createWorldLighting: () => ({ update() {}, destroy() {} }),
         createPoseSheet: () => 'sheet',
+        createStarterTown: () => ({ occupants: [], lights: [], animate() {} }),
+        nearestTownResident: () => null,
+        starterSpawn: { x: 184, y: 190, facing: 'south-east' },
         Monster: class {},
         monsterArt: {},
         buildTerrain: () => [[33]],
@@ -221,7 +224,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         },
         time: { now: 100, addEvent() {} },
         scale: { width: 1280, height: 720, on() {} },
-        cameras: { main: { setZoom() {}, setBounds() {}, startFollow() {} } },
+        cameras: { main: { setZoom() {}, setBounds() {}, startFollow() {}, centerOn() {} } },
         game: { canvas, events: { on() {}, off() {} } },
         events: { once() {} },
     });

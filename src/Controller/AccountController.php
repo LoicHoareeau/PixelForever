@@ -25,7 +25,7 @@ final class AccountController extends AbstractController
     #[Route('/', name: 'home', methods: ['GET'])]
     public function home(): Response
     {
-        return $this->redirectToRoute($this->getUser() ? 'character_list' : 'account_login');
+        return $this->render('portal/home.html.twig');
     }
 
     #[Route('/inscription', name: 'account_register', methods: ['GET', 'POST'])]

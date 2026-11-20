@@ -241,12 +241,14 @@ test('la reprise conserve les anciennes armes et rattache les armures aux pièce
     }
 });
 
-test('le rééquilibrage du Mage étend la portée à 7,5 cases, réduit sa régénération et impose le cast de 1 s annulable', () => {
+test('le Mage incante à 15 cases et peut annuler une incantation d’une seconde', () => {
     const mageRules = {
         classKey: 'mage',
         health: 40,
         mana: 40,
         range: 7.5,
+        specialRange: 15,
+        wandDamageMultiplier: 0.5,
         ranged: true,
         basicDamage: 8,
         specialDamage: 22,
@@ -276,7 +278,7 @@ test('le rééquilibrage du Mage étend la portée à 7,5 cases, réduit sa rég
     assert.ok(findTalent('mage', 'm_fire_whirl').talent.manaCost >= 28);
 
     const combat = Object.create(TrainingCombat.prototype);
-    const target = { name: monsterTemplates.boar.label, level: 1, isAlive: true, sprite: { x: 100, y: 0 } };
+    const target = { name: monsterTemplates.boar.label, level: 1, isAlive: true, sprite: { x: 240, y: 0 } };
     Object.assign(combat, {
         rules: mageRules,
         classKey: 'mage',
@@ -306,7 +308,7 @@ test('le rééquilibrage du Mage étend la portée à 7,5 cases, réduit sa rég
         refreshCastBar() {},
         tell() {},
         getActiveTarget: () => target,
-        distanceTo: () => 100,
+        distanceTo: () => 240,
     });
 
     combat.attack('special', 100);

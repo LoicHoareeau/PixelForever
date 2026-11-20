@@ -4,6 +4,16 @@ PixelForever est un projet de **MMORPG en pixel art** conçu pour être joué da
 
 Le prototype jouable utilise Phaser 3.90.0, Twig et JavaScript. Les règles PHP historiques de `src/Game/` ne remplacent pas le moteur de combat actuel du navigateur.
 
+## Aperçu
+
+### Accueil du Val-des-Saules
+
+![Accueil de PixelForever avec le diorama du Val-des-Saules et les boutons d’inscription et de connexion](docs/captures/accueil.png)
+
+### Choix du personnage
+
+![Cartes du Guerrier et du Mage avec leurs portraits, niveaux et caractéristiques](docs/captures/personnages.png)
+
 ## Lancer PixelForever avec PostgreSQL
 
 ```sh
@@ -24,7 +34,7 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour jouer un Guerrier ou un Mage dans Val-des-Saules. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
+Ouvre [l’accueil du Val-des-Saules](http://127.0.0.1:8000), puis crée un compte ou connecte-toi. Dans **Tes personnages**, crée un personnage et choisis **Jouer** pour apparaître sur la place du **Bastion de Braise**, une ville sûre. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
 
 ## Vérifications locales
 
@@ -45,7 +55,7 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 - La lumière change progressivement entre la clairière diurne, le cimetière froid et les côtes volcaniques. Lanternes, fissures, sorts et Rage de Malakor éclairent leur voisinage. Chaque biome a ses propres effets d’ambiance, du pollen doré aux étincelles violettes du Cap du Gouffre.
 - Les sorts et les techniques de Malakor jouent des cycles pixel art pour la charge, le projectile ou l’impact. Le Tourbillon se dresse en double hélice et l’Onde sismique soulève un anneau d’obsidienne.
 - Les monstres ont huit orientations et des animations propres à leur famille. Le souffle du dragon et les techniques des gardiens côtiers signalent au sol les zones à esquiver.
-- Quête du PNJ : accepter, vaincre trois sangliers, puis revenir recevoir deux potions de vie. `!` doré disponible, `?` gris en cours, `?` doré à rendre.
+- Parle à Rakka au Bastion (`E` ou clic) pour accepter sa quête. Suis la route vers la clairière, bats trois sangliers, puis reviens recevoir deux potions de vie. `!` doré indique une quête disponible, `?` gris une quête en cours et `?` doré une quête à rendre.
 
 ### Combat et équipement
 
@@ -54,11 +64,11 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 | Classe / arme | Attaque de base | Portée de base |
 | --- | --- | --- |
 | Guerrier · épée ou croc | Coup en mêlée | 1,5 case |
-| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 5 cases, plus bonus de talent éventuel |
+| Mage · Baguette de braise ou Sceptre de Saphyr | Projectile magique | 7,5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 1,5 case |
 | Mains nues | Coup de poing | 1,5 case |
 
-L’attaque de base ne consomme pas de ressource. Le bâton ne transforme pas les sorts du mage en coups de mêlée : Boule de feu garde sa portée de 5 cases. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent uniquement les auto-attaques à la baguette. La seconde exige la maîtrise et cinq points dans Arcanes.
+L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes.
 
 Le Démoniste combine des malédictions périodiques, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité, et le Guerrier peut investir en Défense et équiper la hache depuis le sac.
 

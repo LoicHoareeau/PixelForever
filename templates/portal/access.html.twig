@@ -1,0 +1,10 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block body %}
+    <div class="val-access">
+        <section class="val-form" aria-labelledby="heading">
+            {% block access_form %}{% endblock %}
+        </section>
+        {% include 'portal/_scene.html.twig' %}
+    </div>
+{% endblock %}
