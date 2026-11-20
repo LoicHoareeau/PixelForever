@@ -5,6 +5,7 @@ import { buildTerrain, cameraZoom, cliffTile, columns, groundWalkable, inZone, q
 import { treePositions } from '../public/game/clearing-art.js';
 import { regionalScenery } from '../public/game/regional-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
+import { monsterArt, monsterAtlasColumns, monsterFrames, monsterWalkFrames } from '../public/game/monster-art.js';
 import { TrainingCombat } from '../public/game/combat.js';
 
 const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/terrain.json', import.meta.url)));
@@ -89,6 +90,7 @@ function display(texture = '') {
                 if (key === 'setPosition') [target.x, target.y] = args;
                 if (key === 'setVisible') target.visible = args[0];
                 if (key === 'setTexture') { target.texture = { key: args[0] }; target.frame = { name: args[1] }; }
+                if (key === 'setFrame') target.frame = { name: args[0] };
                 return target.proxy;
             };
         },
@@ -97,11 +99,10 @@ function display(texture = '') {
 const scene = { terrain, canStand, add: Object.fromEntries(['image', 'ellipse', 'rectangle', 'text'].map(type => [type,
     (x, y, texture) => { const object = display(texture); object.proxy = object; return object; },
 ])) };
-const directions = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 
 test('apparition, patrouille, poursuite et réapparition restent dans la zone de chaque espèce', () => {
     for (const species of Object.keys(zones)) {
-        const monster = new Monster(scene, species, directions, tileSize);
+        const monster = new Monster(scene, species, tileSize);
         const zone = zones[species];
         assert.equal(monster.patrol.length, species === 'boar' ? 2 : monsterTemplates[species].patrolCells.length);
         for (let repeat = 0; repeat < 12; repeat++) {
@@ -126,7 +127,7 @@ test('apparition, patrouille, poursuite et réapparition restent dans la zone de
 function battle(species = 'boar') {
     const combat = Object.create(TrainingCombat.prototype);
     const battleScene = { ...scene, position: { x: 0, y: 0 }, avatar: { setTint() {} }, combat };
-    const monster = new Monster(battleScene, species, directions, tileSize);
+    const monster = new Monster(battleScene, species, tileSize);
     battleScene.position = { x: monster.sprite.x + 12, y: monster.sprite.y };
     Object.assign(combat, {
         scene: battleScene, monsters: [monster], health: 500, stats: {}, impacts: [],
@@ -223,20 +224,25 @@ test('le souffle voyage sur une trajectoire fixe et le joueur peut esquiver apr�
     }
 });
 
-test('la marche des sangliers et squelettes alterne les foulées et conserve leur direction', () => {
-    for (const species of ['boar', 'skeleton']) {
+test('chaque espèce a huit orientations et vingt-quatre images de marche par orientation', () => {
+    for (const [species, { frame, stride }] of Object.entries(monsterArt)) {
+        const png = readFileSync(new URL(`../public/game/val-des-saules/monsters/${species}.png`, import.meta.url));
+        assert.equal(png.toString('ascii', 12, 16), 'IHDR');
+        assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)],
+            [frame * monsterAtlasColumns, frame * monsterFrames * 8 / monsterAtlasColumns]);
         const { monster } = battle(species);
-        monster.facing = 6;
-        const frames = [];
-        for (const distance of [0, 4, 8, 12]) {
-            monster.walkDistance = distance;
-            monster.renderPose(100, true);
-            frames.push(monster.sprite.frame.name);
+        for (let direction = 0; direction < 8; direction++) {
+            const angle = direction * Math.PI / 4;
+            monster.face(Math.cos(angle), Math.sin(angle));
+            for (let pose = 0; pose < monsterWalkFrames; pose++) {
+                monster.walkDistance = (pose + .1) * stride / monsterWalkFrames;
+                monster.renderPose(100, true);
+                assert.equal(monster.sprite.frame.name, direction * monsterFrames + pose + 1);
+            }
         }
-        assert.deepEqual(frames, [25, 24, 26, 24]);
         monster.startAttack({ x: monster.sprite.x, y: monster.sprite.y - 12 }, 100);
         monster.renderPose(100);
-        assert.equal(monster.sprite.frame.name, 27);
+        assert.equal(monster.sprite.frame.name, 6 * monsterFrames + monsterWalkFrames + 1);
     }
 });
 
@@ -259,7 +265,7 @@ test('les niveaux 1–2 restent abordables et la puissance augmente fortement au
     const boar = monsterTemplates.boar;
     assert.deepEqual([boar.statsForLevel(1).maxHealth, boar.statsForLevel(1).damage], [52, 6]);
     assert.deepEqual([boar.statsForLevel(2).maxHealth, boar.statsForLevel(2).damage], [74, 8]);
-    const strongBoar = new Monster(scene, 'boar', directions, tileSize, 4);
+    const strongBoar = new Monster(scene, 'boar', tileSize, 4);
     assert.equal(strongBoar.level, 5);
     assert.ok(strongBoar.patrol.every(index => strongBoar.cells[index].x > 400));
     for (const template of Object.values(monsterTemplates)) {
