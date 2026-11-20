@@ -51,7 +51,7 @@ export function inZone(zone, x, y) {
 
 export function cameraZoom(viewWidth, viewHeight) {
     return Math.max(
-        1,
+        2, // Zoom minimum : 1 éloigné, 2 normal, 3 rapproché.
         Math.ceil(viewWidth / (columns * tileSize)),
         Math.ceil(viewHeight / (rows * tileSize)),
     );

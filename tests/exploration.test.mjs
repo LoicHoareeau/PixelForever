@@ -128,9 +128,9 @@ test('le Bastion bloque le ciblage et les attaques avant toute dépense', () => 
 });
 
 test('le zoom reste modéré et la carte couvre le viewport, même après redimensionnement', () => {
-    assert.equal(cameraZoom(1920, 1080), 1);
-    assert.equal(cameraZoom(2560, 1440), 1);
-    assert.equal(cameraZoom(390, 844), 1);
+    assert.equal(cameraZoom(1920, 1080), 2);
+    assert.equal(cameraZoom(2560, 1440), 2);
+    assert.equal(cameraZoom(390, 844), 2);
     for (const [width, height] of [[1920, 1080], [390, 844], [2560, 1440], [3840, 2160]]) {
         const zoom = cameraZoom(width, height);
         assert.ok(Number.isInteger(zoom));
