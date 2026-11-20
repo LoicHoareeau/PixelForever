@@ -6,9 +6,9 @@
 
 La carte de 168 × 120 tuiles de 16 px couvre la clairière, le cimetière, les montagnes et les Terres dévastées. La caméra suit le personnage et reste bornée. Le canvas occupe `100vw × 100dvh` avec un zoom ×1 sur 1920 × 1080 et 2560 × 1440, augmenté si l’écran dépasse le monde. L’ATH flotte au-dessus du canvas. Les falaises de quatre cases et l’eau bloquent le déplacement.
 
-`public/game/val-des-saules/` contient les ressources : atlas détaillés `environment-detailed.png` (saules, cabane, rochers, falaises) et `ground-detailed.png` (herbe, chemin, cimetière, montagne), sprites PixelLab de sanglier/squelette dans huit directions et six icônes d’objets. Les raccords de chemin réutilisent les masques du terrain original. Le sol est composé une seule fois ; les ondulations et lumières sont actualisées séparément.
+`public/game/val-des-saules/` contient les atlas `environment-detailed.png` (saules, cabane, rochers, falaises), `ground-detailed.png` (herbe, chemin, terrain pierreux), les sprites PixelLab de sanglier et de squelette dans huit directions et six icônes d’objets. Les raccords des chemins de la clairière réutilisent les masques du terrain original.
 
-Le cimetière associe cryptes, pavés, ossements et brume basse. Les Terres dévastées ajoutent un sol de cendre, des fissures, des braises et des ruines d’obsidienne. Les éléments statiques sont composés au chargement. Les braises respectent la préférence de mouvement réduit.
+`regional-ground.png` contient quatre matériaux de 256 × 256 px, échantillonnés en coordonnées de monde. `regional-art.js` fond les sols régionaux dans les textures voisines et érode les bords du pavage. `cemetery-scenery.png` contient le mausolée, les stèles, le saule et la grille. `wasteland-scenery.png` contient l’obsidienne, l’arbre calciné, l’arche et les éboulis. Les décors sont triés en profondeur au pied et leur collision se limite à l’emprise au sol. Le sol et les fissures sont composés au chargement. La brume et les braises respectent la préférence de mouvement réduit.
 
 Le Guerrier utilise Lina et le Mage Noé. Leurs portraits suivent la règle PHP `CharacterClass::skin()` et leurs planches de marche sont conservées.
 

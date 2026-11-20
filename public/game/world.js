@@ -65,6 +65,9 @@ import { saveProgress } from './progression.js';
             this.load.image('quest-early', 'quest_early.png');
             this.load.image('environment-detailed', 'environment-detailed.png');
             this.load.image('ground-detailed', 'ground-detailed.png');
+            for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
+                this.load.image(atlas, atlas + '.png');
+            }
             for (const species of ['boar', 'skeleton']) {
                 directions.forEach(direction => this.load.image(species + '-' + direction, species + '/' + direction + '.png'));
             }

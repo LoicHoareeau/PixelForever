@@ -41,7 +41,7 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 - Deux classes : Guerrier (Lina) et Mage (Noé). Leurs apparences et animations de marche sont conservées.
 - Carte plein écran de 168 × 120 tuiles de 16 px, caméra suiveuse et zoom ×1 sur les écrans usuels. Des falaises bloquent ses quatre bords.
 - Sangliers N.1–5, squelettes N.5–10 et dragons N.10–20. À l’est des montagnes, le chemin mène aux Terres dévastées et à leurs démons N.21–35.
-- Le cimetière a ses cryptes, ses allées pavées et ses lueurs froides. Les Terres dévastées mêlent cendres, fissures incandescentes et ruines d’obsidienne.
+- Le cimetière mêle pavés usés, mausolées sculptés, stèles moussues et saules à lichen. Les Terres dévastées alternent cendre striée, basalte, arbres calcinés et arches incandescentes. Les textures se fondent dans le terrain voisin.
 - Les sangliers, les squelettes et les démons alternent leurs foulées. Le souffle du dragon annonce sa trajectoire au sol, puis vole en ligne droite et peut être esquivé.
 - Quête du PNJ : accepter, vaincre trois sangliers, puis revenir recevoir deux potions de vie. `!` doré disponible, `?` gris en cours, `?` doré à rendre.
 

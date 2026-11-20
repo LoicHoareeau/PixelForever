@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { buildTerrain, cameraZoom, cemeteryRuins, cliffTile, columns, graves, groundWalkable, inZone, questNpc, rocks, rows, tileSize, wastelandRuins, zones } from '../public/game/exploration.js';
+import { buildTerrain, cameraZoom, cliffTile, columns, groundWalkable, inZone, questNpc, rocks, rows, tileSize, zones } from '../public/game/exploration.js';
 import { treePositions } from '../public/game/clearing-art.js';
+import { regionalScenery } from '../public/game/regional-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
 import { TrainingCombat } from '../public/game/combat.js';
 
@@ -13,12 +14,19 @@ const obstacles = [
     [questNpc.x - 4, questNpc.y - 5, 8, 6],
     ...treePositions(terrain).map(([x, y]) => [x - 2, y - 4, 4, 5]),
     ...[[160, 177], [271, 163], [286, 224], [148, 231], [306, 231]].map(([x, y]) => [x - 1, y - 3, 3, 4]),
-    ...graves.map(([x, y]) => [(x + .5) * 16 - 7, (y + .5) * 16 - 7, 14, 8]),
     ...rocks.map(([x, y]) => [(x + .5) * 16 - 20, (y + .5) * 16 - 7, 40, 8]),
-    ...[...cemeteryRuins, ...wastelandRuins].map(([x, y]) => [(x + .5) * 16 - 11, (y + .5) * 16 - 7, 22, 8]),
+    ...regionalScenery(tileSize).map(prop => prop.bounds),
 ];
 const canStand = (x, y) => groundWalkable(terrain, x, y) && [x - 3, x, x + 3].every(foot =>
     !obstacles.some(([left, top, width, height]) => foot >= left && foot < left + width && y >= top && y < top + height));
+
+test('les atlas régionaux ont les dimensions de découpe utilisées par Phaser', () => {
+    for (const [name, size] of [['regional-ground', 512], ['cemetery-scenery', 256], ['wasteland-scenery', 256]]) {
+        const png = readFileSync(new URL(`../public/game/val-des-saules/${name}.png`, import.meta.url));
+        assert.equal(png.toString('ascii', 12, 16), 'IHDR');
+        assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [size, size]);
+    }
+});
 
 test('les quatre rebords rocheux bloquent le passage sur toute leur épaisseur', () => {
     for (let y = 0; y < rows; y++) {
