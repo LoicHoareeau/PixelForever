@@ -8,7 +8,14 @@ export const zones = {
     boar: { name: 'Clairière · N.1–5', left: 2, top: 2, right: 29, bottom: 23 },
     skeleton: { name: 'Cimetière · N.5–10', left: 73, top: 53, right: 93, bottom: 71 },
     dragon: { name: 'Montagnes · N.10–20', left: 121, top: 82, right: 145, bottom: 101 },
+    imp: { name: 'Terres dévastées · Brèche (N.21–25)', left: 146, top: 85, right: 163, bottom: 100 },
+    hound: { name: 'Terres dévastées · Plaine calcinée (N.25–30)', left: 145, top: 101, right: 163, bottom: 115 },
+    fiend: { name: 'Terres dévastées · Citadelle (N.30–35)', left: 121, top: 102, right: 144, bottom: 115 },
 };
+
+export function inWasteland(x, y) {
+    return inZone(zones.imp, x, y) || inZone(zones.hound, x, y) || inZone(zones.fiend, x, y);
+}
 
 export function inZone(zone, x, y) {
     return x >= zone.left * tileSize && x < (zone.right + 1) * tileSize
@@ -32,6 +39,9 @@ export function buildTerrain(clearing) {
     road(82, 15, 84, 62);
     road(83, 61, 134, 63);
     road(132, 62, 134, 94);
+    road(134, 93, 154, 95);
+    road(152, 94, 154, 109);
+    road(132, 107, 153, 109);
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < columns; x++) {
             const side = 4;
@@ -55,6 +65,10 @@ export const graves = [
     [76, 66], [79, 66], [87, 66], [90, 66],
     [76, 69], [79, 69], [87, 69], [90, 69],
 ];
+
+export const cemeteryRuins = [[75, 55], [81, 55], [91, 55], [74, 63], [92, 63], [75, 70], [90, 70]];
+export const wastelandRuins = [[148, 87], [160, 91], [149, 97], [160, 103], [148, 110], [157, 113],
+    [143, 105], [124, 105], [127, 111], [141, 113]];
 
 export const rocks = [
     [122, 83], [125, 83], [128, 83], [139, 83], [143, 84],

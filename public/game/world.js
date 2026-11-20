@@ -1,6 +1,7 @@
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
 import { Monster } from './monsters.js';
+import { createMonsterSheets } from './monster-art.js';
 import { buildTerrain, cameraZoom, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
@@ -97,6 +98,7 @@ import { saveProgress } from './progression.js';
             this.obstacles = [];
             this.animateClearing = buildClearing(this, this.terrain, tileSize, width, height, baseTiles);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
+            createMonsterSheets(this, directions);
             this.add.ellipse(questNpc.x, questNpc.y - 1, 18, 6, 0x172622, .48).setDepth(3);
             this.npc = this.add.image(questNpc.x, questNpc.y, 'quest-early')
                 .setOrigin(.5, 1).setScale(.75).setDepth(questNpc.y).setInteractive({ useHandCursor: true });
@@ -114,7 +116,6 @@ import { saveProgress } from './progression.js';
             this.facing = facing;
             this.avatarShadow = this.add.ellipse(x, y - 1, 19, 7, 0x172622, 0.48).setDepth(3);
 
-            // Création des monstres : Sangliers (N.1-5), Squelettes (N.5-10) et Saphyr Dragon (N.10-20)
             const monsters = [
                 new Monster(this, 'boar', directions, tileSize, 0),
                 new Monster(this, 'boar', directions, tileSize, 2),
@@ -122,6 +123,12 @@ import { saveProgress } from './progression.js';
                 new Monster(this, 'skeleton', directions, tileSize, 0),
                 new Monster(this, 'skeleton', directions, tileSize, 3),
                 new Monster(this, 'dragon', directions, tileSize, 0),
+                new Monster(this, 'imp', directions, tileSize, 0),
+                new Monster(this, 'imp', directions, tileSize, 3),
+                new Monster(this, 'hound', directions, tileSize, 0),
+                new Monster(this, 'hound', directions, tileSize, 3),
+                new Monster(this, 'fiend', directions, tileSize, 0),
+                new Monster(this, 'fiend', directions, tileSize, 5),
             ];
 
             this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);

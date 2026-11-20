@@ -1,4 +1,4 @@
-import { cliffTile, graves, inZone, rocks, zones } from './exploration.js';
+import { cemeteryRuins, cliffTile, graves, inWasteland, inZone, rocks, wastelandRuins, zones } from './exploration.js';
 
 const frameSize = 48;
 // Positions are the feet of the tree trunks, so the canopy sorts with actors.
@@ -78,6 +78,97 @@ function drawGrave(context) {
     context.fillRect(3, 18, 3, 3);
 }
 
+function drawCrypt(ctx) {
+    ctx.fillStyle = '#181c27';
+    ctx.fillRect(3, 13, 30, 24);
+    ctx.fillStyle = '#6f7680';
+    for (let y = 2; y <= 14; y += 3) ctx.fillRect(16 - y, y, 4 + y * 2, 3);
+    ctx.fillStyle = '#4c535f';
+    ctx.fillRect(5, 16, 26, 17);
+    ctx.fillStyle = '#343945';
+    for (let y = 19; y < 32; y += 4) {
+        ctx.fillRect(5, y, 26, 1);
+        ctx.fillRect(9 + y % 3, y, 1, 4);
+        ctx.fillRect(25 - y % 3, y, 1, 4);
+    }
+    ctx.fillStyle = '#989ba1';
+    ctx.fillRect(12, 19, 12, 3);
+    ctx.fillRect(11, 22, 14, 12);
+    ctx.fillStyle = '#17182a';
+    ctx.fillRect(14, 22, 8, 12);
+    ctx.fillStyle = '#86c9c3';
+    ctx.fillRect(17, 25, 2, 5);
+    ctx.fillStyle = '#666c78';
+    ctx.fillRect(8, 33, 20, 2);
+    ctx.fillRect(5, 35, 26, 2);
+}
+
+function drawObsidian(ctx) {
+    ctx.fillStyle = '#141019';
+    ctx.fillRect(6, 28, 26, 8);
+    for (const [x, y, width] of [[8, 18, 6], [14, 5, 8], [22, 13, 7]]) {
+        ctx.fillStyle = '#201722';
+        ctx.fillRect(x, y, width, 33 - y);
+        ctx.fillStyle = '#49303e';
+        ctx.fillRect(x + 1, y + 3, 2, 29 - y);
+        ctx.fillStyle = '#77414e';
+        ctx.fillRect(x + 2, y + 1, 2, 4);
+        ctx.fillStyle = '#ec8055';
+        ctx.fillRect(x + 3, 27, 2, 3);
+    }
+}
+
+function drawRegionalGround(ctx, terrain, tileSize) {
+    const cinders = [];
+    terrain.forEach((row, y) => row.forEach((tile, x) => {
+        if (tile === cliffTile) return;
+        const left = x * tileSize;
+        const top = y * tileSize;
+        const seed = (x * 37 + y * 83 + x * y * 11) % 97;
+        const path = tile === 32;
+        if (inWasteland(left, top)) {
+            ctx.fillStyle = path ? '#44313a' : ['#211b29', '#261d2a', '#2c222e'][Math.floor(seed / 33)];
+            ctx.fillRect(left, top, tileSize, tileSize);
+            ctx.fillStyle = '#573544';
+            ctx.fillRect(left + seed % 12, top + 2 + seed % 11, 2 + seed % 3, 1);
+            if (!path && seed % 9 === 0) {
+                const ox = left + seed % 5;
+                const oy = top + 3 + seed % 4;
+                ctx.fillStyle = '#140f19';
+                ctx.fillRect(ox, oy, 10, 3);
+                ctx.fillRect(ox + 7, oy + 3, 3, 6);
+                ctx.fillStyle = '#9f443f';
+                ctx.fillRect(ox + 1, oy + 1, 8, 1);
+                ctx.fillRect(ox + 8, oy + 2, 1, 5);
+                ctx.fillStyle = '#f18a56';
+                ctx.fillRect(ox + 4, oy + 1, 3, 1);
+                cinders.push([ox + 5, oy, seed]);
+            }
+        } else if (inZone(zones.skeleton, left, top)) {
+            ctx.fillStyle = path ? '#43434eaa' : '#242d3bbb';
+            ctx.fillRect(left, top, tileSize, tileSize);
+            if (path) {
+                ctx.fillStyle = '#242a35';
+                ctx.fillRect(left, top + 7, tileSize, 1);
+                ctx.fillRect(left + 5, top, 1, 7);
+                ctx.fillRect(left + 11, top + 8, 1, 8);
+                ctx.fillStyle = '#65636a';
+                ctx.fillRect(left + 1, top + 1, 4, 1);
+            } else {
+                ctx.fillStyle = '#65736b';
+                ctx.fillRect(left + seed % 11, top + seed % 13, 2, 1);
+                if (seed % 6 === 0) {
+                    ctx.fillStyle = '#9a9b89';
+                    ctx.fillRect(left + 4, top + 9, 5, 1);
+                    ctx.fillRect(left + 3, top + 8, 2, 3);
+                    ctx.fillRect(left + 9, top + 8, 2, 3);
+                }
+            }
+        }
+    }));
+    return cinders;
+}
+
 export function treePositions(terrain) {
     const positions = [...trees];
     for (let row = 3; row < terrain.length - 2; row += 6) {
@@ -94,6 +185,7 @@ export function treePositions(terrain) {
         }
     }
     return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile
+        && !inWasteland(x, y) && !inZone(zones.skeleton, x, y)
         && !(x > 96 && x < 192 && y > 80 && y < 180));
 }
 
@@ -187,6 +279,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         context.fillStyle = '#22676d';
         context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }));
+    const cinders = drawRegionalGround(context, terrain, tileSize);
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
 
@@ -234,7 +327,9 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
 
     for (const [key, positions, textureWidth, textureHeight, draw, collisionWidth] of [
         ['grave', graves, 18, 24, drawGrave, 14],
+        ['crypt', cemeteryRuins, 36, 38, drawCrypt, 22],
         ['mountain-rock', rocks, 80, 80, null, 40],
+        ['obsidian', wastelandRuins, 36, 36, drawObsidian, 22],
     ]) {
         if (draw) {
             const texture = scene.textures.createCanvas(key, textureWidth, textureHeight);
@@ -255,6 +350,10 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         ['Cimetière des Saules · N.5–10', 75, 54],
         ['Montagnes ↓', 129, 79],
         ['Hauts de Saphyr · N.10–20', 124, 82],
+        ['Terres dévastées →', 139, 92],
+        ['Brèche des cendres · N.21–25', 147, 85],
+        ['Plaine calcinée · N.25–30', 146, 102],
+        ['Citadelle de la Brèche · N.30–35', 122, 103],
     ]) {
         const x = column * tileSize;
         const y = row * tileSize;
@@ -298,5 +397,16 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
             ambience.fillStyle(0xe9984c, .11 + glow * .016).fillRect(x - 7, y - 5, 16, 8);
             ambience.fillStyle(0xffc979, .1).fillRect(x - 4, y - 4, 11, 6);
         });
+        for (const [column, row] of cemeteryRuins) {
+            const x = (column + .5) * tileSize;
+            const y = (row + .5) * tileSize;
+            const spread = 8 + (frame + column) % 5;
+            ambience.fillStyle(0x87b5ca, .12).fillRect(x - spread, y + 2, spread * 2, 3);
+            ambience.fillStyle(0x9ed4c8, .27).fillRect(x - 4, y + 3, 8, 1);
+        }
+        for (const [x, y, seed] of cinders) {
+            const rise = (frame + seed) % 9;
+            ambience.fillStyle(0xf59462, .64 - rise * .06).fillRect(x + Math.floor(rise / 3), y - rise, 1, 1);
+        }
     };
 }
