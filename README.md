@@ -49,7 +49,7 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 ## Version jouable actuelle
 
 - Cinq classes jouables, avec le Guerrier en armure, le Mage, le Démoniste, le Voleur et le Chasseur.
-- Carte plein écran de 256 × 252 tuiles de 16 px, caméra suiveuse et zoom ×1 sur les écrans usuels. Les falaises délimitent le littoral.
+- Carte plein écran de 256 × 252 tuiles de 16 px, caméra suiveuse et zoom ×2 sur les écrans usuels (réglable dans la fonction cameraZoom de public/game/exploration.js). Les falaises délimitent le littoral.
 - Sangliers N.1–5, squelettes N.5–10 et dragons N.10–20. À l’est des montagnes, le chemin traverse les Terres dévastées (N.21–35) et rejoint Malakor (N.40). Au sud du Trône d’Obsidienne, une route côtière relie le Marais des Scories, les Remparts de Basalte et le Cap du Gouffre (N.41–60).
 - Le cimetière mêle pavés usés, mausolées sculptés, stèles moussues et saules à lichen. Les Terres dévastées alternent cendre striée, basalte, arbres calcinés et arches incandescentes. Les textures se fondent dans le terrain voisin.
 - La lumière change progressivement entre la clairière diurne, le cimetière froid et les côtes volcaniques. Lanternes, fissures, sorts et Rage de Malakor éclairent leur voisinage. Chaque biome a ses propres effets d’ambiance, du pollen doré aux étincelles violettes du Cap du Gouffre.
