@@ -24,7 +24,7 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S 127.0.0.1:8000 -t public
 ```
 
-Ouvre [PixelForever](http://127.0.0.1:8000), crée un compte puis connecte-toi pour jouer un Guerrier ou un Mage dans Val-des-Saules. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
+Ouvre [l’accueil du Val-des-Saules](http://127.0.0.1:8000), puis crée un compte ou connecte-toi. Dans **Tes personnages**, crée un Guerrier ou un Mage et choisis **Jouer** pour entrer dans le Val. Les comptes et les personnages sont sauvegardés dans `var/pixelforever.sqlite`.
 
 ## Vérifications locales
 

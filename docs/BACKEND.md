@@ -6,7 +6,7 @@
 
 `User` conserve pseudo et e-mail uniques, avec mot de passe haché. `PlayerCharacter` appartient à un `User` et contient nom, classe (`CharacterClass`), niveau, expérience et or. Les deux seules entités Doctrine actuelles sont dans `src/Entity/`.
 
-Après connexion, le joueur crée puis sélectionne son personnage. Symfony vérifie son propriétaire et conserve la sélection en session. Le bouton Jouer ouvre `CharacterController::play()` qui fournit à Twig les statistiques et le catalogue de butin, puis `world.js` initialise Phaser. Il n’y a pas encore de jeton WebSocket ni de serveur de monde partagé.
+`GET /` affiche l’accueil. Un visiteur peut s’inscrire ou se connecter ; un joueur déjà connecté peut rejoindre ses personnages directement. Après connexion, le joueur crée puis sélectionne son personnage. Symfony vérifie son propriétaire et conserve la sélection en session. Le bouton **Jouer** sélectionne le personnage et redirige vers `CharacterController::play()` qui fournit à Twig les statistiques et le catalogue de butin, puis `world.js` initialise Phaser. Il n’y a pas encore de jeton WebSocket ni de serveur de monde partagé.
 
 ## Sauvegarde du niveau et de l’XP
 
