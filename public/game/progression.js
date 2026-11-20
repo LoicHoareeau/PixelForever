@@ -284,6 +284,17 @@ export const talentTrees = {
                         description: 'Réduit le coût en mana des sorts de 10 % par rang.',
                     },
                     {
+                        id: 'm_wand_mastery', name: 'Maîtrise des baguettes', tier: 1, col: 1,
+                        maxRank: 5, type: 'passive', icon: 'icon-arcane',
+                        description: '+6 % de dégâts d’auto-attaque à la baguette par rang. Sans effet sur les bâtons ou les sorts.',
+                    },
+                    {
+                        id: 'm_wand_focus', name: 'Focalisation de la baguette', tier: 2, col: 1,
+                        maxRank: 3, requires: 'm_wand_mastery', minBranchPoints: 5,
+                        type: 'passive', icon: 'icon-arcane',
+                        description: '+2 dégâts d’auto-attaque à la baguette par rang, avant la maîtrise.',
+                    },
+                    {
                         id: 'm_arcane_blast',
                         name: 'Déflagration',
                         tier: 1,
@@ -394,6 +405,8 @@ export function createInitialProgress(startingLevel = 1) {
             mana: 2,
             rare: 0,
             epic: 0,
+            scale: 0,
+            heart: 0,
         },
         weapon: 'starter',
         statPoints: Math.max(0, startingLevel - 1) * statPointsPerLevel,
@@ -494,6 +507,9 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null) {
 
         if (hasValidBase) {
             progress = saved;
+            for (const key of ['scale', 'heart']) {
+                if (!Number.isSafeInteger(progress.items[key]) || progress.items[key] < 0) progress.items[key] = 0;
+            }
         }
     } catch {
         // Conserve la partie jouable si le stockage du navigateur est indisponible.
@@ -719,9 +735,21 @@ export function getUnlockedActiveSpells(progress, classKey) {
     return unlocked;
 }
 
+// Les armes changent l'auto-attaque sans changer la classe ni la portée des sorts.
+export function basicWeaponProfile(rules, progress, stats, tileSize) {
+    const mage = (rules.classKey ?? (rules.ranged ? 'mage' : 'warrior')) === 'mage';
+    const wand = mage && progress.weapon !== null && progress.weapon !== 'rare';
+    const ranged = mage && wand;
+    const range = ranged ? (rules.range + (stats.bonusRangeTiles ?? 0)) * tileSize : 1.5 * tileSize;
+    const talents = progress.talents ?? {};
+    const damage = wand
+        ? Math.round((stats.basicDamage + (talents.m_wand_focus ?? 0) * 2) * (1 + (talents.m_wand_mastery ?? 0) * .06))
+        : stats.basicDamage;
+    return { ranged, range, damage };
+}
+
 /**
- * Calcule les caractéristiques totales, les maximums de ressources, la régénération
- * et les dégâts finaux à partir du niveau, des points investis, des sorts, des talents et de l'arme.
+ * Calcule les caractéristiques, ressources et dégâts à partir de la progression.
  */
 export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const classKey = rules.classKey ?? (rules.ranged ? 'mage' : 'warrior');

@@ -1,26 +1,6 @@
 import { cliffTile, graves, inZone, rocks, zones } from './exploration.js';
 
 const frameSize = 48;
-const canopy = [
-    '..........44444..........',
-    '.......4443333444........',
-    '.....44333333333444......',
-    '....43333222333333344....',
-    '...4333222222333323344...',
-    '..443322222233222233344..',
-    '..433222111222222233334..',
-    '.44322211111222223333344.',
-    '.43322111222222233333334.',
-    '4432222222222233333333344',
-    '4332222222333333333333334',
-    '4333222333333333333333444',
-    '443333333333333333334444.',
-    '.444333333333333444444...',
-    '...4444433334444444......',
-    '......4444444444.........',
-];
-const treeColors = { 1: '#789453', 2: '#4c7549', 3: '#335a47', 4: '#223c37' };
-
 // Positions are the feet of the tree trunks, so the canopy sorts with actors.
 const trees = [
     [28, 58], [59, 44], [81, 68], [60, 105], [91, 133], [31, 158],
@@ -69,48 +49,6 @@ function drawFrame(context, frame, x, y) {
         x, y, frame.cutWidth, frame.cutHeight);
 }
 
-function toneGround(context, width, height) {
-    const image = context.getImageData(0, 0, width, height);
-    const pixels = image.data;
-    for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i];
-        const g = pixels[i + 1];
-        const b = pixels[i + 2];
-        if (b > r * 1.2 && g > r * 1.2) {
-            pixels[i] = r * .62;
-            pixels[i + 1] = g * .72;
-            pixels[i + 2] = b * .81;
-        } else if (g > r - 24) {
-            pixels[i] = r * .32 + 30;
-            pixels[i + 1] = g * .48 + 31;
-            pixels[i + 2] = b * .45 + 35;
-        } else {
-            pixels[i] = r * .72 + 10;
-            pixels[i + 1] = g * .7 + 9;
-            pixels[i + 2] = b * .72 + 10;
-        }
-    }
-    context.putImageData(image, 0, 0);
-}
-
-function drawTree(context, variant) {
-    context.fillStyle = '#263b32';
-    context.fillRect(16, 20, 7, 21);
-    context.fillRect(14, 39, 11, 2);
-    context.fillStyle = '#76573c';
-    context.fillRect(17, 24, 4, 16);
-    context.fillStyle = '#a77a50';
-    context.fillRect(17, 30, 1, 8);
-    const branches = variant ? [[2, 14], [13, 16], [7, 3]] : [[13, 13], [0, 17], [5, 3]];
-    for (const [left, top] of branches) {
-        canopy.forEach((row, y) => [...row].forEach((shade, x) => {
-            if (shade === '.') return;
-            context.fillStyle = variant && shade === '2' ? '#597747' : treeColors[shade];
-            context.fillRect(left + (variant ? 24 - x : x), top + y, 1, 1);
-        }));
-    }
-}
-
 function drawLantern(context) {
     context.fillStyle = '#412f2d';
     context.fillRect(4, 2, 2, 12);
@@ -120,52 +58,6 @@ function drawLantern(context) {
     context.fillRect(9, 5, 3, 4);
     context.fillStyle = '#ffcf79';
     context.fillRect(10, 6, 2, 2);
-}
-
-function drawCabin(context) {
-    // Timber front, windows and a stepped slate roof on the native pixel grid.
-    context.fillStyle = '#283534';
-    context.fillRect(5, 23, 48, 23);
-    context.fillStyle = '#815c43';
-    context.fillRect(7, 25, 44, 18);
-    context.fillStyle = '#a27350';
-    for (let y = 27; y < 43; y += 4) context.fillRect(9, y, 40, 1);
-    context.fillStyle = '#523d33';
-    context.fillRect(8, 25, 2, 19);
-    context.fillRect(48, 25, 2, 19);
-    context.fillRect(23, 29, 12, 16);
-    context.fillRect(11, 30, 9, 8);
-    context.fillRect(38, 30, 9, 8);
-    context.fillStyle = '#ca9355';
-    context.fillRect(25, 31, 8, 13);
-    context.fillStyle = '#e6b36d';
-    context.fillRect(13, 32, 5, 4);
-    context.fillRect(40, 32, 5, 4);
-    context.fillStyle = '#634a3a';
-    context.fillRect(15, 32, 1, 4);
-    context.fillRect(42, 32, 1, 4);
-    context.fillRect(31, 38, 1, 1);
-
-    for (let row = 0; row < 7; row++) {
-        const x = 15 - row * 2;
-        const y = 4 + row * 3;
-        context.fillStyle = '#263843';
-        context.fillRect(x, y, 58 - x * 2, 3);
-        context.fillStyle = row % 2 ? '#466171' : '#506b78';
-        context.fillRect(x + 2, y, 54 - x * 2, 2);
-        context.fillStyle = '#324955';
-        for (let seam = x + 5 + row % 2 * 3; seam < 56 - x; seam += 7) {
-            context.fillRect(seam, y + 1, 1, 2);
-        }
-    }
-    context.fillStyle = '#253439';
-    context.fillRect(0, 25, 58, 2);
-    context.fillStyle = '#766554';
-    context.fillRect(39, 6, 6, 8);
-    context.fillStyle = '#9d8370';
-    context.fillRect(38, 5, 8, 2);
-    context.fillStyle = '#a48c67';
-    context.fillRect(23, 45, 12, 2);
 }
 
 function drawGrave(context) {
@@ -186,32 +78,10 @@ function drawGrave(context) {
     context.fillRect(3, 18, 3, 3);
 }
 
-function drawRock(context) {
-    context.fillStyle = '#29323b';
-    for (let y = 0; y < 40; y += 4) {
-        const inset = Math.max(0, 18 - y / 2);
-        context.fillRect(inset, y, 48 - inset * 2, 4);
-    }
-    context.fillStyle = '#69737b';
-    for (let y = 4; y < 36; y += 4) {
-        const inset = Math.max(3, 20 - y / 2);
-        context.fillRect(inset, y, 25 - inset, 4);
-    }
-    context.fillStyle = '#454e5d';
-    context.fillRect(26, 20, 11, 12);
-    context.fillRect(32, 28, 12, 8);
-    context.fillStyle = '#bdc9c3';
-    context.fillRect(18, 4, 10, 4);
-    context.fillRect(16, 8, 7, 4);
-    context.fillRect(23, 8, 8, 2);
-    context.fillStyle = '#202a32';
-    context.fillRect(4, 37, 40, 3);
-}
-
 export function treePositions(terrain) {
     const positions = [...trees];
-    for (let row = 3; row < terrain.length - 2; row += 4) {
-        for (let column = 3; column < terrain[0].length - 2; column += 4) {
+    for (let row = 3; row < terrain.length - 2; row += 6) {
+        for (let column = 3; column < terrain[0].length - 2; column += 6) {
             if (row < 20 && column < 28) continue;
             const seed = (column * 37 + row * 53 + column * row * 7) % 101;
             if (seed % 5 === 0) continue;
@@ -223,7 +93,8 @@ export function treePositions(terrain) {
             positions.push([x, y]);
         }
     }
-    return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile);
+    return positions.filter(([x, y]) => terrain[Math.floor(y / 16)]?.[Math.floor(x / 16)] !== cliffTile
+        && !(x > 96 && x < 192 && y > 80 && y < 180));
 }
 
 export function buildClearing(scene, terrain, tileSize, width, height, baseTiles) {
@@ -234,23 +105,52 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         const frame = scene.textures.getFrame(key, tile < 32 ? tile % 16 : undefined);
         drawFrame(context, frame, x * tileSize, y * tileSize);
     }));
-    toneGround(context, width, height);
-
+    const ground = scene.textures.get('ground-detailed').getSourceImage();
+    const groundCell = ground.width / 2;
+    const pathMask = document.createElement('canvas');
+    pathMask.width = pathMask.height = tileSize;
+    const maskContext = pathMask.getContext('2d', { willReadFrequently: true });
+    const pathPatch = document.createElement('canvas');
+    pathPatch.width = pathPatch.height = tileSize;
+    const patchContext = pathPatch.getContext('2d');
+    patchContext.imageSmoothingEnabled = false;
+    // Sample a continuous 256px pattern across the map instead of restarting every tile.
+    context.imageSmoothingEnabled = false;
     terrain.forEach((row, y) => row.forEach((tile, x) => {
-        const px = x * tileSize;
-        const py = y * tileSize;
-        if (inZone(zones.dragon, px, py)) {
-            context.fillStyle = tile === 32 ? '#7b7971' : '#505f61';
-            context.globalAlpha = .82;
-            context.fillRect(px, py, tileSize, tileSize);
-            context.globalAlpha = 1;
-            context.fillStyle = '#89918a';
-            context.fillRect(px + (x * 7 + y) % 11, py + (x + y * 3) % 13, 3, 1);
-        } else if (inZone(zones.skeleton, px, py) && tile === 33) {
-            context.fillStyle = '#444947';
-            context.globalAlpha = .55;
-            context.fillRect(px, py, tileSize, tileSize);
-            context.globalAlpha = 1;
+        if (tile < 16 || tile === 34 || tile === cliffTile) return;
+        const mountain = inZone(zones.dragon, x * tileSize, y * tileSize);
+        const cemetery = inZone(zones.skeleton, x * tileSize, y * tileSize);
+        const column = mountain || tile === 32 ? 1 : 0;
+        const rowIndex = mountain || (cemetery && tile !== 32) ? 1 : 0;
+        context.drawImage(ground,
+            column * groundCell + (x % 16) * groundCell / 16,
+            rowIndex * groundCell + (y % 16) * groundCell / 16,
+            groundCell / 16, groundCell / 16, x * tileSize, y * tileSize, tileSize, tileSize);
+        if (tile < 32) {
+            maskContext.clearRect(0, 0, tileSize, tileSize);
+            drawFrame(maskContext, scene.textures.getFrame('chemin-herbe', tile % 16), 0, 0);
+            const mask = maskContext.getImageData(0, 0, tileSize, tileSize);
+            for (let i = 0; i < mask.data.length; i += 4) {
+                mask.data[i + 3] = mask.data[i] > mask.data[i + 1] * 1.1 ? 255 : 0;
+            }
+            maskContext.putImageData(mask, 0, 0);
+            patchContext.clearRect(0, 0, tileSize, tileSize);
+            patchContext.globalCompositeOperation = 'source-over';
+            patchContext.drawImage(ground, groundCell + (x % 16) * groundCell / 16,
+                (y % 16) * groundCell / 16, groundCell / 16, groundCell / 16, 0, 0, tileSize, tileSize);
+            patchContext.globalCompositeOperation = 'destination-in';
+            patchContext.drawImage(pathMask, 0, 0);
+            context.drawImage(pathPatch, x * tileSize, y * tileSize);
+        }
+        // Feather path borders with irregular grass clumps, preserving the existing road layout.
+        if (tile === 32) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+            if (terrain[y + dy]?.[x + dx] !== 33) continue;
+            for (let i = 0; i < tileSize; i += 3) {
+                const length = 1 + (x * 13 + y * 7 + i) % 4;
+                context.fillStyle = i % 2 ? '#60712e' : '#7c8a3d';
+                context.fillRect(x * tileSize + (dx ? (dx > 0 ? tileSize - length : 0) : i),
+                    y * tileSize + (dy ? (dy > 0 ? tileSize - length : 0) : i), dx ? length : 2, dy ? length : 2);
+            }
         }
     }));
 
@@ -284,53 +184,43 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     }));
     terrain.forEach((row, y) => row.forEach((tile, x) => {
         if (tile !== cliffTile) return;
-        const px = x * tileSize;
-        const py = y * tileSize;
-        const seam = (x * 7 + y * 3) % 11 + 2;
-        context.fillStyle = '#343c43';
-        context.fillRect(px, py, tileSize, tileSize);
-        context.fillStyle = '#535c62';
-        context.fillRect(px + seam - 2, py, 4, tileSize);
-        context.fillStyle = '#424c55';
-        context.fillRect(px + 1, py + seam, 8, 4);
-        context.fillStyle = '#222c34';
-        context.fillRect(px + seam + 2, py + 2, 2, 9);
-        context.fillRect(px + 1, py + seam + 3, 6, 2);
-        context.fillStyle = '#778078';
-        context.fillRect(px + seam - 2, py + 3, 1, 6);
-        context.fillStyle = '#4e6549';
-        for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-            const neighbor = terrain[y + dy]?.[x + dx];
-            if (neighbor === undefined || neighbor === cliffTile) continue;
-            if (dy) context.fillRect(px, py + (dy > 0 ? tileSize - 3 : 0), tileSize, 3);
-            else context.fillRect(px + (dx > 0 ? tileSize - 3 : 0), py, 3, tileSize);
-        }
-        if (terrain[y + 1]?.[x] !== undefined && terrain[y + 1][x] !== cliffTile) {
-            context.fillStyle = '#172421';
-            context.globalAlpha = .35;
-            context.fillRect(px, py + tileSize, tileSize, 5);
-            context.globalAlpha = 1;
-        }
+        context.fillStyle = '#22676d';
+        context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }));
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
 
-    for (let variant = 0; variant < 2; variant++) {
-        const tree = scene.textures.createCanvas('willow-' + variant, 39, 41);
-        drawTree(tree.getContext(), variant);
-        tree.refresh();
+    const atlas = scene.textures.get('environment-detailed').getSourceImage();
+    const cell = atlas.width / 2;
+    function sceneryTexture(key, column, row, size) {
+        const texture = scene.textures.createCanvas(key, size, size);
+        const ctx = texture.getContext();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(atlas, column * cell, row * cell, cell, cell, 0, 0, size, size);
+        texture.refresh();
+    }
+    sceneryTexture('willow-0', 0, 0, 64);
+    sceneryTexture('willow-1', 0, 0, 60);
+    sceneryTexture('mountain-rock', 1, 0, 80);
+    sceneryTexture('ranger-cabin', 0, 1, 96);
+    sceneryTexture('coastal-cliff', 1, 1, 64);
+    // The coastal rocks stay inside the impassable rim and do not cover walkable ground.
+    for (let x = 32; x < width - 32; x += 56) {
+        scene.add.image(x, height, 'coastal-cliff').setOrigin(.5, 1).setDisplaySize(64, 64).setDepth(1);
+        scene.add.image(x, 0, 'coastal-cliff').setOrigin(.5, 0).setFlipY(true).setDepth(1);
+    }
+    for (let y = 32; y < height - 32; y += 56) {
+        scene.add.image(32, y, 'coastal-cliff').setRotation(Math.PI / 2).setDepth(1);
+        scene.add.image(width - 32, y, 'coastal-cliff').setRotation(-Math.PI / 2).setDepth(1);
     }
     const lantern = scene.textures.createCanvas('lantern', 16, 14);
     drawLantern(lantern.getContext());
     lantern.refresh();
     const lamps = [[160, 177], [271, 163], [286, 224], [148, 231], [306, 231]];
     const shadows = scene.add.graphics().setDepth(1).fillStyle(0x182d29, .34);
-    const cabin = scene.textures.createCanvas('ranger-cabin', 58, 47);
-    drawCabin(cabin.getContext());
-    cabin.refresh();
-    shadows.fillRect(114, 43, 53, 6);
-    scene.add.image(140, 48, cabin.key).setOrigin(.5, 1).setDepth(48);
-    scene.obstacles.push(new Phaser.Geom.Rectangle(116, 31, 48, 16));
+    shadows.fillRect(114, 155, 53, 6);
+    scene.add.image(140, 160, 'ranger-cabin').setOrigin(.5, 1).setDepth(160);
+    scene.obstacles.push(new Phaser.Geom.Rectangle(112, 130, 56, 26));
     treePositions(terrain).forEach(([x, y], index) => {
         shadows.fillRect(x - 7, y - 3, 16, 5);
         scene.add.image(x, y, 'willow-' + index % 2).setOrigin(.5, 1).setDepth(y);
@@ -344,11 +234,13 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
 
     for (const [key, positions, textureWidth, textureHeight, draw, collisionWidth] of [
         ['grave', graves, 18, 24, drawGrave, 14],
-        ['mountain-rock', rocks, 48, 40, drawRock, 40],
+        ['mountain-rock', rocks, 80, 80, null, 40],
     ]) {
-        const texture = scene.textures.createCanvas(key, textureWidth, textureHeight);
-        draw(texture.getContext());
-        texture.refresh();
+        if (draw) {
+            const texture = scene.textures.createCanvas(key, textureWidth, textureHeight);
+            draw(texture.getContext());
+            texture.refresh();
+        }
         positions.forEach(([column, row]) => {
             const x = (column + .5) * tileSize;
             const y = (row + .5) * tileSize;

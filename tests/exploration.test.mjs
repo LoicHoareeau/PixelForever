@@ -9,7 +9,7 @@ import { TrainingCombat } from '../public/game/combat.js';
 const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/terrain.json', import.meta.url)));
 const terrain = buildTerrain(clearing);
 const obstacles = [
-    [116, 31, 48, 16],
+    [112, 130, 56, 26],
     [questNpc.x - 4, questNpc.y - 5, 8, 6],
     ...treePositions(terrain).map(([x, y]) => [x - 2, y - 4, 4, 5]),
     ...[[160, 177], [271, 163], [286, 224], [148, 231], [306, 231]].map(([x, y]) => [x - 1, y - 3, 3, 4]),

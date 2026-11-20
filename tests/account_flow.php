@@ -145,6 +145,13 @@ try {
     check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
     check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5, 'Le mage doit combattre à distance.');
     check($mageRules['resourceName'] === 'Mana' && $mageRules['specialName'] === 'Boule de feu', 'Le mage doit conserver son mana et ses sorts.');
+    foreach ([$warriorRules, $mageRules] as $rules) {
+        check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Le tirage du butin doit couvrir exactement 100 %.');
+        foreach (['rare', 'epic', 'scale', 'heart'] as $item) {
+            check(is_file(dirname(__DIR__).'/public/game/val-des-saules/items/'.$rules['loot'][$item]['icon'].'.png'), 'Icône PixelLab manquante.');
+        }
+    }
+    check($mageRules['loot']['rare']['icon'] === 'staff' && $mageRules['loot']['epic']['icon'] === 'wand', 'Les armes du mage doivent distinguer bâton et baguette.');
     visit($bob, 'POST', "/personnages/$rolandId/selection", 404, ['_token' => $selectionToken]);
     check($bob->get('selected_character') === $bobSelection, 'Le refus doit préserver la sélection de Bob.');
 

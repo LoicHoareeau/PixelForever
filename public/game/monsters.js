@@ -80,140 +80,6 @@ function randomInt(min, max) {
     return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-/**
- * Dessine une matrice de pixels (chaînes de caractères) dans un canvas texture Phaser.
- */
-function paintGrid(ctx, ox, oy, grid, palette) {
-    for (let y = 0; y < grid.length; y++) {
-        const row = grid[y];
-        for (let x = 0; x < row.length; x++) {
-            const ch = row[x];
-            if (ch === '.' || !palette[ch]) continue;
-            ctx.fillStyle = palette[ch];
-            ctx.fillRect(ox + x, oy + y, 1, 1);
-        }
-    }
-}
-
-/**
- * Génère les textures pixel art des sangliers et des squelettes dans le cache Phaser.
- */
-export function ensureMonsterTextures(scene) {
-    if (!scene.textures.exists('boar-pixel')) {
-        const tex = scene.textures.createCanvas('boar-pixel', 48, 24);
-        const ctx = tex.getContext();
-        const palette = {
-            o: '#221512',
-            b: '#6e4534',
-            d: '#4d2d21',
-            l: '#946249',
-            t: '#f4ead2',
-            e: '#ff5247',
-            h: '#2d1c17',
-        };
-        // Frame 0 : Idle / Marche 1 (24x24)
-        const boarFrame0 = [
-            '........................',
-            '........................',
-            '........................',
-            '........oooooo..........',
-            '......oobbbbbboo........',
-            '.....obbbllllbbbo.......',
-            '....obbbllllllbbbo......',
-            '...obddbbbbbbbbbbbo.....',
-            '..obdtebbbbbbbbbbddo....',
-            '..obdeebbbbbbbbbbddo....',
-            '..obbbbbbbbbbbbbbbdo....',
-            '...oottobbbbbbbbddo.....',
-            '.....ooobddbbbbddo......',
-            '.......ohbo..ohbo.......',
-            '.......ohbo..ohbo.......',
-            '.......ooo....ooo.......',
-        ];
-        // Frame 1 : Marche 2 / Charge (24x24)
-        const boarFrame1 = [
-            '........................',
-            '........................',
-            '........................',
-            '.......oooooo...........',
-            '.....oobbbbbboo.........',
-            '....obbbllllbbbo........',
-            '...obbbllllllbbbo.......',
-            '..obddbbbbbbbbbbbo......',
-            '.obdtebbbbbbbbbbddo.....',
-            '.obdeebbbbbbbbbbddo.....',
-            '.obbbbbbbbbbbbbbbdo.....',
-            '..oottobbbbbbbbddo......',
-            '....ooobddbbbbddo.......',
-            '......ohbo....ohbo......',
-            '.....ohbo......ohbo.....',
-            '.....ooo........ooo.....',
-        ];
-        paintGrid(ctx, 0, 4, boarFrame0, palette);
-        paintGrid(ctx, 24, 4, boarFrame1, palette);
-        tex.refresh();
-        tex.add(0, 0, 0, 0, 24, 24);
-        tex.add(1, 0, 24, 0, 24, 24);
-    }
-
-    if (!scene.textures.exists('skeleton-pixel')) {
-        const tex = scene.textures.createCanvas('skeleton-pixel', 48, 28);
-        const ctx = tex.getContext();
-        const palette = {
-            o: '#1a1b24',
-            w: '#e8e4d8',
-            s: '#b5b0a1',
-            d: '#76736c',
-            e: '#7be0ff',
-            b: '#9aa4b8',
-            h: '#7a5238',
-        };
-        const skel0 = [
-            '.........oooooo.........',
-            '........owwwwwwo........',
-            '.......owwwwwwwwo.......',
-            '.......owooeeoowo.......',
-            '.......owwwwwwwwo.......',
-            '........owossoo.........',
-            '.........owwwo..........',
-            '......ooowssswooo.......',
-            '.....oww.owwwo.wwo......',
-            '....owwo.owwwo.owwo.....',
-            '....owo..owwwo..owb.....',
-            '.........owwwo...ob.....',
-            '........owsoowo..ob.....',
-            '........owo.owo..oh.....',
-            '........owo.owo.........',
-            '.......owo...owo........',
-            '.......oo.....oo........',
-        ];
-        const skel1 = [
-            '.........oooooo.........',
-            '........owwwwwwo........',
-            '.......owwwwwwwwo.......',
-            '.......owooeeoowo.......',
-            '.......owwwwwwwwo.......',
-            '........owossoo.........',
-            '.........owwwo..........',
-            '......ooowssswooo.......',
-            '.....oww.owwwo.wwo......',
-            '....owwo.owwwo.owwbb....',
-            '....owo..owwwo..owh.....',
-            '.........owwwo..........',
-            '........owsoowo.........',
-            '.......owo...owo........',
-            '......owo.....owo.......',
-            '......oo.......oo.......',
-            '........................',
-        ];
-        paintGrid(ctx, 0, 5, skel0, palette);
-        paintGrid(ctx, 24, 5, skel1, palette);
-        tex.refresh();
-        tex.add(0, 0, 0, 0, 24, 28);
-        tex.add(1, 0, 24, 0, 24, 28);
-    }
-}
-
 export class Monster {
     constructor(scene, species, directions, tileSize, initialSpawnIndex = 0) {
         this.scene = scene;
@@ -242,7 +108,7 @@ export class Monster {
 
         const initialTexture = species === 'dragon'
             ? 'saphyr-idle'
-            : (species === 'boar' ? 'boar-pixel' : 'skeleton-pixel');
+            : species + '-south';
 
         this.sprite = scene.add.image(0, 0, initialTexture).setInteractive({ useHandCursor: true });
         this.shadow = scene.add.ellipse(
@@ -442,10 +308,7 @@ export class Monster {
             return;
         }
 
-        const textureKey = this.species === 'boar' ? 'boar-pixel' : 'skeleton-pixel';
-        const frame = now < this.attackEndsAt ? 1 : Math.floor(this.walkDistance / 6) % 2;
-        const flipX = this.directions[this.facing]?.includes('west') ?? false;
-        this.sprite.setTexture(textureKey, frame).setFlipX(flipX).setDepth(this.sprite.y);
+        this.sprite.setTexture(this.species + '-' + this.directions[this.facing]).setFlipX(false).setDepth(this.sprite.y);
     }
 
     renderDragon(texture, frame, flip = false) {
