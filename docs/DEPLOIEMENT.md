@@ -4,6 +4,8 @@ Le projet utilise un conteneur PHP 8.2 / Apache. Le `Dockerfile` installe les d�
 
 ## Branche Git et déploiement
 
+Le lot caméra ×2, neutralité N.1–10 et notification de niveau modifie les ressources front-end et Twig, sans migration de données. Le déploiement Render reste manuel à la demande du propriétaire.
+
 Les modifications passent par une branche dédiée et une pull request vers `main`. Pour livrer les classes et les VFX, vérifier que le SHA choisi inclut à la fois le code client et ses atlas PNG.
 
 Le paramétrage Render précédemment constaté suivait `codex/deployer-pixelforever`. Vérifier le champ Branch du service avant de déployer : fusionner dans `main` ne met pas à jour une autre branche automatiquement. Si le service suit encore cette branche, la synchroniser par avance rapide avec `main` après vérification de ses changements propres, ou choisir `main` dans Render. Ne pas forcer un push pour masquer une divergence.

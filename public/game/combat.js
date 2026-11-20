@@ -1573,6 +1573,7 @@ export class TrainingCombat {
             this.triggerShake('large');
         }
 
+        const previousLevel = this.progress.level;
         const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
         const armor = awardArmor(this.progress, this.classKey, monster.species, monster.level);
         recordTrailQuestDefeat(this.progress.trailQuest, monster.species);
@@ -1581,6 +1582,7 @@ export class TrainingCombat {
         this.refreshInventory();
 
         if (levelUp) {
+            this.showLevelUp(this.progress.level - previousLevel);
             this.health = this.meters[0].meter.max;
             this.mana = this.meters[1].meter.max;
             this.manaCarry = 0;
@@ -1600,6 +1602,25 @@ export class TrainingCombat {
     mustDodgeMalakor() {
         return this.monsters?.some((monster) => monster.isBoss && monster.trial
             && inZone(monster.template.zone, this.scene.position.x, this.scene.position.y));
+    }
+
+    showLevelUp(count = 1) {
+        const toast = document.getElementById('level-notification');
+        if (!toast) return;
+        this.levelNotifications = (this.levelNotifications ?? 0) + count;
+        if (this.levelNotificationActive) return;
+        const next = () => {
+            this.levelNotificationActive = this.levelNotifications > 0;
+            toast.hidden = !this.levelNotificationActive;
+            if (!this.levelNotificationActive) return;
+            this.levelNotifications--;
+            toast.textContent = 'Vous avez prit un niveau';
+            this.scene.time.delayedCall(3000, () => {
+                toast.hidden = true;
+                this.scene.time.delayedCall(150, next);
+            });
+        };
+        next();
     }
 
     startMalakorRage(monster, now) {

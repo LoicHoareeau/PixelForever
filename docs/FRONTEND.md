@@ -4,6 +4,8 @@
 
 ## Accueil et choix du personnage
 
+`#level-notification` annonce les montées de niveau avec `role="status"`, sans bloquer les commandes. `TrainingCombat.showLevelUp` met les annonces en file et utilise l’horloge Phaser pour afficher chacune pendant trois secondes, avec une pause de 150 ms entre elles.
+
 Twig rend l’accueil public du Val-des-Saules, la connexion, l’inscription et les écrans de personnage. `public/portal/val.css` adapte leur mise en page aux petits écrans. Le diorama 3D de l’accueil et de la connexion est une illustration JPEG. Les cartes des personnages mettent les sprites de jeu sur des socles éclairés et indiquent la classe, le niveau et les caractéristiques de base. **Actif** indique le personnage sélectionné en session.
 
 ## Carte et ressources visuelles

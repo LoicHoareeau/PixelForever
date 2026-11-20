@@ -1,6 +1,6 @@
 # PixelForever — refonte des classes, de la progression et du monde partagé
 
-Cadrage du 20 novembre 2026, validé par l’utilisateur. La caméra ×2 est livrée ; les autres sections décrivent le travail restant. Le dépôt examiné est le checkout Expernet, `main`, commit `2ca4a10`. Les valeurs ci-dessous sont un point de départ de test, pas un équilibrage déjà démontré.
+Cadrage du 20 novembre 2026, validé par l’utilisateur. Livrés sur la branche de refonte : caméra ×2, neutralité des monstres N.1–10 et notification de niveau. Les autres sections décrivent le travail restant. Le dépôt examiné est le checkout Expernet, `main`, commit `2ca4a10`. Les valeurs ci-dessous sont un point de départ de test, pas un équilibrage déjà démontré.
 
 ## Résultat attendu
 
