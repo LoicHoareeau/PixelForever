@@ -1,4 +1,5 @@
 import { armorBonuses, armorItems, armorSlots } from './armor.js';
+import { classTalents, protectionTalents, starterTalents } from './class-talents.js';
 // Barèmes d'expérience, de caractéristiques, de sorts et de régénération
 import { normalizeTrailQuest } from './trail-quest.js';
 
@@ -8,7 +9,15 @@ export const xpRequired = (level) => {
     return 100 + (level - 1) * 50;
 };
 
-export const statKeys = ['strength', 'intelligence', 'vitality', 'spirit'];
+const coreStats = ['strength', 'intelligence', 'vitality', 'spirit'];
+const dexterityClasses = ['rogue', 'hunter'];
+export const statKeys = [...coreStats, 'dexterity', 'defense'];
+
+function availableStats(classKey) {
+    if (classKey === 'warrior') return [...coreStats, 'defense'];
+    if (dexterityClasses.includes(classKey)) return [...coreStats, 'dexterity'];
+    return coreStats;
+}
 
 export const spellKeys = ['basic', 'special'];
 
@@ -35,6 +44,7 @@ export const specialSpellRankBonus = 5;
  * Chaque talent appartient à une branche, un palier (tier 0..2) et peut débloquer un sort actif.
  */
 export const talentTrees = {
+    ...classTalents,
     warrior: {
         branches: [
             {
@@ -194,6 +204,7 @@ export const talentTrees = {
                         icon: 'icon-shield',
                         description: 'Réduit les dégâts subis de 8 % par rang.',
                     },
+                    ...protectionTalents,
                 ],
             },
         ],
@@ -374,12 +385,14 @@ const defaultClassProfiles = {
             intelligence: 4,
             vitality: 8,
             spirit: 5,
+            defense: 6,
         },
         growthStats: {
             strength: 2,
             intelligence: 1,
             vitality: 2,
             spirit: 1,
+            defense: 0,
         },
     },
     mage: {
@@ -395,6 +408,18 @@ const defaultClassProfiles = {
             vitality: 1,
             spirit: 2,
         },
+    },
+    warlock: {
+        baseStats: { strength: 4, intelligence: 9, vitality: 6, spirit: 7 },
+        growthStats: { strength: 1, intelligence: 2, vitality: 1, spirit: 2 },
+    },
+    rogue: {
+        baseStats: { strength: 5, intelligence: 4, vitality: 6, spirit: 5, dexterity: 9 },
+        growthStats: { strength: 1, intelligence: 1, vitality: 1, spirit: 1, dexterity: 2 },
+    },
+    hunter: {
+        baseStats: { strength: 5, intelligence: 4, vitality: 7, spirit: 6, dexterity: 8 },
+        growthStats: { strength: 1, intelligence: 1, vitality: 1, spirit: 1, dexterity: 2 },
     },
 };
 
@@ -435,12 +460,13 @@ export function createInitialProgress(startingLevel = 1) {
 /**
  * Normalise une sauvegarde existante pour y intégrer les champs de stats, sorts et talents.
  */
-function normalizeProgress(saved) {
+function normalizeProgress(saved, classKey) {
     const fallback = createInitialProgress();
     const levelsGained = Math.max(0, saved.level - 1);
 
     const allocatedStats = {};
-    for (const key of statKeys) {
+    const keys = availableStats(classKey);
+    for (const key of keys) {
         const value = saved.allocatedStats?.[key];
         allocatedStats[key] = Number.isSafeInteger(value) && value >= 0 ? value : 0;
     }
@@ -463,7 +489,7 @@ function normalizeProgress(saved) {
     const statBudget = levelsGained * statPointsPerLevel;
     let spentStats = Object.values(allocatedStats).reduce((total, value) => total + value, 0);
     if (spentStats > statBudget) {
-        for (const key of statKeys) allocatedStats[key] = 0;
+        for (const key of keys) allocatedStats[key] = 0;
         spentStats = 0;
     }
     const spellBudget = levelsGained * spellPointsPerLevel;
@@ -501,7 +527,7 @@ function normalizeProgress(saved) {
 /**
  * Charge et valide la progression sauvegardée d'un personnage dans le navigateur.
  */
-export function loadProgress(key, startingLevel = 1, serverProgress = null) {
+export function loadProgress(key, startingLevel = 1, serverProgress = null, classKey = null) {
     let progress = createInitialProgress(Math.max(1, startingLevel));
 
     try {
@@ -519,6 +545,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null) {
             && (
                 saved.weapon === null
                 || saved.weapon === 'starter'
+                || (saved.weapon === 'axe' && classKey === 'warrior')
                 || (['rare', 'epic'].includes(saved.weapon) && saved.items[saved.weapon] > 0)
             );
 
@@ -538,7 +565,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null) {
         && (serverProgress.level > progress.level || (serverProgress.level === progress.level && serverProgress.xp > progress.xp))) {
         progress = { ...progress, level: serverProgress.level, xp: serverProgress.xp };
     }
-    return normalizeProgress(progress);
+    return normalizeProgress(progress, classKey);
 }
 
 /**
@@ -597,8 +624,8 @@ export function awardVictory(progress, loot, random = Math.random, xpGain = vict
 /**
  * Investit un point de caractéristique disponible dans la statistique choisie.
  */
-export function allocateStat(progress, stat) {
-    if (progress.level <= 1 || !statKeys.includes(stat)) {
+export function allocateStat(progress, stat, classKey = null) {
+    if (progress.level <= 1 || !availableStats(classKey).includes(stat)) {
         return false;
     }
 
@@ -741,7 +768,7 @@ export function resetTalents(progress) {
 export function getUnlockedActiveSpells(progress, classKey) {
     const tree = talentTrees[classKey];
     if (!tree) return [];
-    const unlocked = [];
+    const unlocked = [...(starterTalents[classKey] ?? [])];
     for (const branch of tree.branches) {
         for (const talent of branch.talents) {
             if (talent.type === 'active' && getTalentRank(progress, talent.id) > 0) {
@@ -754,9 +781,10 @@ export function getUnlockedActiveSpells(progress, classKey) {
 
 // Les armes changent l'auto-attaque sans changer la classe ni la portée des sorts.
 export function basicWeaponProfile(rules, progress, stats, tileSize) {
-    const mage = (rules.classKey ?? (rules.ranged ? 'mage' : 'warrior')) === 'mage';
+    const classKey = rules.classKey ?? (rules.ranged ? 'mage' : 'warrior');
+    const mage = classKey === 'mage';
     const wand = mage && progress.weapon !== null && progress.weapon !== 'rare';
-    const ranged = mage && wand;
+    const ranged = wand || (['warlock', 'hunter'].includes(classKey) && progress.weapon !== null);
     const range = ranged ? (rules.range + (stats.bonusRangeTiles ?? 0)) * tileSize : 1.5 * tileSize;
     const talents = progress.talents ?? {};
     const damage = wand
@@ -780,8 +808,8 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
 
     const attributes = {};
     for (const key of statKeys) {
-        const base = baseStats[key] ?? 5;
-        const natural = levelsGained * (growthStats[key] ?? 1);
+        const base = baseStats[key] ?? (coreStats.includes(key) ? 5 : 0);
+        const natural = levelsGained * (growthStats[key] ?? (coreStats.includes(key) ? 1 : 0));
         const allocated = progress.allocatedStats?.[key] ?? 0;
         const bonus = natural + allocated;
 
@@ -794,25 +822,25 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         };
     }
 
-    const primaryBonus = rules.ranged
+    const primaryBonus = dexterityClasses.includes(classKey) ? attributes.dexterity.bonus : rules.ranged
         ? attributes.intelligence.bonus
         : attributes.strength.bonus;
 
-    const secondaryBonus = rules.ranged
+    const secondaryBonus = (rules.ranged || dexterityClasses.includes(classKey))
         ? attributes.strength.bonus
         : attributes.intelligence.bonus;
 
     // Bonus issus des talents
     const t = progress.talents ?? {};
-    const talentHealthBonus = (t.w_iron_skin ?? 0) * 8 + (t.m_ice_armor ?? 0) * 6;
+    const talentHealthBonus = (t.w_iron_skin ?? 0) * 8 + (t.m_ice_armor ?? 0) * 6 + (t.h_forage ?? 0) * 5;
     const talentManaBonus = (t.m_clear_mind ?? 0) * 6;
-    const talentBasicBonus = (t.w_sharp_blade ?? 0) * 2 + (t.m_ember ?? 0) * 2;
+    const talentBasicBonus = ((t.w_sharp_blade ?? 0) + (t.m_ember ?? 0) + (t.r_blades ?? 0) + (t.h_aim ?? 0)) * 2;
     const talentSpecialBonus = (t.w_sword_mastery ?? 0) * 4 + (t.m_pyroblast ?? 0) * 4;
     const talentSpecialMultiplier = 1 + (t.w_frenzy ?? 0) * 0.08;
     const talentRegenBonus = classKey === 'mage'
         ? (t.m_clear_mind ?? 0) * 0.25
         : (t.w_bloodlust ?? 0) * 0.5;
-    const cooldownReduction = Math.min(0.45, ((t.w_chain_strike ?? 0) + (t.m_cold_blood ?? 0)) * 0.08);
+    const cooldownReduction = Math.min(0.45, ((t.w_chain_strike ?? 0) + (t.m_cold_blood ?? 0)) * 0.08 + (t.r_shadow ?? 0) * .04);
     const manaCostReduction = Math.min(0.45, (t.m_mana_efficiency ?? 0) * 0.1);
     const damageReduction = Math.min(0.45, (t.w_defensive_stance ?? 0) * 0.08 + (t.m_ice_armor ?? 0) * 0.05);
     const bonusRangeTiles = (t.m_arcane_blast ?? 0) > 0 ? 0.5 : 0;
@@ -845,7 +873,7 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const specialDamage = Math.round(rawSpecialDamage * talentSpecialMultiplier);
 
     const baseRegen = rules.baseManaRegen ?? (classKey === 'mage' ? 1 : 2);
-    const rawRegen = classKey === 'mage'
+    const rawRegen = ['mage', 'warlock'].includes(classKey)
         ? baseRegen
             + levelsGained * 0.08
             + attributes.spirit.bonus * 0.14
@@ -874,6 +902,7 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         cooldownReduction,
         manaCostReduction,
         damageReduction: Math.min(.60, damageReduction + equipment.mitigation),
+        physicalMitigation: classKey === 'warrior' ? Math.min(.40, attributes.defense.bonus / (42 + attributes.defense.bonus)) : 0,
         bonusRangeTiles,
         statPoints: progress.statPoints ?? 0,
         spellPoints: progress.spellPoints ?? 0,

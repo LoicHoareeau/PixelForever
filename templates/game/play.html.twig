@@ -6,10 +6,11 @@
 
 {% block body %}
     {% set warrior = character.class.value == 'warrior' %}
-    {% set weapon = warrior ? 'Épée de fer' : 'Baguette de braise' %}
+    {% set weapon = combat.weaponName %}
+    {% set energy = combat.resourceName == 'Énergie' %}
     {% set basic = combat.basicName %}
     {% set resource = combat.resourceName|lower %}
-    {% set resourcePhrase = warrior ? 'd’énergie' : 'de mana' %}
+    {% set resourcePhrase = energy ? 'd’énergie' : (combat.resourceName == 'Concentration' ? 'de concentration' : 'de mana') %}
     {% set initialBasicDamage = combat.basicDamage + combat.weaponBonus %}
     {% set baseStats = combat.baseStats %}
     {% set growthStats = combat.growthStats %}
@@ -22,8 +23,8 @@
             restore: combat.healthRestore
         },
         mana: {
-            name: warrior ? 'Énergie' : 'Mana',
-            fullName: 'Potion ' ~ resourcePhrase,
+            name: combat.resourceName,
+            fullName: combat.loot.mana.name,
             icon: 'icon-mana',
             key: 'F',
             restore: combat.manaRestore
@@ -48,9 +49,15 @@
         {
             key: 'spirit',
             label: 'Esprit',
-            effect: warrior ? '+3 ' ~ resource ~ ' max et +0,4/s de régénération' : '+3 ' ~ resource ~ ' max et +0,14/s de régénération'
+            effect: '+3 ' ~ resource ~ ' max et régénération accrue'
         }
     ] %}
+    {% if combat.baseStats.dexterity is defined %}
+        {% set statDefinitions = statDefinitions|merge([{key: 'dexterity', label: 'Dextérité', effect: 'Augmente les dégâts des dagues et de l’arc'}]) %}
+    {% endif %}
+    {% if combat.baseStats.defense is defined %}
+        {% set statDefinitions = statDefinitions|merge([{key: 'defense', label: 'Défense', effect: 'Réduit les dégâts physiques reçus'}]) %}
+    {% endif %}
 
     <section class="game-viewport" aria-label="Val-des-Saules">
         <p id="game-status" role="status">Chargement de Val-des-Saules…</p>
@@ -71,7 +78,7 @@
                 <section class="player-hud" aria-label="État du personnage">
                     <img
                         class="hud-portrait"
-                        src="{{ app.request.basePath }}/game/val-des-saules/{{ character.class.skin }}/south.png"
+                        src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'warrior' : character.class.skin }}/south.png"
                         width="48"
                         height="48"
                         alt=""
@@ -94,10 +101,10 @@
                             <span id="combat-health-value">{{ combat.health }} / {{ combat.health }}</span>
                         </label>
                         <label>
-                            <span>{{ combat.resourceName }}</span>
+                            <span title="{{ combat.resourceName }}">{{ combat.classKey == 'hunter' ? 'Concentr.' : combat.resourceName }}</span>
                             <meter
                                 id="combat-mana"
-                                class="{{ warrior ? 'energy-meter' : 'mana-meter' }}"
+                                class="{{ energy ? 'energy-meter' : 'mana-meter' }}"
                                 max="{{ combat.mana }}"
                                 value="{{ combat.mana }}"
                             ></meter>
@@ -189,7 +196,7 @@
                                     title="{{ basic }}"
                                 >
                                     <kbd>1</kbd>
-                                    <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span>
+                                    <span class="action-icon icon-{{ combat.basicIcon }}" aria-hidden="true"></span>
                                     <span class="slot-name" id="combat-basic-name">{{ basic }}</span>
                                     <small class="slot-meta" id="combat-basic-meta">Rg 1 · {{ initialBasicDamage }}</small>
                                     <span class="slot-cd" aria-hidden="true"></span>
@@ -204,14 +211,14 @@
                                     title="{{ combat.specialName }} · {{ combat.specialManaCost }} {{ resource }}"
                                 >
                                     <kbd>2</kbd>
-                                    <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span>
+                                    <span class="action-icon icon-{{ combat.specialIcon }}" aria-hidden="true"></span>
                                     <span class="slot-name">{{ combat.specialName }}</span>
                                     <small class="slot-meta" id="combat-special-meta">{{ combat.specialManaCost }} {{ resource }}</small>
                                     <span class="slot-cd" aria-hidden="true"></span>
                                 </button>
 
-                                {# Slots 3 à 6 : Sorts actifs débloqués dans l'arbre de talents #}
-                                {% for i in 0..3 %}
+                                {% set lastTalentSlot = combat.classKey == 'warlock' ? 6 : (warrior ? 5 : 3) %}
+                                {% for i in 0..lastTalentSlot %}
                                     <button
                                         class="action-slot"
                                         type="button"
@@ -318,7 +325,7 @@
             <p id="inventory-description">Les monstres vaincus laissent du butin dans ton sac.</p>
             <ul class="inventory-items">
                 <li>
-                    <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-staff' }}" aria-hidden="true"></span>
+                    <span class="action-icon icon-{{ combat.basicIcon }}" aria-hidden="true"></span>
                     <div>
                         <strong>{{ weapon }}</strong>
                         <small data-weapon-state="starter">Équipé · +{{ combat.weaponBonus }} dégâts de base</small>
@@ -332,6 +339,16 @@
                         Retirer
                     </button>
                 </li>
+                {% if warrior %}
+                    <li>
+                        <img class="action-icon pixel-item" src="{{ app.request.basePath }}/game/val-des-saules/items/axe.png" alt="">
+                        <div>
+                            <strong>Hache de fer</strong>
+                            <small data-weapon-state="axe">Dans le sac</small>
+                        </div>
+                        <button type="button" class="quiet" data-weapon="axe">Équiper</button>
+                    </li>
+                {% endif %}
                 {% for type, potion in potions %}
                     <li>
                         <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
@@ -522,7 +539,7 @@
                     </div>
                     <ul class="spell-list">
                         <li class="spell-row">
-                            <span class="action-icon {{ warrior ? 'icon-sword' : 'icon-bolt' }}" aria-hidden="true"></span>
+                            <span class="action-icon icon-{{ combat.basicIcon }}" aria-hidden="true"></span>
                             <div class="spell-info">
                                 <div class="spell-title">
                                     <strong>{{ basic }}</strong>
@@ -541,7 +558,7 @@
                             </button>
                         </li>
                         <li class="spell-row">
-                            <span class="action-icon {{ warrior ? 'icon-charge' : 'icon-fire' }}" aria-hidden="true"></span>
+                            <span class="action-icon icon-{{ combat.specialIcon }}" aria-hidden="true"></span>
                             <div class="spell-info">
                                 <div class="spell-title">
                                     <strong>{{ combat.specialName }}</strong>

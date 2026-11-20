@@ -18,7 +18,7 @@ SQLite sert au développement local et aux tests ; PostgreSQL est utilisé pour 
 
 ## Règles métier et client
 
-`src/Game/CharacterClass.php` fournit notamment classe, apparence (`lina` Guerrier / `noe` Mage), statistiques et portée de sort. `CharacterController` transmet les règles au client ; `progression.js` calcule l’auto-attaque selon l’arme. La baguette tire à distance, le bâton frappe au contact ; les sorts du Mage gardent leur portée. Les constantes de départ ne sont pas les valeurs finales d’un personnage ayant progressé.
+`src/Game/CharacterClass.php` fournit les cinq classes, leurs apparences, leurs ressources, les statistiques de départ et la portée. Les nouvelles classes utilisent la colonne texte existante de Doctrine. La hache équipée et les points de Dextérité et de Défense suivent la sauvegarde locale. `CharacterController` transmet les règles au client ; `progression.js` calcule l’auto-attaque selon l’arme. La baguette tire à distance, le bâton frappe au contact ; les sorts du Mage gardent leur portée. Les constantes de départ ne sont pas les valeurs finales d’un personnage ayant progressé.
 
 `src/Game/Character.php`, `Blob.php`, `Item.php` et `TrailQuest.php` conservent un prototype métier PHP historique (Blob, vente, objets simples). Ce modèle n’est pas le moteur exécuté par Phaser : son `EmberStaff` et sa table de butin ne doivent pas être pris pour le catalogue actuel du navigateur. Ne pas modifier ses anciennes règles sans vérifier ses tests et ses utilisateurs.
 

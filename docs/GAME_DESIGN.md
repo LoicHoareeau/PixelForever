@@ -4,18 +4,23 @@
 
 ## Boucle de jeu
 
-Créer un Guerrier ou un Mage → parler au PNJ → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
+Créer un Guerrier, un Mage, un Démoniste, un Voleur ou un Chasseur → parler au PNJ → explorer la clairière, le cimetière, les montagnes et les Terres dévastées → combattre → gagner XP et butin → investir les points et équiper une arme adaptée.
 
 ## Classes et attaques
 
 | Classe / équipement | Attaque de base gratuite | Portée |
 | --- | --- | --- |
-| Guerrier · Épée de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 1,5 case |
+| Guerrier · Épée de fer, Hache de fer, Lame des saules, Croc de Saphyr | Frappe en mêlée | 1,5 case |
 | Mage · Baguette de braise, Sceptre de Saphyr | Trait de baguette, projectile | 7,5 cases avant bonus |
 | Mage · Bâton des saules | Coup de bâton | 1,5 case |
+| Démoniste · Grimoire | Trait d’ombre | 7 cases |
+| Voleur · Dagues | Coup de dague | 1,5 case |
+| Chasseur · Arc | Flèche rapide | 8 cases |
 | Arme retirée | Coup de poing | 1,5 case |
 
-Le Guerrier utilise Lina, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, la distance (`7,5` cases) et le mana (`1,0/s` de base, régénération par Esprit réduite à `+0,14/s` par point afin d’imposer une vraie gestion du mana). Le portrait et le personnage suivent la même classe. Les apparences et les planches de marche existantes sont conservées.
+Le Guerrier utilise un atlas d’armure dédié, la mêlée et l’énergie (`2,0/s` de base). Le Mage utilise Noé, la distance (`7,5` cases) et le mana (`1,0/s` de base, régénération par Esprit réduite à `+0,14/s` par point afin d’imposer une vraie gestion du mana). Le portrait et le personnage suivent la même classe.
+
+Le Démoniste choisit entre Affliction, Démonologie et Destruction. Corruption et Agonie coexistent. Immolation s’incante en 1 s, Trait du chaos en 1,5 s et Drain de vie pulse quatre fois sur 2 s. Le diablotin attaque à distance, la succube ralentit et le marcheur du Vide détourne l’ennemi ordinaire qu’il engage. Le Voleur choisit Assassinat, Combat ou Subterfuge. Le Chasseur choisit Précision, Survie ou Fauconnerie. La Dextérité renforce leurs armes principales. Le Guerrier investit en Défense contre les dégâts physiques et apprend Provocation et Rempart dans Protection.
 
 L’arme ne change que l’auto-attaque : un Mage au bâton peut toujours lancer Boule de feu à distance. L’attaque de base reste disponible sans mana ; Attaque chargée coûte 10 d’énergie, tandis que Boule de feu coûte 18 de mana avec une incantation de 1,0 s. Les talents peuvent réduire les coûts et délais. La cadence de base est de 500 ms, avec préparation, effets visuels enrichis, secousses de caméra mesurées et impact ; aucune seconde attaque de base ne part pendant l’attaque en cours.
 

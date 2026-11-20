@@ -1,4 +1,6 @@
 import { createCombatVfx, drawInfernoBeam } from './combat-vfx.js';
+import { classAttacks } from './class-talents.js';
+import { applyTechnique, classEffect, dismissFamiliar, updateClassCombat } from './class-combat.js';
 import {
     createMalakorTrial, isMalakorWaveHit, malakorEmberMs, malakorFirstTrialDelay, malakorIgnitionMs,
     malakorPhases, malakorRageProgress, malakorSurgeMs, malakorThresholds, malakorTrialInterval, malakorWave, malakorWaveImpactMs,
@@ -44,6 +46,8 @@ const sparks = [
 ];
 
 const statLabels = {
+    dexterity: 'Dextérité',
+    defense: 'Défense',
     strength: 'Force',
     intelligence: 'Intelligence',
     vitality: 'Vitalité',
@@ -115,7 +119,7 @@ export class TrainingCombat {
         this.rules = rules;
         this.classKey = rules.classKey ?? (rules.ranged ? 'mage' : 'warrior');
         this.progressKey = 'pixelforever:progress:' + rules.progressKey;
-        this.progress = loadProgress(this.progressKey, rules.level, rules.progress);
+        this.progress = loadProgress(this.progressKey, rules.level, rules.progress, this.classKey);
         this.progressSync = createProgressSync(rules.progressUrl, rules.progressToken, state => {
             const status = document.getElementById('progress-save-status');
             status.dataset.state = state;
@@ -317,6 +321,9 @@ export class TrainingCombat {
      * Réinitialise l'affrontement sans effacer la progression sauvegardée du personnage.
      */
     reset() {
+        dismissFamiliar(this);
+        this.periodicEffects?.clear();
+        this.guard = null;
         this.manaCarry = 0;
         this.spellCooldowns.clear();
         this.berserkUntil = 0;
@@ -371,7 +378,7 @@ export class TrainingCombat {
             return;
         }
 
-        // Gestion des slots 3..6 liés aux talents
+        // Les emplacements suivants reçoivent les techniques actives des talents.
         if (kind.startsWith('talent-')) {
             const slotIndex = Number(kind.split('-')[1]);
             const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
@@ -396,6 +403,10 @@ export class TrainingCombat {
         }
 
         const special = kind === 'special';
+        if (special && this.classKey === 'hunter' && !this.equipped) {
+            this.tell('Équipe un arc pour tirer.');
+            return;
+        }
         const ranged = special ? this.ranged : this.basicWeapon.ranged;
         const range = special ? this.range : this.basicWeapon.range;
         const dist = this.distanceTo(target);
@@ -434,7 +445,8 @@ export class TrainingCombat {
         const specialCastMs = special && ranged ? (this.rules.specialCastMs ?? 210) : 0;
         const castMs = ranged ? (special ? specialCastMs : 180) : 0;
         const flightMs = castMs >= 500 ? 260 : (special ? 170 : 150);
-        const duration = ranged ? castMs + flightMs : (special ? 480 : 140);
+        const axe = this.weaponStyle === 'axe';
+        const duration = ranged ? castMs + flightMs : (special ? 480 : axe ? 220 : 140);
         const angle = Math.atan2(target.sprite.y - this.scene.position.y, target.sprite.x - this.scene.position.x);
 
         const attack = {
@@ -447,6 +459,9 @@ export class TrainingCombat {
             special,
             armed: this.equipped,
             staff: this.classKey === 'mage' && this.progress.weapon === 'rare',
+            weaponStyle: this.weaponStyle,
+            projectile: classAttacks[this.classKey]?.projectile,
+            technique: special ? classAttacks[this.classKey]?.special : null,
             angle,
             facing: this.scene.facing,
             start: now,
@@ -531,6 +546,10 @@ export class TrainingCombat {
      */
     castTalentSpell(talent, now) {
         if (this.mustDodgeMalakor()) return;
+        if (this.pending?.kind === 'classCast') {
+            this.tell('Une incantation est déjà en cours.');
+            return;
+        }
         const cdInfo = this.spellCooldowns.get(talent.slot);
         if (cdInfo && now < cdInfo.end) {
             const left = ((cdInfo.end - now) / 1000).toFixed(1);
@@ -553,6 +572,47 @@ export class TrainingCombat {
         const cdFactor = 1 - (this.stats.cooldownReduction ?? 0);
         const cdMs = Math.round((talent.cooldownMs ?? 4500) * cdFactor);
         const berserkMult = now < this.berserkUntil ? 1.4 : 1;
+
+        if (talent.technique) {
+            const technique = talent.technique;
+            const target = technique.range ? this.getActiveTarget() : null;
+            if (technique.range && (!target?.isAlive || this.distanceTo(target) > technique.range * this.tileSize)) {
+                this.tell('Aucune cible à portée pour ' + talent.name + '.');
+                return;
+            }
+            if (technique.radius && !this.monsters.some(monster => monster.isAlive && !monster.trial
+                && Math.hypot(monster.sprite.x - (target?.sprite.x ?? this.scene.position.x),
+                    monster.sprite.y - (target?.sprite.y ?? this.scene.position.y)) <= technique.radius)) {
+                this.tell('Aucun ennemi dans la zone de ' + talent.name + '.');
+                return;
+            }
+            if (technique.castMs && this.pending) {
+                this.tell('Une attaque ou une incantation est déjà en cours.');
+                return;
+            }
+            this.mana -= manaCost;
+            const { x, y } = this.scene.position;
+            if (target) this.scene.face(target.sprite.x - x, target.sprite.y - y);
+            const angle = target ? Math.atan2(target.sprite.y - y, target.sprite.x - x) : 0;
+            if (technique.castMs) {
+                this.pending = this.attackVisual = { kind: 'classCast', talent, target, manaCost, cdMs, angle,
+                    damage: this.stats.specialDamage * berserkMult, ranged: true, facing: this.scene.facing,
+                    weaponStyle: 'grimoire', name: talent.name, start: now, end: now + technique.castMs,
+                    castMs: technique.castMs, nextPulse: now + (technique.channel ?? technique.castMs), interruptible: true };
+                this.refreshCastBar(now);
+                this.refreshVitals();
+                this.tell(talent.name + '…');
+                return;
+            }
+            this.setSlotCooldown(talent.slot, now, cdMs);
+            this.attackVisual = { start: now - 1, end: now, castMs: 1, ranged: technique.range > 3,
+                facing: this.scene.facing, weaponStyle: technique.guard ? 'shield' : this.weaponStyle };
+            applyTechnique(this, technique, target, this.stats.specialDamage * berserkMult, talent.name, now, angle, talent.slot);
+            this.triggerShake(technique.power > 1.3 ? 'medium' : 'small');
+            this.refreshVitals();
+            if (!technique.power) this.tell(talent.name + ' activé.');
+            return;
+        }
 
         // Sort d'amélioration personnelle : Berserk
         if (talent.slot === 'berserk') {
@@ -697,6 +757,9 @@ export class TrainingCombat {
             this.setSlotCooldown(talent.slot, now, cdMs);
             target.stunUntil = now + (target.isBoss ? 500 : 2000);
             if (!target.trial) target.cancelAttack();
+            const { x, y } = this.scene.position;
+            this.scene.face(target.sprite.x - x, target.sprite.y - y);
+            this.attackVisual = { start: now - 1, end: now, ranged: false, facing: this.scene.facing, weaponStyle: 'shield' };
             this.spellEffects?.push?.({
                 kind: 'shield_wave',
                 x: target.sprite.x,
@@ -780,6 +843,7 @@ export class TrainingCombat {
             }
         }
 
+        if (this.pending?.kind === 'classCast') this.updateClassCast(now);
         if (this.pending && now >= this.pending.end) {
             const attack = this.pending;
             this.pending = null;
@@ -789,6 +853,7 @@ export class TrainingCombat {
                 this.resolveAttack(attack, now);
             }
         }
+        if (this.familiar || this.periodicEffects?.size) updateClassCombat(this, now, delta);
 
         if (this.health > 0 && this.mana < this.meters[1].meter.max) {
             const regenerated = regenerateResource(
@@ -811,7 +876,7 @@ export class TrainingCombat {
             if (this.health > 0) {
                 this.updateMonsterCounter(monster, now);
             }
-            monster.update(now, delta, this.scene.position);
+            monster.update(now, delta, this.guardianFor(monster)?.actor ?? this.scene.position);
         }
 
         // Teinte visuelle de Berserk sur l'avatar
@@ -863,6 +928,29 @@ export class TrainingCombat {
         }
     }
 
+    updateClassCast(now) {
+        const cast = this.pending;
+        const { talent, target } = cast;
+        const technique = talent.technique;
+        if (!target.isAlive || target.trial || this.mustDodgeMalakor() || this.distanceTo(target) > technique.range * this.tileSize) {
+            this.mana = Math.min(this.stats.maxMana, this.mana + cast.manaCost);
+            this.pending = this.attackVisual = null;
+            this.refreshVitals();
+            this.tell('Incantation interrompue · cible hors de portée.');
+            return;
+        }
+        while (cast.nextPulse <= cast.end && cast.nextPulse <= now && target.isAlive && !target.trial) {
+            if (cast.manaCost > 0) this.setSlotCooldown(talent.slot, now, cast.cdMs);
+            cast.manaCost = 0;
+            applyTechnique(this, technique, target, cast.damage, talent.name, now, cast.angle, talent.slot);
+            cast.nextPulse += technique.channel ?? technique.castMs;
+        }
+        if (cast.nextPulse > cast.end || !target.isAlive || target.trial) {
+            this.pending = null;
+            if (technique.channel) this.attackVisual = null;
+        }
+    }
+
     /**
      * Consomme une potion de vie ou de mana/énergie.
      */
@@ -904,7 +992,7 @@ export class TrainingCombat {
      * Équipe ou retire l'arme sélectionnée et recalcule aussitôt les dégâts du personnage.
      */
     toggleWeapon(weapon) {
-        if (!['starter', 'rare', 'epic'].includes(weapon) || (weapon !== 'starter' && !this.progress.items[weapon])) {
+        if (!this.hasWeapon(weapon)) {
             return 'Cette arme est absente du sac.';
         }
 
@@ -920,7 +1008,7 @@ export class TrainingCombat {
         const previousMaxHealth = this.stats.maxHealth;
         const previousMaxMana = this.stats.maxMana;
 
-        if (!allocateStat(this.progress, stat)) {
+        if (!allocateStat(this.progress, stat, this.classKey)) {
             return 'Aucun point de caractéristique disponible.';
         }
 
@@ -989,6 +1077,7 @@ export class TrainingCombat {
         if (refunded === 0) {
             return 'Aucun talent à réinitialiser.';
         }
+        if (this.familiar?.kind !== 'imp') dismissFamiliar(this);
         saveProgress(this.progressKey, this.progress);
         this.refreshProgress();
         this.health = Math.min(this.health, this.stats.maxHealth);
@@ -1010,13 +1099,13 @@ export class TrainingCombat {
         this.weaponButtons.forEach((button) => {
             const weapon = button.dataset.weapon;
             button.textContent = weapon === this.progress.weapon ? 'Retirer' : 'Équiper';
-            button.disabled = weapon !== 'starter' && !this.progress.items[weapon];
+            button.disabled = !this.hasWeapon(weapon);
         });
 
         this.weaponStates.forEach((state) => {
             const weapon = state.dataset.weaponState;
             const equipped = weapon === this.progress.weapon;
-            state.textContent = weapon === 'starter'
+            state.textContent = weapon === 'starter' || weapon === 'axe'
                 ? (equipped ? 'Équipé · +' + this.rules.weaponBonus + ' dégâts de base' : 'Dans le sac')
                 : (equipped ? '· Équipé' : '');
         });
@@ -1028,7 +1117,7 @@ export class TrainingCombat {
                 this.armorList.replaceChildren(...owned.map((piece) => {
                     const item = document.createElement('li');
                     const icon = document.createElement('img');
-                    icon.src = this.scene.armorIconPath + piece.id + '.png';
+                    icon.src = this.scene.armorIconPath + (piece.icon ?? piece.id) + '.png';
                     icon.alt = '';
                     icon.className = 'armor-icon';
                     const description = document.createElement('div');
@@ -1057,6 +1146,11 @@ export class TrainingCombat {
         }
 
         this.basicLabel.textContent = this.basicName;
+        const icon = this.buttons[0].querySelector('.action-icon');
+        if (icon) {
+            const style = this.weaponStyle;
+            icon.className = 'action-icon icon-' + (['axe', 'daggers', 'bow', 'grimoire'].includes(style) ? style : this.rules.basicIcon ?? 'sword');
+        }
         this.buttons[0].title = this.basicName
             + ' · ' + this.basicWeapon.damage + ' dégâts'
             + ' · Portée : ' + this.basicRangeLabel;
@@ -1064,6 +1158,7 @@ export class TrainingCombat {
 
     get basicName() {
         if (!this.equipped) return 'Coup de poing';
+        if (this.weaponStyle === 'axe') return 'Coup de hache';
         if (this.classKey === 'mage') return this.basicWeapon.ranged ? 'Trait de baguette' : 'Coup de bâton';
         return this.rules.basicName;
     }
@@ -1072,19 +1167,31 @@ export class TrainingCombat {
         return this.progress.weapon !== null;
     }
 
+    hasWeapon(weapon) {
+        if (weapon === 'axe') return this.classKey === 'warrior';
+        return weapon === 'starter' || (['rare', 'epic'].includes(weapon) && this.progress.items[weapon] > 0);
+    }
+
+    get weaponStyle() {
+        if (!this.equipped) return 'fist';
+        if (this.progress.weapon === 'axe') return 'axe';
+        return { warrior: 'sword', rogue: 'daggers', hunter: 'bow', warlock: 'grimoire', mage: 'wand' }[this.classKey];
+    }
+
     get weaponBonus() {
         const weapon = this.progress.weapon;
-        if (weapon === 'starter') {
+        if (weapon === 'starter' || weapon === 'axe') {
             return this.rules.weaponBonus;
         }
-        return this.rules.loot[weapon]?.bonus ?? 0;
+        return this.rules.loot?.[weapon]?.bonus ?? 0;
     }
 
     get equippedWeaponName() {
         const weapon = this.progress.weapon;
         if (weapon === null) return 'Mains nues';
-        if (weapon === 'starter') return this.ranged ? 'Baguette de braise' : 'Épée de fer';
-        return this.rules.loot[weapon]?.name ?? 'Aucune';
+        if (weapon === 'axe') return 'Hache de fer';
+        if (weapon === 'starter') return this.rules.weaponName ?? (this.ranged ? 'Baguette de braise' : 'Épée de fer');
+        return this.rules.loot?.[weapon]?.name ?? 'Aucune';
     }
 
     /**
@@ -1094,6 +1201,7 @@ export class TrainingCombat {
         const unlocked = getUnlockedActiveSpells(this.progress, this.classKey);
         this.talentSlotButtons.forEach((button, index) => {
             const talent = unlocked[index];
+            button.hidden = index >= 4 && !talent;
             const iconEl = button.querySelector('.action-icon');
             const nameEl = button.querySelector('.slot-name');
             const metaEl = button.querySelector('.slot-meta');
@@ -1363,7 +1471,16 @@ export class TrainingCombat {
             return;
         }
 
-        if (attack.special) {
+        if (attack.technique) {
+            applyTechnique(this, attack.technique, target, attack.damage, attack.name, now, attack.angle, 'special');
+            this.triggerShake('small');
+            return;
+        }
+        if (attack.projectile && attack.ranged) {
+            classEffect(this, attack.projectile === 'arrow' ? 'arrow_hit' : 'chaos',
+                { x: target.sprite.x, y: target.sprite.y - 13 }, now, attack.angle, .52, 380);
+        }
+        if (attack.special && attack.weaponStyle !== 'axe') {
             this.spellEffects?.push?.({
                 kind: attack.ranged ? 'fireball_burst' : 'heavy_slash',
                 x: target.sprite.x,
@@ -1378,6 +1495,7 @@ export class TrainingCombat {
         }
 
         this.applyDamageToMonster(target, attack.damage, attack.name, attack.color, now, Boolean(attack.special));
+        if (this.familiar && target.isAlive) this.familiar.target = target;
     }
 
     applyDamageToMonster(monster, rawDamage, attackName, color, now, isSpecial = false) {
@@ -1427,6 +1545,8 @@ export class TrainingCombat {
      */
     defeatMonster(monster, now) {
         if (!monster.sprite.visible) return;
+        this.periodicEffects?.delete(monster);
+        if (this.familiar?.target === monster) this.familiar.target = null;
         monster.hide();
         monster.respawnAt = now + monster.template.respawnMs;
 
@@ -1516,11 +1636,19 @@ export class TrainingCombat {
         monster.trial.lastImpact = wave.index;
         this.spellEffects.push({ kind: 'inferno_wake', zone: monster.template.zone, wave, start: now, duration: malakorEmberMs });
         this.triggerShake('medium');
-        if (isMalakorWaveHit(wave, this.scene.position)) this.takeMonsterHit(monster, monster.phase === 3 ? 570 : 385, now);
+        if (isMalakorWaveHit(wave, this.scene.position)) this.takeMonsterHit(monster, monster.phase === 3 ? 570 : 385, now, false);
     }
 
-    takeMonsterHit(monster, damage, now) {
-        const taken = Math.max(1, Math.round(damage * (1 - (this.stats.damageReduction ?? 0))));
+    takeMonsterHit(monster, damage, now, physical = true) {
+        const blocking = now < (this.guard?.until ?? 0);
+        const protection = (1 - (this.stats.damageReduction ?? 0))
+            * (1 - (physical ? this.stats.physicalMitigation ?? 0 : 0))
+            * (blocking ? .65 : 1) * (this.familiar?.kind === 'void' ? .88 : 1);
+        const taken = Math.max(1, Math.round(damage * protection));
+        if (blocking) {
+            classEffect(this, 'bulwark', { x: this.scene.position.x, y: this.scene.position.y - 15 }, now);
+            if (this.guard.oneHit) this.guard = null;
+        }
         this.health = Math.max(0, this.health - taken);
         this.impacts.push({ x: this.scene.position.x, y: this.scene.position.y - 17, color: 0xf78863, start: now });
         this.refreshVitals();
@@ -1563,9 +1691,15 @@ export class TrainingCombat {
         const specialVisual = monster.attackVisual?.special ? monster.attackVisual : null;
         if (shot || monster.attackEndsAt) {
             if (!shot && now < monster.attackEndsAt) return;
+            const guardian = monster.attackDefender;
+            if (guardian && guardian !== this.familiar) {
+                monster.cancelAttack();
+                return;
+            }
+            const defender = guardian?.actor ?? this.scene.position;
             const rawDamage = typeof monster.attackDamage === 'function' ? monster.attackDamage() : monster.stats.damage;
-            const outcome = shot ? monster.advanceBreath(now, this.scene.position)
-                : monster.canAttack(this.scene.position) ? 'hit' : 'miss';
+            const outcome = shot ? monster.advanceBreath(now, defender)
+                : monster.canAttack(defender) ? 'hit' : 'miss';
             if (outcome === 'travel') return;
 
             if (specialVisual) {
@@ -1607,17 +1741,35 @@ export class TrainingCombat {
             }
 
             if (!specialVisual) this.triggerShake(monster.isBoss || monster.species === 'dragon' ? 'medium' : 'small');
-            this.takeMonsterHit(monster, rawDamage, now);
+            if (guardian) {
+                guardian.health -= rawDamage;
+                classEffect(this, 'chaos', { x: defender.x, y: defender.y - 12 }, now, 0, .44);
+                if (guardian.health <= 0) {
+                    dismissFamiliar(this);
+                    this.tell('Le marcheur du Vide a été dissipé.');
+                }
+            } else {
+                this.takeMonsterHit(monster, rawDamage, now, !shot && specialVisual?.special !== 'magma_rift');
+            }
             return;
         }
 
-        if (now >= monster.counterAt && monster.canAttack(this.scene.position)) {
-            monster.startAttack(this.scene.position, now);
+        const guardian = this.guardianFor(monster);
+        const defender = guardian?.actor ?? this.scene.position;
+        if (now >= monster.counterAt && monster.canAttack(defender)) {
+            monster.attackDefender = guardian;
+            monster.startAttack(defender, now);
             const interval = typeof monster.currentAttackIntervalMs === 'function'
                 ? monster.currentAttackIntervalMs()
                 : monster.stats.attackIntervalMs;
             monster.counterAt = now + interval;
         }
+    }
+
+    guardianFor(monster) {
+        const pet = this.familiar;
+        return pet?.kind === 'void' && !monster.isBoss && pet.target === monster && this.distanceTo(monster) < 130
+            && inZone(monster.template.zone, pet.actor.x, pet.actor.y) ? pet : null;
     }
 
     /**
@@ -1669,7 +1821,11 @@ export class TrainingCombat {
         }
 
         const attack = this.pending;
-        if (attack.kind === 'talentCast') {
+        if (attack.kind === 'classCast' && attack.talent.technique.channel) {
+            this.drawDrain(attack, now, still);
+            return;
+        }
+        if (attack.kind === 'talentCast' || attack.kind === 'classCast') {
             this.drawCastCircle(now, attack.start, attack.castMs);
             return;
         }
@@ -1692,7 +1848,7 @@ export class TrainingCombat {
             const angle = Math.atan2(target.sprite.y - 12 - attack.y, target.sprite.x - attack.x);
             const released = elapsed >= attack.castMs;
             const size = attack.special ? .84 : .43;
-            this.vfx?.play(attack.special ? 'firebolt' : 'arcane', x, y,
+            this.vfx?.play(attack.projectile ?? (attack.special ? 'firebolt' : 'arcane'), x, y,
                 still ? .4 : (elapsed % 220) / 220, released ? size : size * .44, angle, released ? .94 : .78);
         } else {
             this.drawMelee(attack, progress, true);
@@ -1705,6 +1861,16 @@ export class TrainingCombat {
             this.scene.motionPreference.matches ? .42 : progress, .78, 0, .75 + .19 * progress);
     }
 
+    drawDrain(cast, now, still) {
+        const { x, y } = this.scene.position;
+        const dx = cast.target.sprite.x - x;
+        const dy = cast.target.sprite.y - y + 4;
+        const phase = still ? .42 : ((now - cast.start) % 500) / 500;
+        this.vfx?.play('drain', x + dx / 2, y - 16 + dy / 2, phase, .72, Math.atan2(dy, dx),
+            .84, Math.max(.14, Math.hypot(dx, dy) / 80));
+        this.vfx?.play('curse', cast.target.sprite.x, cast.target.sprite.y - 12, phase, .64, 0, .85);
+    }
+
     drawSpellEffects(now) {
         if (!this.vfx) return;
         const still = this.scene.motionPreference.matches;
@@ -1714,6 +1880,16 @@ export class TrainingCombat {
             const alpha = .97 * (1 - Math.max(0, (progress - .52) / .48));
             const radius = fx.radius ?? 42;
             switch (fx.kind) {
+            case 'class_vfx':
+                this.vfx.play(fx.row, fx.x, fx.y, pose, fx.size, fx.angle, alpha);
+                break;
+            case 'familiar_bolt': {
+                if (!fx.target.isAlive) break;
+                const dx = fx.target.sprite.x - fx.x;
+                const dy = fx.target.sprite.y - 12 - fx.y;
+                this.vfx.play('firebolt', fx.x + dx * progress, fx.y + dy * progress, pose, .49, Math.atan2(dy, dx), .96);
+                break;
+            }
             case 'arcane_beam': {
                 const dx = fx.targetX - fx.x;
                 const dy = fx.targetY - fx.y;
@@ -2043,6 +2219,12 @@ export class TrainingCombat {
         const x = this.scene.position.x + Math.cos(attack.angle) * 4;
         const y = this.scene.position.y - 17;
         const blade = attack.armed && !attack.staff;
+        if (!windingUp && ['axe', 'daggers'].includes(attack.weaponStyle)) {
+            this.vfx?.play(attack.weaponStyle === 'axe' ? 'axe_swing' : 'dagger', x, y,
+                this.scene.motionPreference.matches ? .42 : Math.min(.999, .17 + progress * .83),
+                attack.special ? .98 : .69, attack.angle, 1 - progress * .35);
+            return;
+        }
         if (windingUp && (!blade || !attack.special || progress < .34)) return;
         if (windingUp) {
             this.vfx?.play('rune', x + Math.cos(attack.angle) * 7, y + 3, progress, .35, 0, .39);

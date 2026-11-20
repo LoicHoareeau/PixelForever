@@ -38,7 +38,7 @@ Le test des comptes utilise une base SQLite temporaire et requiert `pdo_sqlite` 
 
 ## Version jouable actuelle
 
-- Deux classes : Guerrier (Lina) et Mage (Noé). Leurs apparences et animations de marche sont conservées.
+- Cinq classes jouables, avec le Guerrier en armure, le Mage, le Démoniste, le Voleur et le Chasseur.
 - Carte plein écran de 256 × 252 tuiles de 16 px, caméra suiveuse et zoom ×1 sur les écrans usuels. Les falaises délimitent le littoral.
 - Sangliers N.1–5, squelettes N.5–10 et dragons N.10–20. À l’est des montagnes, le chemin traverse les Terres dévastées (N.21–35) et rejoint Malakor (N.40). Au sud du Trône d’Obsidienne, une route côtière relie le Marais des Scories, les Remparts de Basalte et le Cap du Gouffre (N.41–60).
 - Le cimetière mêle pavés usés, mausolées sculptés, stèles moussues et saules à lichen. Les Terres dévastées alternent cendre striée, basalte, arbres calcinés et arches incandescentes. Les textures se fondent dans le terrain voisin.
@@ -60,6 +60,8 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 
 L’attaque de base ne consomme pas de ressource. Le bâton ne transforme pas les sorts du mage en coups de mêlée : Boule de feu garde sa portée de 5 cases. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent uniquement les auto-attaques à la baguette. La seconde exige la maîtrise et cinq points dans Arcanes.
 
+Le Démoniste combine des malédictions périodiques, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité, et le Guerrier peut investir en Défense et équiper la hache depuis le sac.
+
 Les sorts de zone du Mage se lancent également à distance : Tourbillon de feu et Nova de givre sont centrés sur la cible sélectionnée, pas sur le mage. L’arme équipée ne réduit la portée d’aucun sort.
 
 Le Guerrier commence avec 60 PV / 20 énergie, le Mage avec 40 PV / 40 mana. L’arme de départ ajoute 4 dégâts de base ; les armes rares et épiques ajoutent 7 et 11. Le niveau, les caractéristiques, les rangs et les talents modifient ensuite les statistiques.
@@ -74,7 +76,7 @@ Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipé
 
 ## Commandes
 
-Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence principale, `3`–`6` sorts de talents débloqués, `R` potion de vie, `F` potion de ressource, `C` fiche, `T` talents, `I` inventaire, `E` dialogue du PNJ à proximité. Les touches d’action utilisent les positions physiques de la rangée supérieure, sans Maj sur AZERTY. Le clic sélectionne un monstre.
+Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence principale, `3`–`9` techniques disponibles selon la classe, `R` potion de vie, `F` potion de ressource, `C` fiche, `T` talents, `I` inventaire, `E` dialogue du PNJ à proximité. Les touches d’action utilisent les positions physiques de la rangée supérieure, sans Maj sur AZERTY. Le clic sélectionne un monstre.
 
 ## Périmètre restant
 

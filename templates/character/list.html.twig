@@ -10,16 +10,16 @@
         </div>
 
         {% if characters is empty %}
-            <p class="empty">Crée ton premier Guerrier ou Mage pour commencer.</p>
+            <p class="empty">Crée ton premier personnage pour commencer.</p>
         {% else %}
             <ul class="roster">
                 {% for character in characters %}
                     {% set class = character.class %}
                     {% set stats = class.baseStats %}
-                    {% set resourceLabel = class.value == 'warrior' ? 'Énergie' : 'Mana' %}
+                    {% set resourceLabel = class.resourceName %}
 
                     <li class="roster-item {{ class.value }}{% if character.id == selectedId %} selected{% endif %}">
-                        <span class="class-icon" aria-hidden="true">{{ class.value == 'warrior' ? '⚔' : '✦' }}</span>
+                        <span class="class-icon" aria-hidden="true">{{ class.icon }}</span>
                         <div class="character-name">
                             <strong>{{ character.name }}</strong>
                             <small>{{ class.label }} · Niveau {{ character.level }}</small>
@@ -27,6 +27,8 @@
                                 Base de classe : {{ class.maxHealth }} PV · {{ class.maxMana }} {{ resourceLabel }} ·
                                 FOR {{ stats.strength }} · INT {{ stats.intelligence }} ·
                                 VIT {{ stats.vitality }} · ESP {{ stats.spirit }}
+                                {% if stats.dexterity is defined %} · DEX {{ stats.dexterity }}{% endif %}
+                                {% if stats.defense is defined %} · DÉF {{ stats.defense }}{% endif %}
                             </small>
                         </div>
                         <form method="post" action="{{ path('character_select', {id: character.id}) }}">

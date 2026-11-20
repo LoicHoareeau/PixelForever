@@ -802,6 +802,24 @@ body.game-fullscreen .masthead {
     gap: .26rem;
 }
 
+.action-slot[hidden] {
+    display: none;
+}
+
+.action-icon.icon-axe,
+.action-icon.icon-daggers,
+.action-icon.icon-bow,
+.action-icon.icon-grimoire {
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.action-icon.icon-axe { background-image: url("game/val-des-saules/items/axe.png"); }
+.action-icon.icon-daggers { background-image: url("game/val-des-saules/items/daggers.png"); }
+.action-icon.icon-bow { background-image: url("game/val-des-saules/items/bow.png"); }
+.action-icon.icon-grimoire { background-image: url("game/val-des-saules/items/grimoire.png"); }
+
 .potion-slots {
     padding-left: .35rem;
     border-left: 1px solid #55473a;

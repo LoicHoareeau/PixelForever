@@ -16,6 +16,18 @@ export const armorItems = Object.fromEntries(sets.flatMap(({ level, name }, tier
         stats: { health: 70 + tier * 20, mana: 14 + tier * 8 } },
     { classKey: 'mage', slot: 'hands', name: 'Mitaine runique ' + name,
         stats: { basic: 8 + tier * 4, special: 19 + tier * 7 } },
+    { classKey: 'warlock', slot: 'head', name: 'Capuche de pacte ' + name, icon: 'mage-head-' + level,
+        stats: { health: 70 + tier * 20, mana: 14 + tier * 8 } },
+    { classKey: 'warlock', slot: 'hands', name: 'Gants de conjuration ' + name, icon: 'mage-hands-' + level,
+        stats: { basic: 8 + tier * 4, special: 19 + tier * 7 } },
+    { classKey: 'rogue', slot: 'head', name: 'Masque ' + name, icon: 'mage-head-' + level,
+        stats: { health: 54 + tier * 18, mitigation: .04 + tier * .02 } },
+    { classKey: 'rogue', slot: 'hands', name: 'Protège-mains ' + name, icon: 'warrior-hands-' + level,
+        stats: { basic: 10 + tier * 5, special: 14 + tier * 6 } },
+    { classKey: 'hunter', slot: 'head', name: 'Coiffe de pisteur ' + name, icon: 'mage-head-' + level,
+        stats: { health: 60 + tier * 19, mana: 10 + tier * 6 } },
+    { classKey: 'hunter', slot: 'hands', name: 'Gants d’archer ' + name, icon: 'warrior-hands-' + level,
+        stats: { basic: 10 + tier * 5, special: 14 + tier * 6 } },
 ].map((piece) => {
     const id = [piece.classKey, piece.slot, level].join('-');
     return [id, { ...piece, id, level }];
