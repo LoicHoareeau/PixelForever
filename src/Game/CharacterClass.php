@@ -53,7 +53,23 @@ enum CharacterClass: string
     {
         return match ($this) {
             self::Warrior => 1.5,
-            self::Mage => 5.0,
+            self::Mage => 7.5,
+        };
+    }
+
+    public function specialManaCost(): int
+    {
+        return match ($this) {
+            self::Warrior => Character::SPECIAL_MANA_COST,
+            self::Mage => 18,
+        };
+    }
+
+    public function specialCastMs(): int
+    {
+        return match ($this) {
+            self::Warrior => 0,
+            self::Mage => 1000,
         };
     }
 
@@ -116,6 +132,9 @@ enum CharacterClass: string
      */
     public function baseManaRegen(): float
     {
-        return 2.0;
+        return match ($this) {
+            self::Warrior => 2.0,
+            self::Mage => 1.0,
+        };
     }
 }

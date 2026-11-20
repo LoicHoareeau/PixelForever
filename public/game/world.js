@@ -4,6 +4,7 @@ import { Monster } from './monsters.js';
 import { monsterArt } from './monster-art.js';
 import { buildTerrain, cameraZoom, coastalLookouts, columns, groundWalkable, inZone, questNpc, rows, tileSize, zones } from './exploration.js';
 import { transitionZoneLabel } from './biome-gradient.js';
+import { CameraFeel } from './camera-feel.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
 
@@ -151,8 +152,10 @@ import { saveProgress } from './progression.js';
                 new Monster(this, 'fiend', tileSize, 2),
                 new Monster(this, 'fiend', tileSize, 4),
                 new Monster(this, 'fiend', tileSize, 5),
+                new Monster(this, 'breach_lord', tileSize, 0),
             ];
 
+            this.cameraFeel = new CameraFeel();
             this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);
             this.renderAvatar(this.time.now);
 
@@ -510,6 +513,8 @@ import { saveProgress } from './progression.js';
             this.refreshQuest();
             this.renderAvatar(time);
             this.animateClearing(time, this.motionPreference.matches);
+            const { offsetX, offsetY } = this.cameraFeel.update(delta, this.motionPreference.matches);
+            this.cameras.main.setFollowOffset(offsetX, offsetY);
             const zone = Object.values(zones).find(z => inZone(z, this.position.x, this.position.y))
                 ?? coastalLookouts.find(lookout => inZone(lookout, this.position.x, this.position.y));
             const label = document.getElementById('current-zone');
@@ -563,6 +568,9 @@ import { saveProgress } from './progression.js';
             }
             const traveled = Math.hypot(this.position.x - previousX, this.position.y - previousY);
             if (traveled > 0) {
+                if (traveled > 0.5) {
+                    this.combat?.cancelCastOnMove?.();
+                }
                 if (time - this.lastWalkAt >= 90) this.walkDistance = 0;
                 this.walkDistance += traveled;
                 this.lastWalkAt = time;

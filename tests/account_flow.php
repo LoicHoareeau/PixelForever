@@ -126,6 +126,7 @@ try {
     check(htmlValue($warriorPage, '//div[@id="world"]/@data-skin') === 'lina', 'La guerrière doit utiliser les animations d’épée de Lina.');
     check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/lina/south.png'), 'Le portrait de la guerrière doit correspondre à son sprite.');
     check($warriorRules['classKey'] === 'warrior' && !$warriorRules['ranged'] && $warriorRules['range'] === 1.5, 'La guerrière doit combattre au corps à corps.');
+    check($warriorRules['specialManaCost'] === 10 && $warriorRules['baseManaRegen'] == 2.0 && $warriorRules['specialCastMs'] === 0, 'Le barème d’énergie et d’attaque de la guerrière doit rester intact.');
     check($warriorRules['resourceName'] === 'Énergie' && $warriorRules['specialName'] === 'Attaque chargée', 'La guerrière doit conserver son énergie et ses compétences de mêlée.');
     check($warriorRules['initialStatPoints'] === 0 && $warriorRules['initialSpellPoints'] === 0, 'Aucun point gratuit au niveau 1.');
     check($warriorRules['progress'] === ['level' => 1, 'xp' => 0], 'La base doit initialiser le personnage au niveau 1.');
@@ -143,7 +144,8 @@ try {
     $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
     check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
     check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
-    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5, 'Le mage doit combattre à distance.');
+    check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 7.5, 'Le mage doit combattre à distance étendue (7,5 cases).');
+    check($mageRules['specialManaCost'] === 18 && $mageRules['baseManaRegen'] == 1.0 && $mageRules['specialCastMs'] === 1000, 'Le mage doit avoir sa régénération réduite, ses coûts relevés et son cast d’une seconde.');
     check($mageRules['resourceName'] === 'Mana' && $mageRules['specialName'] === 'Boule de feu', 'Le mage doit conserver son mana et ses sorts.');
     foreach ([$warriorRules, $mageRules] as $rules) {
         check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Le tirage du butin doit couvrir exactement 100 %.');

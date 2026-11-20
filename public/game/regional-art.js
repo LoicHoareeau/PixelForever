@@ -56,9 +56,9 @@ const propGroups = [
         placements: [
             [209, 79], [229, 79], [234, 86], [224, 102], [203, 88],
             [209, 121], [231, 127], [222, 145], [199, 132], [178, 129],
-            [148, 133], [144, 156], [161, 152], [190, 148],
-            // Arbres calcinés en lisière Montagnes -> Terres dévastées
-            [192, 91], [194, 112],
+            [148, 133], [144, 161], [161, 152], [190, 148],
+            // Arbres calcinés en lisière et pourtour du Trône d'Obsidienne
+            [192, 91], [194, 112], [87, 154], [87, 163],
         ],
         sizes: [55, 46, 62, 42],
         collision: 8,
@@ -66,8 +66,12 @@ const propGroups = [
     {
         atlas: 'wasteland-scenery',
         frame: 2,
-        placements: [[220, 86], [222, 132], [178, 151], [154, 139]],
-        sizes: [83, 69, 94, 78],
+        placements: [
+            [220, 86], [222, 132], [178, 151], [154, 139],
+            // Arches monumentales à l'entrée du Trône d'Obsidienne
+            [130, 152], [130, 163],
+        ],
+        sizes: [83, 69, 94, 78, 86, 86],
         collision: 23,
     },
     {
@@ -76,6 +80,7 @@ const propGroups = [
         placements: [
             [210, 99], [230, 107], [210, 135], [229, 142], [218, 152],
             [175, 140], [158, 137], [151, 151], [173, 154], [195, 101],
+            [90, 147], [118, 147], [90, 169], [118, 169],
         ],
         sizes: [38, 32, 41, 26],
         collision: 12,
@@ -237,6 +242,11 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
         // Lisières Montagnes -> Terres dévastées
         [[193, 98], [195, 100], [197, 99]],
         [[164, 121], [166, 123], [169, 122]],
+        // Fissures autour du Trône d'Obsidienne (hors parvis central)
+        [[92, 149], [95, 151], [93, 153]],
+        [[115, 149], [118, 151], [116, 154]],
+        [[91, 165], [94, 167], [96, 169]],
+        [[115, 165], [118, 167], [120, 168]],
     ];
 
     for (const fissure of fissures) {

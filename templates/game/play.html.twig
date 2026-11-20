@@ -48,7 +48,7 @@
         {
             key: 'spirit',
             label: 'Esprit',
-            effect: '+3 ' ~ resource ~ ' max et +0,4/s de régénération'
+            effect: warrior ? '+3 ' ~ resource ~ ' max et +0,4/s de régénération' : '+3 ' ~ resource ~ ' max et +0,14/s de régénération'
         }
     ] %}
 
@@ -116,6 +116,7 @@
                         <strong id="combat-target-name">Saphyr</strong>
                         <span id="combat-target-level" class="target-level-badge">Niv. 10</span>
                     </div>
+                    <small id="combat-target-phase" class="target-phase" hidden></small>
                     <label>
                         <meter
                             id="combat-target-health"
@@ -141,8 +142,15 @@
                 </div>
             </div>
 
-            {# Journal de combat flottant + bouton de résurrection #}
+            {# Journal de combat flottant, barre d'incantation et bouton de résurrection #}
             <div class="floating-feedback">
+                <div id="cast-bar" class="cast-bar" role="status" hidden>
+                    <div class="cast-bar-header">
+                        <strong id="cast-bar-name">Incantation</strong>
+                        <span id="cast-bar-time">1.0s</span>
+                    </div>
+                    <meter id="cast-bar-meter" max="100" value="0"></meter>
+                </div>
                 <p id="combat-status" role="status"></p>
                 <button
                     type="button"

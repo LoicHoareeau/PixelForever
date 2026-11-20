@@ -236,9 +236,10 @@ export const talentTrees = {
                         type: 'active',
                         slot: 'fire_wall',
                         icon: 'icon-firewall',
-                        manaCost: 10,
-                        cooldownMs: 5500,
-                        description: 'Sort actif : enflamme la zone autour de la cible et brûle les ennemis.',
+                        manaCost: 22,
+                        cooldownMs: 6000,
+                        castTimeMs: 1000,
+                        description: 'Sort actif (incantation 1 s) : enflamme la zone autour de la cible et brûle les ennemis.',
                     },
                     {
                         id: 'm_fire_whirl',
@@ -251,9 +252,10 @@ export const talentTrees = {
                         type: 'active',
                         slot: 'fire_whirl',
                         icon: 'icon-fire',
-                        manaCost: 14,
-                        cooldownMs: 8000,
-                        description: 'Sort actif : lance un tourbillon ardent autour de la cible à distance.',
+                        manaCost: 28,
+                        cooldownMs: 8500,
+                        castTimeMs: 1000,
+                        description: 'Sort actif (incantation 1 s) : lance un tourbillon ardent autour de la cible à distance.',
                     },
                 ],
             },
@@ -271,7 +273,7 @@ export const talentTrees = {
                         maxRank: 5,
                         type: 'passive',
                         icon: 'icon-arcane',
-                        description: '+6 Mana max et +0,4/s de régénération par rang.',
+                        description: '+6 Mana max et +0,25/s de régénération par rang.',
                     },
                     {
                         id: 'm_mana_efficiency',
@@ -305,8 +307,9 @@ export const talentTrees = {
                         type: 'active',
                         slot: 'arcane_blast',
                         icon: 'icon-arcane',
-                        manaCost: 7,
-                        cooldownMs: 3200,
+                        manaCost: 15,
+                        cooldownMs: 3600,
+                        castTimeMs: 0,
                         description: 'Sort actif : projectile arcanique rapide à portée étendue.',
                     },
                 ],
@@ -338,8 +341,9 @@ export const talentTrees = {
                         type: 'active',
                         slot: 'frost_nova',
                         icon: 'icon-frost',
-                        manaCost: 9,
-                        cooldownMs: 7000,
+                        manaCost: 20,
+                        cooldownMs: 7500,
+                        castTimeMs: 0,
                         description: 'Sort actif : frappe les ennemis autour de la cible à distance et les ralentit pendant 2,5 secondes.',
                     },
                     {
@@ -792,7 +796,9 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const talentBasicBonus = (t.w_sharp_blade ?? 0) * 2 + (t.m_ember ?? 0) * 2;
     const talentSpecialBonus = (t.w_sword_mastery ?? 0) * 4 + (t.m_pyroblast ?? 0) * 4;
     const talentSpecialMultiplier = 1 + (t.w_frenzy ?? 0) * 0.08;
-    const talentRegenBonus = (t.w_bloodlust ?? 0) * 0.5 + (t.m_clear_mind ?? 0) * 0.4;
+    const talentRegenBonus = classKey === 'mage'
+        ? (t.m_clear_mind ?? 0) * 0.25
+        : (t.w_bloodlust ?? 0) * 0.5;
     const cooldownReduction = Math.min(0.45, ((t.w_chain_strike ?? 0) + (t.m_cold_blood ?? 0)) * 0.08);
     const manaCostReduction = Math.min(0.45, (t.m_mana_efficiency ?? 0) * 0.1);
     const damageReduction = Math.min(0.45, (t.w_defensive_stance ?? 0) * 0.08 + (t.m_ice_armor ?? 0) * 0.05);
@@ -824,12 +830,18 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
         + talentSpecialBonus;
     const specialDamage = Math.round(rawSpecialDamage * talentSpecialMultiplier);
 
-    const baseRegen = rules.baseManaRegen ?? 2;
-    const rawRegen = baseRegen
-        + levelsGained * 0.3
-        + attributes.spirit.bonus * 0.4
-        + attributes.intelligence.bonus * 0.2
-        + talentRegenBonus;
+    const baseRegen = rules.baseManaRegen ?? (classKey === 'mage' ? 1 : 2);
+    const rawRegen = classKey === 'mage'
+        ? baseRegen
+            + levelsGained * 0.08
+            + attributes.spirit.bonus * 0.14
+            + attributes.intelligence.bonus * 0.04
+            + talentRegenBonus
+        : baseRegen
+            + levelsGained * 0.3
+            + attributes.spirit.bonus * 0.4
+            + attributes.intelligence.bonus * 0.2
+            + talentRegenBonus;
     const manaRegenPerSec = Math.round(rawRegen * 10) / 10;
 
     return {
