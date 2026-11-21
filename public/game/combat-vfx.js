@@ -102,6 +102,7 @@ export function createCombatVfx(scene, depth) {
     const pool = [];
     let used = 0;
     return {
+        images() { return pool.slice(0, used).filter(sprite => sprite.visible); },
         begin() {
             for (let index = 0; index < used; index++) pool[index].setVisible(false);
             used = 0;

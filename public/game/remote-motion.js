@@ -1,3 +1,5 @@
+import { interpolateVisuals } from './combat-visuals.js';
+
 export function interpolatePosition(start, end, fraction) {
     const t = Math.min(1, Math.max(0, fraction));
     return { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
@@ -11,21 +13,32 @@ export class RemoteMotion {
     jitter = 0;
     delay = 500;
 
-    push(state, time) {
+    constructor(cadence = 300) {
+        this.cadence = cadence;
+        this.interval = cadence;
+        this.delay = cadence === 50 ? 120 : 500;
+        this.networkDelay = 0;
+    }
+
+    push(state, time, receivedAt = time) {
         const previous = this.samples.at(-1);
         if (previous && time <= previous.time) return false;
         const teleported = previous && Math.hypot(state.x - previous.x, state.y - previous.y) > 160;
         if (teleported) {
             this.samples = []; this.actions.clear(); this.actionFloor = time;
-            this.rendered = null; this.playhead = undefined; this.delay = 500; this.interval = 300; this.jitter = 0;
+            this.rendered = null; this.playhead = undefined; this.delay = this.cadence === 50 ? 120 : 500; this.interval = this.cadence; this.jitter = 0;
         }
         else if (previous) {
             const gap = Math.min(2000, time - previous.time);
             this.jitter += (Math.abs(gap - this.interval) - this.jitter) * .15;
             this.interval += (gap - this.interval) * .15;
         }
+        if (this.cadence === 50) {
+            this.networkDelay = Math.max(this.networkDelay * .98, Math.max(0, receivedAt - time));
+            if (!this.samples.length) this.delay = Math.max(120, this.networkDelay + 100);
+        }
         this.samples.push({ ...state, time });
-        if (this.samples.length > 12) this.samples.shift();
+        if (this.samples.length > (this.cadence === 50 ? 40 : 12)) this.samples.shift();
         for (const action of Array.isArray(state.actions) ? state.actions : []) if (action[1] >= (this.actionFloor ?? -Infinity)) this.actions.set(action[0], action);
         while (this.actions.size > 24) this.actions.delete(this.actions.keys().next().value);
         for (const [id, action] of this.actions) if (time - action[1] > 6500) this.actions.delete(id);
@@ -35,7 +48,8 @@ export class RemoteMotion {
     sample(serverNow) {
         const dt = Math.max(0, Math.min(100, serverNow - (this.previousNow ?? serverNow)));
         this.previousNow = serverNow;
-        const desired = Math.max(500, Math.min(850, this.interval * 1.5 + this.jitter * 1.5));
+        const desired = this.cadence === 50 ? Math.max(120, Math.min(1000, this.networkDelay + this.interval * 2 + this.jitter * 2))
+            : Math.max(500, Math.min(850, this.interval * 1.5 + this.jitter * 1.5));
         this.delay += Math.max(-dt * .08, Math.min(dt * .08, desired - this.delay));
         const time = Math.max(this.playhead ?? -Infinity, serverNow - this.delay);
         this.playhead = time;
@@ -64,7 +78,8 @@ export class RemoteMotion {
             x = this.rendered.x + dx * follow; y = this.rendered.y + dy * follow;
         }
         this.rendered = { x, y };
-        return { x, y, state: a, time, action: this.actionAt(time) };
+        const state = b && a.visuals ? { ...a, visuals: interpolateVisuals(a.visuals, b.visuals, (time - a.time) / (b.time - a.time)) } : a;
+        return { x, y, state, time, action: this.actionAt(time) };
     }
 
     actionAt(time) {
