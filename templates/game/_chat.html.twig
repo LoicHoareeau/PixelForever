@@ -1,0 +1,34 @@
+<details id="game-chat" class="game-chat" open aria-label="Tchat des joueurs">
+    <summary>Tchat <span id="chat-count"></span></summary>
+    <div class="chat-content">
+        <div id="chat-log" class="chat-log" role="log" aria-label="Messages des joueurs" aria-relevant="additions" tabindex="0"></div>
+        <p id="chat-status" class="chat-status" role="status">Connexion au tchat…</p>
+        <div id="chat-party" class="chat-party"></div>
+        <div id="chat-invitation" hidden>
+            <span id="chat-invitation-text"></span>
+            <button type="button" id="chat-accept">Accepter</button>
+            <button type="button" id="chat-decline">Refuser</button>
+        </div>
+        <form id="chat-form" autocomplete="off">
+            <label for="chat-channel">Canal</label>
+            <select id="chat-channel" name="channel">
+                <option value="global">Global</option>
+                <option value="group">Groupe</option>
+                <option value="whisper">Chuchotement</option>
+                <option value="nearby">Proximité</option>
+            </select>
+            <label for="chat-target">Personnage (chuchoter / inviter)</label>
+            <input id="chat-target" name="target" list="chat-online" maxlength="60" placeholder="Nom ou Nom #numéro">
+            <datalist id="chat-online"></datalist>
+            <div class="chat-group-actions">
+                <button type="button" id="chat-invite">Inviter au groupe</button>
+                <button type="button" id="chat-leave" hidden>Quitter le groupe</button>
+            </div>
+            <label for="chat-input">Message</label>
+            <div class="chat-send">
+                <input id="chat-input" name="message" maxlength="500" required placeholder="Entrée pour écrire · Échap pour jouer">
+                <button type="submit" id="chat-send">Envoyer</button>
+            </div>
+        </form>
+    </div>
+</details>

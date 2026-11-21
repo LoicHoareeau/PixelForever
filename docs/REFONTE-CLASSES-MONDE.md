@@ -119,3 +119,5 @@ Livré dans le code : barème XP version 2, migration proportionnelle locale/SQL
 Non livré : autorité serveur des combats, monstres/PV/morts/captures partagés, attribution atomique des récompenses, XP de groupe, population et réapparition selon les joueurs actifs, profil complet en base. La présence visuelle seule ne constitue pas le monde partagé décrit à la section 6. Contrôle visuel à deux fenêtres restant : serveur local inaccessible depuis Edge.
 
 Ajout ciblé : Trappe d’apprivoisement de départ du Chasseur, touche 3, neutralisation 6 s puis W pour capturer, recharge 20 s. Réutilise les conditions existantes et reste locale au navigateur.
+
+Lot communication : quatre canaux de tchat Symfony (global/groupe/chuchotement/proximité), groupes privés sur invitation, compteurs de recharge et état visuel de ressource des sorts. Ce tchat ne livre pas les combats partagés ni l’XP de groupe. Illustrations des sorts remplacées seules selon le choix du propriétaire ; apparences des personnages conservées.

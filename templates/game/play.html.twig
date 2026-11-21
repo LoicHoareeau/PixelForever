@@ -182,7 +182,9 @@
                         {% for label in petLabels %}
                             <button class="pet-command" type="button" data-pet-action="{{ loop.index0 }}" aria-keyshortcuts="{{ ['W Z', 'X', 'C'][loop.index0] }}" title="{{ label }}">
                                 <kbd>{{ ['W', 'X', 'C'][loop.index0] }}</kbd>
+                                <span class="action-icon" aria-hidden="true"></span>
                                 <span>{{ label }}</span>
+                                <span class="slot-cd" aria-hidden="true"></span>
                             </button>
                         {% endfor %}
                     </div>
@@ -571,6 +573,7 @@
             <p id="character-sheet-status" role="status"></p>
         </dialog>
 
+        {% include 'game/_chat.html.twig' %}
         <noscript>
             <p>Active JavaScript pour déplacer ton personnage.</p>
         </noscript>

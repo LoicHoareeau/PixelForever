@@ -162,6 +162,8 @@ final class CharacterController extends AbstractController
                 'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
                 'level' => $character->getLevel(),
                 'progress' => ['level' => max(1, $character->getLevel()), 'xp' => $character->getExperience(), 'xpVersion' => 2],
+                'characterId' => $character->getId(),
+                'chatUrl' => $this->generateUrl('character_chat', ['id' => $character->getId()]),
                 'worldUrl' => $this->generateUrl('character_world', ['id' => $character->getId()]),
                 'progressUrl' => $this->generateUrl('character_progress', ['id' => $character->getId()]),
                 'progressToken' => $this->container->get('security.csrf.token_manager')->getToken('character_progress_'.$character->getId())->getValue(),

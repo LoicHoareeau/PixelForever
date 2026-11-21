@@ -104,3 +104,9 @@ La présence passe par Symfony/PostgreSQL : personnages proches affichés avec l
 Les monstres partagés, le combat validé par serveur, le marchand, la vente, l’équipement secondaire et la sauvegarde serveur du sac/talents/quêtes ne sont pas encore intégrés. Le modèle PHP `Character`/`Blob` conserve des règles de prototype historiques testées séparément.
 
 Documentation du projet · [Game design](docs/GAME_DESIGN.md) · [Front-end](docs/FRONTEND.md) · [Back-end](docs/BACKEND.md) · [VFX](docs/VFX.md) · [Déploiement](docs/DEPLOIEMENT.md)
+
+## Sorts et tchat
+
+Chaque sort possède une illustration dédiée. La barre affiche la recharge restante en secondes, y compris sur les commandes de familier. Les compétences trop coûteuses deviennent grises, indiquent le manque de mana/énergie et restent indisponibles jusqu’à récupération ; les auto-attaques gratuites restent utilisables.
+
+Le tchat intégré propose Global, Groupe, Chuchotement et Proximité (12 cases). Entrée ouvre la saisie, Échap revient au jeu. Choisir un personnage dans les suggestions pour chuchoter ou l’inviter. Le groupe privé compte au maximum cinq personnages ; seul son chef invite et son départ dissout le groupe. Les invitations expirent après deux minutes. Les groupes de discussion ne partagent pas encore les monstres, les récompenses ou l’XP.
