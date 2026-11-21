@@ -202,6 +202,7 @@ export class Monster {
         this.template = monsterTemplates[species];
         this.isBoss = Boolean(this.template.isBoss);
         const artSpecies = this.template.art ?? species;
+        this.portraitArt = artSpecies;
         this.motionTexture = artSpecies + '-motion';
         this.art = monsterArt[artSpecies];
         this.specials = Object.keys(this.template.specials ?? {});

@@ -1239,6 +1239,7 @@ export class TrainingCombat {
         }
 
         this.applyDamageToMonster(target, attack.damage, attack.name, attack.color, now, Boolean(attack.special));
+        if (!attack.special && !target.trial && target.species === 'boar') this.scene.tutorial?.record('attack');
         if (this.familiar && !this.familiar.recalled && target.isAlive) this.familiar.target = target;
     }
 

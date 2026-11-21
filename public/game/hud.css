@@ -1,0 +1,89 @@
+/* ATH bois, métal et relief discret ; les sprites et l’atlas de sorts restent inchangés. */
+body.game-fullscreen { --hud-opacity: .91; }
+.combat-vitals { display: contents; }
+.combat-vitals[hidden] { display: none; }
+[data-hud-block] { position: fixed; transform-origin: top left; z-index: 25; }
+.player-hud, .target-hud, .top-right-hud, .tutorial-quest, .game-chat {
+    border: 2px solid #887249;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg, #ddd6a804 0 1px, transparent 1px 7px), rgba(22, 31, 25, var(--hud-opacity));
+    box-shadow: 0 0 0 1px #111c15, 2px 4px #10201766, inset 1px 1px #c5b27533;
+    color: #ecdfc1;
+}
+.player-hud { width: min(23rem, calc(100vw - 1rem)); gap: .8rem; padding: .65rem .75rem; border-top-color: #ccb27d; }
+.hud-portrait { width: 4.3rem; height: 5rem; border: 2px solid #ab925e; border-radius: 2px; object-fit: cover; object-position: center top; background: radial-gradient(ellipse at top, #5a6e55, #203527); box-shadow: 0 0 0 2px #122219; }
+.hud-name { flex-wrap: wrap; }
+.hud-name strong { font: 1.15rem Georgia, serif; color: #f1dbb0; }
+.hud-level-pill { color: #d0bb91; font-size: .68rem; }
+.combat-vitals label { font-size: .7rem; grid-template-columns: 2.6rem minmax(2rem, 1fr) auto; }
+.combat-vitals meter { height: .8rem; --fill: #a56a50; }
+.combat-vitals .mana-meter { --fill: #5985a1; }
+.target-hud { width: min(20rem, calc(100vw - 1rem)); min-height: 5.5rem; padding: .8rem .7rem .6rem 5rem; border-color: #ab7955; }
+.target-hud label { grid-template-columns: minmax(2rem, 1fr) auto; }
+.target-portrait { position: absolute; left: .45rem; top: .55rem; width: 64px; height: 64px; border: 1px solid #b99c68; background-color: #49442e; background-repeat: no-repeat; background-size: 1280px 1024px; image-rendering: pixelated; box-shadow: 0 0 0 2px #152319; }
+.top-right-hud { max-width: min(26rem, calc(100vw - 1rem)); flex-wrap: wrap; padding: .4rem; }
+.hud-quick-btn, .hud-quick-link { border-radius: 2px; background: #303b29; border-color: #93835a; color: #eddbaf; }
+.combat-actions { max-width: none; width: max-content; }
+.action-bar-core { background: repeating-linear-gradient(0deg, #0000000c 0 2px, transparent 2px 6px), #393a2b; border: 2px solid #aa8e5f; border-top-color: #d9be85; border-bottom: 4px solid #51402a; border-radius: 2px; padding: .4rem .5rem; box-shadow: inset 1px 1px #e2c68a33, 2px 4px #0c1a1488; }
+.bar-ornament { background-color: #79603d; border-color: #b49b65; }
+.xp-meter::-webkit-meter-optimum-value { background: #b9a16b; }
+.xp-meter::-moz-meter-bar { background: #b9a16b; }
+.action-cell { position: relative; flex: none; touch-action: none; }
+.action-cell:has(> [hidden]) { display: none; }
+.action-cell > .action-slot:disabled { pointer-events: none; }
+.action-slot { border-radius: 2px; border-color: #ad9564; background-color: #1c2c20; }
+.action-slot .spell-art { border-radius: 1px; }
+.micro-menu { grid-template-columns: repeat(4, auto); }
+.micro-btn { border-radius: 2px; border-color: #94815a; background: #1c2b20; }
+.micro-btn .spell-art { width: 2rem; height: 2rem; }
+.micro-btn.guide-button { color: #f18b74; border-color: #ad7955; background: #3e2b21; font: bold 1.8rem Georgia, serif; border-radius: 3px; }
+.potion-slot .spell-art { width: 2.5rem; height: 2.5rem; }
+.tutorial-quest { width: min(17rem, calc(100vw - 1rem)); padding: .8rem; line-height: 1.5; }
+.tutorial-quest > strong { display: block; padding-bottom: .5rem; border-bottom: 1px solid #a68c5144; color: #e7c98e; }
+.floating-feedback { width: min(25rem, calc(100vw - 1rem)); }
+.game-chat { width: 21rem; max-width: calc(100vw - 1rem); font: 12px/1.5 'Trebuchet MS', sans-serif; }
+.game-chat summary { background: repeating-linear-gradient(0deg, #ddd3a406 0 2px, transparent 2px 6px), #3a3a28; color: #ead3a0; border-bottom: 1px solid #a58a5733; }
+.chat-content { padding: .35rem .55rem .55rem; }
+.chat-tabs { display: flex; gap: .15rem; border-bottom: 1px solid #8e805044; margin-bottom: .4rem; }
+.chat-tabs button { font: inherit; font-size: 11px; min-height: 2rem; padding: .3rem .35rem; border: 0; background: transparent; color: #cfceb6; box-shadow: none; }
+.chat-tabs button[aria-pressed="true"] { color: #f2d59b; box-shadow: inset 0 -2px #c9ae75; }
+.chat-log { max-height: 9rem; padding: .3rem 0; }
+.chat-log p { margin: 0 0 .4rem; }
+.chat-log strong { color: #d9c496; }
+.chat-tools { margin: .3rem 0; }
+.chat-tools summary { background: none; border: 0; padding: .2rem 0; font-size: 11px; color: #bdc5ab; min-height: 1.5rem; }
+.game-chat input, .game-chat select { border-radius: 2px; background: #15241a; border-color: #786c49; color: #eee0c0; }
+.chat-send input { min-width: 0; }
+.chat-send button { border-radius: 2px; font: inherit; background: #35432e; color: #e7d5af; }
+.game-chat [hidden] { display: none !important; }
+.hud-drag-handle { display: none; position: absolute; z-index: 2; left: 0; top: -1.6rem; min-height: 1.4rem; padding: .12rem .4rem; font: 11px/1.2 'Trebuchet MS', sans-serif; background: #33472c; color: #f7dfab; border: 1px dashed #ddbe7d; touch-action: none; cursor: move; }
+.hud-editing .hud-drag-handle { display: block; }
+.hud-editing [data-hud-block] { outline: 1px dashed #e2c382; outline-offset: 3px; pointer-events: auto; }
+.hud-editing [data-hud-block][hidden] { display: block !important; }
+.hud-editing .tutorial-quest p:empty::before { content: 'Le suivi de l’initiation apparaîtra ici.'; }
+.hud-editing .action-cell { cursor: move; }
+.slot-drag-source { opacity: .4; }
+.slot-drop-target { outline: 3px solid #e3c47f; outline-offset: 2px; }
+.hud-spell-ghost { position: fixed !important; z-index: 150; width: 4rem; height: 4rem; pointer-events: none !important; opacity: .9; box-shadow: 2px 4px #10201599; }
+#hud-editor { position: fixed; z-index: 80; top: 42%; left: 50%; transform: translateX(-50%); width: min(42rem, calc(100vw - 1.5rem)); display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .5rem; padding: .85rem; border: 2px solid #b8a16d; border-radius: 6px; background: #243728; color: #edddb5; box-shadow: 0 0 0 2px #12221a, 3px 5px #10201677; }
+#hud-editor[hidden] { display: none; }
+#hud-editor p { width: 100%; font-size: .75rem; margin: .3rem 0 0; }
+#hud-editor input { width: 7rem; }
+#hud-editor button { padding: .4rem .6rem; font-size: .8rem; border-radius: 3px; }
+#game-menu { width: min(26rem, calc(100vw - 2rem)); max-height: 85dvh; overflow: auto; padding: 1.6rem; border: 2px solid #cbb17b; border-radius: 8px; color: #ebddb9; background: repeating-linear-gradient(90deg, #e1d7a505 0 2px, transparent 2px 8px), #263526; box-shadow: 0 0 0 2px #3c432e, 0 0 0 4px #9b8153, 0 0 0 6px #162119, 4px 8px #08130f88, inset 2px 2px #a7b08744, inset -3px -3px #101c14aa; }
+#game-menu::backdrop { background: #071316b8; }
+#game-menu h2 { color: #eed6a8; font: 1.6rem Georgia, serif; }
+#game-menu p { font-size: .8rem; line-height: 1.6; color: #cad0b7; }
+.game-menu-actions { display: grid; gap: .7rem; margin: 1rem 0; }
+#game-menu button { border: 2px solid #a99463; border-radius: 4px; background: #364431; color: #eee0bb; box-shadow: inset 2px 2px #89916b77, inset -2px -2px #17241a, 0 2px #101d14; text-align: left; }
+#game-menu button:hover { background: #48573b; border-color: #dfc78a; }
+#game-options label { display: block; margin-top: .8rem; }
+#game-options input { width: 100%; accent-color: #ceb47c; }
+#game-menu output { float: right; }
+@media(max-width:650px) {
+    .player-hud { width: min(21rem, calc(100vw - 1rem)); }
+    .target-hud { width: min(20rem, calc(100vw - 1rem)); }
+    .top-right-hud { width: min(22rem, calc(100vw - 1rem)); }
+    .game-chat input, .game-chat select { font-size: 16px; }
+    .action-bar-core { max-width: none; }
+}

@@ -66,4 +66,8 @@ Déployer ensemble `remote-motion.js`, `world-presence.js`, `world.js` et `World
 
 Les tests locaux de relecture passent, mais ils n’incluent ni le GPU du navigateur ni le réseau/hébergement Render. Le joueur local reste immédiat ; le tampon des acteurs distants ajoute volontairement un délai pour lisser leur mouvement. Aucun déploiement Render déclenché par l’agent.
 
+ATH et initiation : déployer PHP, les templates, `hud.css`, `hud-controls.js`, `hud-settings.js`, `tutorial.js` et les modules modifiés ensemble ; reconstruire le cache Symfony. Aucune migration supplémentaire.
+
+Après déploiement sur Render, vérifier une création de personnage, le menu Échap, la taille et l’opacité, les cadres à plusieurs résolutions, une permutation 2/3 et son raccourci réel, puis la restauration après rechargement. Tester aussi une insuffisance de mana et une recharge après déplacement du sort, ainsi que le tchat privé et de groupe.
+
 La suppression des personnages utilise les clés étrangères et tables existantes : aucune migration supplémentaire. Déployer le contrôleur et les templates ensemble et reconstruire le cache Symfony pour enregistrer la route character_delete.

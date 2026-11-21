@@ -184,6 +184,8 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         document: doc,
         HTMLElement: MockHTMLElement,
         TrainingCombat: MockTrainingCombat,
+        TutorialQuest: class { record() {} },
+        HudControls: class { attackForCode() {} },
         petKeys,
         equippedWeaponStyles,
         petAction: (_combat, index) => petCommands.push(index),

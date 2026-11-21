@@ -1,4 +1,6 @@
 import { GameChat } from './chat.js';
+import { TutorialQuest } from './tutorial.js';
+import { HudControls } from './hud-controls.js';
 import { WorldPresence } from './world-presence.js';
 import { vfxFrameSize } from './combat-vfx.js';
 import { equippedWeaponStyles } from './equipped-art.js';
@@ -222,6 +224,9 @@ import { petKeys } from './pet-rules.js';
             window.addEventListener('online', flushProgress, { signal: keyboard.signal });
             this.time.addEvent({ delay: 5000, loop: true, callback: flushProgress });
             const inventory = document.getElementById('inventory');
+            const guide = document.getElementById('game-guide');
+            const guideButton = document.getElementById('guide-open');
+            const gameMenu = document.getElementById('game-menu');
             const inventoryButton = document.getElementById('inventory-open');
             const inventoryStatus = document.getElementById('inventory-status');
             const characterSheet = document.getElementById('character-sheet');
@@ -237,7 +242,7 @@ import { petKeys } from './pet-rules.js';
 
             const closeOthers = (except) => {
                 switchingDialog = true;
-                [inventory, characterSheet, talentDialog, questDialog].forEach((dlg) => {
+                [inventory, characterSheet, talentDialog, questDialog, guide, gameMenu].forEach((dlg) => {
                     if (dlg && dlg !== except && dlg.open) {
                         dlg.close();
                     }
@@ -302,6 +307,7 @@ import { petKeys } from './pet-rules.js';
                     this.combat.tell('Approche-toi de Rakka pour lui parler (E).');
                     return;
                 }
+                this.tutorial?.record('return');
                 closeOthers(questDialog);
                 releaseKeys();
                 this.renderQuestDialog();
@@ -337,6 +343,15 @@ import { petKeys } from './pet-rules.js';
             }, { signal: keyboard.signal });
 
             inventoryButton.addEventListener('click', toggleInventory, { signal: keyboard.signal });
+            guideButton.addEventListener('click', () => {
+                closeOthers(guide);
+                releaseKeys();
+                guide.showModal();
+                this.tutorial?.record('guide');
+            }, { signal: keyboard.signal });
+            guide.addEventListener('close', () => {
+                if (!switchingDialog) guideButton.focus({ preventScroll: true });
+            }, { signal: keyboard.signal });
             inventory.addEventListener('close', () => {
                 if (!switchingDialog) inventoryButton.focus({ preventScroll: true });
             }, { signal: keyboard.signal });
@@ -414,6 +429,7 @@ import { petKeys } from './pet-rules.js';
                     return;
                 }
 
+                if (guide.open || this.hud?.blocksInput || document.querySelector('dialog[open]')) return;
                 // Réserver exclusivement Tab au jeu et bloquer la navigation de focus dans la fenêtre.
                 event.preventDefault();
                 event.stopPropagation();
@@ -442,6 +458,7 @@ import { petKeys } from './pet-rules.js';
             }, { capture: true, signal: keyboard.signal });
 
             window.addEventListener('keydown', (event) => {
+                if (guide.open || this.hud?.blocksInput) return;
                 if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
                     return;
                 }
@@ -479,7 +496,7 @@ import { petKeys } from './pet-rules.js';
                     if (!event.repeat) petAction(this.combat, petCommand, this.time.now);
                     return;
                 }
-                const attack = attacks[event.code];
+                const attack = this.hud ? this.hud.attackForCode(event.code) : attacks[event.code];
                 const potion = potions[event.code];
                 if (!movement && !attack && !potion) {
                     return;
@@ -511,7 +528,9 @@ import { petKeys } from './pet-rules.js';
                 });
             }
             this.combat.buttons.forEach(button => {
-                button.addEventListener('click', () => this.combat.attack(button.dataset.attack, this.time.now), { signal: keyboard.signal });
+                button.addEventListener('click', () => {
+                    if (!this.hud?.blocksInput) this.combat.attack(button.dataset.attack, this.time.now);
+                }, { signal: keyboard.signal });
             });
             this.combat.petButtons.forEach(button => {
                 button.addEventListener('click', () => petAction(this.combat, Number(button.dataset.petAction), this.time.now), { signal: keyboard.signal });
@@ -538,6 +557,13 @@ import { petKeys } from './pet-rules.js';
             if (status) status.hidden = true;
             if (controls) controls.hidden = false;
             this.refreshQuest();
+            const welcome = guide.dataset.welcome === 'true';
+            this.tutorial = new TutorialQuest(this, welcome);
+            this.hud = new HudControls(this, { signal: keyboard.signal, releaseKeys, closeOthers, guide });
+            if (welcome) {
+                releaseKeys();
+                guide.showModal();
+            }
         }
 
         canTalkToNpc() {
@@ -594,6 +620,7 @@ import { petKeys } from './pet-rules.js';
                 this.combat.targetHud.hidden = true;
             }
             this.combat.update(time, delta);
+            this.tutorial?.update();
             this.refreshQuest();
             this.renderAvatar(time);
             this.presence?.update();

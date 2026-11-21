@@ -127,4 +127,10 @@ Le client conserve jusqu’à six événements d’animation récents, avec iden
 
 `node --test tests/network-motion.test.mjs` couvre cadence, dix acteurs, gigue, perte/reprise, limites de prédiction, téléportation, annulation, neuf poses, expiration et texture stable. `node tools/simulate-network.mjs` rejoue 30 s et 1 800 images pour dix acteurs : zéro arrêt sur le parcours constant, pas maximal environ 1,533 px. Le temps CPU affiché mesure uniquement le lissage, sans moteur graphique ni HTTP. Ce résultat ne certifie pas les FPS du jeu ou la capacité Render.
 
+L’ATH utilise `game/hud.css` et `HudControls` : cadres bois/métal, portraits du personnage et du monstre sélectionné, cinq icônes utilitaires reprises dans l’atlas illustré existant. Les images de sorts et les sprites de personnages sont conservés.
+
+Échap ouvre un dialogue natif. L’édition permet de déplacer les blocs à la souris ou avec les flèches sur leur poignée, régler la taille (70–130 %), enregistrer, annuler ou réinitialiser. Les cadres sont bornés à l’écran et réduits pour tenir sur les petits écrans. Un maintien de 350 ms puis glissement échange deux boutons existants sans recréer leurs événements : les numéros des cases deviennent leurs raccourcis. En édition, Entrée sur la source puis la destination offre une alternative clavier. Les références de combat, les recharges et les coûts restent attachés au sort.
+
+Les onglets du tchat choisissent le canal d’envoi ; l’historique conserve ses messages étiquetés. Le menu ne suspend pas le monde multijoueur.
+
 Chaque personnage dispose du lien « Supprimer ». Une page dédiée rappelle le nom, le niveau et la perte définitive de progression ; « Annuler » revient à la liste. Le GET ne supprime rien et le formulaire POST fonctionne sans JavaScript.

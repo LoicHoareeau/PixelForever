@@ -1,0 +1,26 @@
+<dialog id="game-menu" aria-labelledby="game-menu-title">
+    <div class="inventory-heading"><h2 id="game-menu-title">Menu du jeu</h2><form method="dialog"><button class="quiet" autofocus>Reprendre</button></form></div>
+    <p>Le monde multijoueur continue pendant l’ouverture du menu.</p>
+    <div class="game-menu-actions">
+        <button type="button" id="game-options-open" aria-controls="game-options" aria-expanded="false">Options</button>
+        <button type="button" id="hud-edit-open">Modifier l’ATH</button>
+        <button type="button" id="menu-guide-open">Guides et tutoriels</button>
+    </div>
+    <section id="game-options" aria-label="Options de l’ATH" hidden>
+        <label for="hud-scale">Taille de l’ATH <output id="hud-scale-value" for="hud-scale">100 %</output></label>
+        <input id="hud-scale" type="range" min="70" max="130" step="5" value="100">
+        <label for="hud-opacity">Opacité des panneaux</label>
+        <input id="hud-opacity" type="range" min="70" max="100" value="91">
+        <p>Les cadres restent dans l’écran. Tes réglages sont conservés pour ce personnage dans ce navigateur.</p>
+    </section>
+</dialog>
+<section id="hud-editor" aria-label="Édition de l’ATH" hidden>
+    <strong>Édition de l’ATH</strong>
+    <label for="hud-edit-scale">Taille <output id="hud-edit-scale-value" for="hud-edit-scale">100 %</output></label>
+    <input id="hud-edit-scale" type="range" min="70" max="130" step="5" value="100">
+    <button type="button" id="hud-reset">Réinitialiser</button>
+    <button type="button" id="hud-cancel">Annuler</button>
+    <button type="button" id="hud-save">Enregistrer</button>
+    <p>Glisse les poignées pour déplacer les cadres. Pour les sorts : maintien du clic puis glissement, ou sélection de deux cases avec Entrée.</p>
+</section>
+<p id="hud-settings-status" role="status" class="sr-only"></p>
