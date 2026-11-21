@@ -148,3 +148,5 @@ Quatre canaux : global, groupe sur invitation (5 personnages), chuchotement à u
 ## Synchronisation visuelle
 
 Cible validée : 2 à 10 joueurs dans une zone. Le joueur local répond à ses commandes immédiatement. Les autres personnages sont affichés depuis un historique réseau, avec un retard de lissage de 500–850 ms et une courte prédiction bornée. Une vraie téléportation reste immédiate. Les attaques distantes déroulent leurs poses complètes et leur annulation. Le tampon traite les retards habituels sans promettre l’absence de saccade en cas de coupure ou de surcharge ; il ne remplace pas le futur moteur de combats partagés.
+
+Le joueur peut supprimer définitivement ses propres personnages après confirmation depuis la liste. Aucun autre personnage du compte ni le compte lui-même ne sont supprimés.

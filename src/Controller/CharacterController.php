@@ -111,6 +111,37 @@ final class CharacterController extends AbstractController
         return $this->redirectToRoute('game_play', status: Response::HTTP_SEE_OTHER);
     }
 
+    #[Route('/{id}/suppression', name: 'character_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    public function delete(int $id, Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $character = $entities->getRepository(PlayerCharacter::class)->findOneBy(['id' => $id, 'owner' => $owner]);
+        if (!$character) {
+            throw $this->createNotFoundException();
+        }
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('delete_character_'.$id, $request->request->getString('_token'))) {
+                throw new AccessDeniedHttpException('Le formulaire a expiré.');
+            }
+
+            // SQLite désactive les cascades par défaut, contrairement à PostgreSQL sur Render.
+            $connection = $entities->getConnection();
+            if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SQLitePlatform) {
+                $connection->executeStatement('PRAGMA foreign_keys = ON');
+            }
+            $entities->remove($character);
+            $entities->flush();
+            if ($request->getSession()->get(self::SELECTED_CHARACTER) === $id) {
+                $request->getSession()->remove(self::SELECTED_CHARACTER);
+            }
+            $this->addFlash('success', 'Ton personnage a été supprimé.');
+
+            return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
+        }
+
+        return $this->render('character/delete.html.twig', ['character' => $character]);
+    }
+
     #[Route('/jeu', name: 'game_play', methods: ['GET'])]
     public function play(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
     {

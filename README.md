@@ -114,3 +114,5 @@ Le tchat intégré propose Global, Groupe, Chuchotement et Proximité (12 cases)
 ## Fluidité des autres joueurs
 
 La synchronisation conserve une cadence cible de 300 ms et le navigateur interpole les positions horodatées. Les animations d’attaque sont rejouées image par image, même si une pose courte tombe entre deux échanges. Un bref défaut réseau ne retire plus immédiatement les personnages. Le lot vise les groupes de 2 à 10 joueurs ; le contrôle local reste immédiat, tandis que les acteurs distants utilisent un tampon d’environ 500–850 ms. La capacité réelle et les FPS sur Render restent à mesurer en conditions jouées.
+
+Depuis « Mes personnages », le lien « Supprimer » ouvre une confirmation avant la suppression définitive du personnage et de sa progression.
