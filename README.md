@@ -110,3 +110,7 @@ Documentation du projet · [Game design](docs/GAME_DESIGN.md) · [Front-end](doc
 Chaque sort possède une illustration dédiée. La barre affiche la recharge restante en secondes, y compris sur les commandes de familier. Les compétences trop coûteuses deviennent grises, indiquent le manque de mana/énergie et restent indisponibles jusqu’à récupération ; les auto-attaques gratuites restent utilisables.
 
 Le tchat intégré propose Global, Groupe, Chuchotement et Proximité (12 cases). Entrée ouvre la saisie, Échap revient au jeu. Choisir un personnage dans les suggestions pour chuchoter ou l’inviter. Le groupe privé compte au maximum cinq personnages ; seul son chef invite et son départ dissout le groupe. Les invitations expirent après deux minutes. Les groupes de discussion ne partagent pas encore les monstres, les récompenses ou l’XP.
+
+## Fluidité des autres joueurs
+
+La synchronisation conserve une cadence cible de 300 ms et le navigateur interpole les positions horodatées. Les animations d’attaque sont rejouées image par image, même si une pose courte tombe entre deux échanges. Un bref défaut réseau ne retire plus immédiatement les personnages. Le lot vise les groupes de 2 à 10 joueurs ; le contrôle local reste immédiat, tandis que les acteurs distants utilisent un tampon d’environ 500–850 ms. La capacité réelle et les FPS sur Render restent à mesurer en conditions jouées.

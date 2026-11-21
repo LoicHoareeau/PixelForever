@@ -43,6 +43,18 @@ final class WorldController extends AbstractController
             || !is_bool($state['ranged'] ?? null)) {
             return $this->json(['error' => 'Présence invalide.'], 400);
         }
+        $actions = $state['actions'] ?? [];
+        if (!is_array($actions) || !array_is_list($actions) || count($actions) > 6) return $this->json(['error' => 'Animations invalides.'], 400);
+        foreach ($actions as $action) {
+            if (!is_array($action) || !array_is_list($action) || count($action) !== 6
+                || !is_string($action[0]) || $action[0] === $lease || !preg_match('/^[a-f0-9-]{36}$/D', $action[0])
+                || !is_int($action[1]) || $action[1] < 0 || $action[1] > 6000
+                || !is_int($action[2]) || $action[2] < 1 || $action[2] > 5000
+                || !is_int($action[3]) || $action[3] < 0 || $action[3] > $action[2] + 210
+                || !is_bool($action[4]) || !is_int($action[5]) || $action[5] < 0 || $action[5] > 7) {
+                return $this->json(['error' => 'Animation invalide.'], 400);
+            }
+        }
         // La présence ne crédite aucune action : positions et poses sont uniquement visuelles.
         $public = ['id' => $id, 'name' => $character->getName(), 'skin' => $character->getClass()->skin(),
             'level' => $character->getLevel(), 'x' => (float) $state['x'], 'y' => (float) $state['y'],
@@ -50,10 +62,11 @@ final class WorldController extends AbstractController
             'attackFrame' => $state['attackFrame'], 'ranged' => $state['ranged']];
         $connection = $entities->getConnection();
         $now = microtime(true);
-        $result = $connection->transactional(function ($db) use ($id, $lease, $public, $now, $data): array {
+        $result = $connection->transactional(function ($db) use ($id, $lease, $public, $now, $data, $actions): array {
             $db->executeStatement("INSERT INTO world_presence (character_id, lease, state, updated_at) VALUES (?, ?, '{}', 0) ON CONFLICT (character_id) DO NOTHING", [$id, $lease]);
             $lock = $db->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform ? ' FOR UPDATE' : '';
-            $row = $db->fetchAssociative('SELECT lease, updated_at FROM world_presence WHERE character_id = ?'.$lock, [$id]);
+            $row = $db->fetchAssociative('SELECT lease, updated_at, state FROM world_presence WHERE character_id = ?'.$lock, [$id]);
+            $now = microtime(true);
             if ($row['lease'] !== $lease && (float) $row['updated_at'] > $now - 12) {
                 return ['status' => 409, 'body' => ['error' => 'Ce personnage est déjà connecté dans un autre onglet.']];
             }
@@ -62,6 +75,16 @@ final class WorldController extends AbstractController
                 return ['status' => 200, 'body' => ['players' => []]];
             }
             if ((float) $row['updated_at'] > $now - .2) return ['status' => 429, 'body' => ['error' => 'Attends avant de resynchroniser.']];
+            $previous = json_decode($row['state'], true, 32, JSON_THROW_ON_ERROR);
+            $starts = [];
+            foreach ($previous['actions'] ?? [] as $action) $starts[$action[0]] = $action;
+            $public['updatedAt'] = $now * 1000;
+            $public['actions'] = array_map(static function (array $action) use ($starts, $now): array {
+                $previous = $starts[$action[0]] ?? null;
+                $action[1] = $previous[1] ?? $now * 1000 - $action[1];
+                if ($previous) $action[3] = min($action[3], $previous[3]);
+                return $action;
+            }, $actions);
             $db->executeStatement('UPDATE world_presence SET lease = ?, state = ?, updated_at = ? WHERE character_id = ?', [$lease, json_encode($public, JSON_THROW_ON_ERROR), $now, $id]);
             // shortcut: première carte unique ; partitionner spatialement avant plusieurs centaines de connexions.
             $players = [];
@@ -70,7 +93,7 @@ final class WorldController extends AbstractController
                 if (hypot($player['x'] - $public['x'], $player['y'] - $public['y']) <= 800) $players[] = $player;
                 if (count($players) >= 100) break;
             }
-            return ['status' => 200, 'body' => ['players' => $players]];
+            return ['status' => 200, 'body' => ['players' => $players, 'serverTime' => microtime(true) * 1000]];
         });
         // Purger après libération du bail pour éviter les verrous croisés entre retours de joueurs.
         $connection->executeStatement('DELETE FROM world_presence WHERE updated_at < ?', [$now - 60]);
