@@ -1,3 +1,4 @@
+import { tamingTrapError } from './pet-rules.js';
 import { skillCost, potionRestore, potionCooldownMs, levelDamageFactor, victoryReward, xpRequired } from './balance.js';
 import { createCombatVfx } from './combat-vfx.js';
 import { classAttacks } from './class-talents.js';
@@ -601,6 +602,10 @@ export class TrainingCombat {
                 this.tell('Aucune cible à portée pour ' + talent.name + '.');
                 return;
             }
+            if (technique.tamingTrap) {
+                const error = tamingTrapError(this, target);
+                if (error) { this.tell(error); return; }
+            }
             if (technique.radius && !this.monsters.some(monster => monster.isAlive && !monster.trial
                 && Math.hypot(monster.sprite.x - (target?.sprite.x ?? this.scene.position.x),
                     monster.sprite.y - (target?.sprite.y ?? this.scene.position.y)) <= technique.radius)) {
@@ -635,7 +640,9 @@ export class TrainingCombat {
             applyTechnique(this, technique, target, this.stats.specialDamage * berserkMult, talent.name, now, angle, talent.slot);
             this.triggerShake(technique.power > 1.3 ? 'medium' : 'small');
             this.refreshVitals();
-            if (!technique.power) this.tell(talent.name + ' activé.');
+            if (!technique.power) this.tell(technique.tamingTrap
+                ? 'Cible piégée pendant 6 s · W pour apprivoiser. Les dégâts brisent la trappe.'
+                : talent.name + ' activé.');
             return;
         }
 
@@ -1237,6 +1244,7 @@ export class TrainingCombat {
 
     applyDamageToMonster(monster, rawDamage, attackName, color, now, isSpecial = false) {
         if (!monster.isAlive || monster.trial) return;
+        if (rawDamage > 0) monster.trappedUntil = 0;
         rawDamage = Math.max(1, Math.round(rawDamage * levelDamageFactor(this.progress.level, monster.level)));
         const phaseFloor = monster.isBoss ? Math.round(monster.maxHealth * (malakorThresholds[monster.phase - 1] ?? 0)) : 0;
         const damage = Math.min(monster.health - phaseFloor, monster.isBoss ? Math.max(1, Math.round(rawDamage * .8)) : rawDamage);
@@ -1400,6 +1408,7 @@ export class TrainingCombat {
 
     updateMonsterCounter(monster, now) {
         if (!monster.isAlive || this.health <= 0) return;
+        if (now < (monster.trappedUntil ?? 0)) { monster.cancelAttack(); return; }
         if (monster.isBoss && monster.alert && inZone(monster.template.zone, this.scene.position.x, this.scene.position.y)) {
             if (monster.trial) {
                 this.updateMalakorTrial(monster, now);

@@ -23,7 +23,10 @@ const shield = 'icon-shield';
 
 const imp = active('summon_imp', 'Invoquer le diablotin', rune, 10, 4500,
     'Invoque un diablotin lanceur de flammes (incantation 1,2 s). Remplace ton familier actif.', { summon: 'imp', castMs: 1200, vfx: 'summon' });
-export const starterTalents = { warlock: [imp] };
+const tamingTrap = active('taming_trap', 'Trappe d’apprivoisement', 'icon-cold', 6, 20000,
+    'Neutralise une créature apprivoisable à 30 % de PV ou moins pendant 6 s. Les dégâts la libèrent. Puis W pour apprivoiser.',
+    { range: 7, tamingTrap: 6000, vfx: 'trap' });
+export const starterTalents = { warlock: [imp], hunter: [tamingTrap] };
 
 export const classTalents = {
     warlock: { branches: [

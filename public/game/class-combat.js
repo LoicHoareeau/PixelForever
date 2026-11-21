@@ -43,6 +43,19 @@ export function summonFamiliar(combat, kind, now) {
 export function applyTechnique(combat, technique, target, damage, name, now, angle = 0, effectKey = name) {
     const origin = combat.scene.position;
     let point = target?.sprite ?? origin;
+    if (technique.tamingTrap) {
+        target.cancelAttack();
+        target.echo = null;
+        target.trappedUntil = now + technique.tamingTrap;
+        combat.periodicEffects?.delete(target);
+        if (combat.familiar) {
+            combat.familiar.recalled = true;
+            combat.familiar.target = null;
+            combat.familiar.bolt = null;
+        }
+        combat.spellEffects.push({ kind: 'taming_trap', target, start: now, duration: technique.tamingTrap });
+        return;
+    }
     if (technique.retreat) {
         const forward = combat.scene.facing;
         const dx = forward.includes('west') ? 1 : forward.includes('east') ? -1 : 0;

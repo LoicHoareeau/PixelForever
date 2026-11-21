@@ -126,6 +126,11 @@ export function drawSpellEffectsView(combat, now) {
         const alpha = .97 * (1 - Math.max(0, (progress - .52) / .48));
         const radius = fx.radius ?? 42;
         switch (fx.kind) {
+        case 'taming_trap':
+            if (fx.target.isAlive && now < fx.target.trappedUntil) {
+                combat.vfx.play('trap', fx.target.sprite.x, fx.target.sprite.y - 3, .5, .8, 0, .95);
+            }
+            break;
         case 'class_vfx':
             combat.vfx.play(fx.row, fx.x, fx.y, pose, fx.size, fx.angle, alpha);
             break;

@@ -234,7 +234,7 @@
                                     <span class="slot-cd" aria-hidden="true"></span>
                                 </button>
 
-                                {% set lastTalentSlot = combat.classKey == 'warlock' ? 6 : (warrior ? 5 : 3) %}
+                                {% set lastTalentSlot = combat.classKey == 'warlock' ? 6 : (warrior ? 5 : (combat.classKey == 'hunter' ? 4 : 3)) %}
                                 {% for i in 0..lastTalentSlot %}
                                     <button
                                         class="action-slot"

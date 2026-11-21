@@ -1,3 +1,5 @@
+import { Monster } from '../public/game/monsters.js';
+import { drawSpellEffectsView } from '../public/game/combat-renderer.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { petAction, updatePetControls } from '../public/game/pet-controls.js';
@@ -14,19 +16,114 @@ function fixture() {
         setPosition(x, y) { Object.assign(this, { x, y }); return this; }, destroy() { this.destroyed = true; },
     });
     const target = { species: 'boar', level: 1, health: 30, maxHealth: 100, isAlive: true, sprite: { x: 50, y: 0 },
-        template: { respawnMs: 5000 }, hide() { this.isAlive = false; this.hidden = true; } };
+        template: { respawnMs: 5000, zone: { left: -10, top: -10, right: 10, bottom: 10 } },
+        cancelAttack() { this.attackEndsAt = 0; this.attackVisual = null; },
+        syncOverlays() {}, pursue() { this.alert = true; }, hide() { this.isAlive = false; this.hidden = true; } };
     const combat = Object.create(TrainingCombat.prototype);
     Object.assign(combat, {
-        classKey: 'hunter', tileSize: 16, progressKey: 'hunter', progress: createInitialProgress(), health: 100, mana: 100,
+        classKey: 'hunter', rules: { resourceName: 'Mana' }, tileSize: 16, progressKey: 'hunter', progress: createInitialProgress(), health: 100, mana: 100,
         petButtons: [], spellEffects: [], spellCooldowns: new Map(), periodicEffects: new Map(),
         stats: { basicDamage: 40, maxHealth: 100, maxMana: 40, attributes: { defense: { total: 20 } } },
-        scene: { position: { x: 0, y: 0 }, canStand: () => true,
+        scene: { position: { x: 0, y: 0 }, facing: 'east', face() {}, canStand: () => true,
             add: { image(x, y, texture) { const actor = makeActor(x, y); images.push({ actor, texture }); return actor; }, rectangle: makeActor } },
         getActiveTarget: () => target, refreshVitals() {}, selectMonster() {}, tell(message) { this.message = message; },
-        mustDodgeMalakor: () => false, images,
+        mustDodgeMalakor: () => false, triggerShake() {}, images,
     });
     return { combat, target };
 }
+
+test('la trappe de départ neutralise les coups et permet les quatre secondes de capture', () => {
+    const { combat, target } = fixture();
+    const trap = getUnlockedActiveSpells(combat.progress, 'hunter')[0];
+    assert.equal(trap.slot, 'taming_trap');
+    Object.assign(target, { alert: true, stunUntil: 0, counterAt: 0, attackEndsAt: 400,
+        attackVisual: { projectile: {} }, echo: { end: 200 }, canAttack: () => true,
+        stats: { attackIntervalMs: 1800 }, startAttack() { throw new Error('La cible piégée attaque.'); } });
+    const other = {};
+    combat.periodicEffects.set(target, new Map([['poison', {}]]));
+    combat.periodicEffects.set(other, new Map());
+    combat.familiar = { target, bolt: { target }, recalled: false, actor: { destroy() {} } };
+    combat.castTalentSpell(trap, 100);
+    assert.equal(combat.mana, 88);
+    assert.equal(target.health, 30);
+    assert.equal(target.trappedUntil, 6100);
+    assert.equal(target.attackVisual, null);
+    assert.equal(target.echo, null);
+    assert.equal(combat.familiar.recalled, true);
+    assert.equal(combat.familiar.bolt, null);
+    assert.equal(combat.periodicEffects.has(target), false);
+    assert.equal(combat.periodicEffects.has(other), true);
+    assert.equal(combat.spellCooldowns.get('taming_trap').end, 20100);
+    const before = structuredClone(combat.progress);
+    petAction(combat, 0, 200);
+    for (const now of [200, 2000, 4199]) {
+        combat.updateMonsterCounter(target, now);
+        updatePetControls(combat, now);
+        assert.equal(target.isAlive, true);
+    }
+    updatePetControls(combat, 4200);
+    assert.equal(combat.familiar.kind, 'beast');
+    assert.equal(target.isAlive, false);
+    for (const key of ['level', 'xp', 'items', 'trailQuest']) assert.deepEqual(combat.progress[key], before[key]);
+});
+
+test('la trappe refuse les cibles invalides et actions en cours sans mana ni recharge consommés', () => {
+    for (const mutate of [
+        (c, t) => { t.species = 'skeleton'; }, (c, t) => { t.level = 2; },
+        (c, t) => { t.health = 31; }, (c, t) => { t.sprite.x = 200; },
+        (c, t) => { t.isAlive = false; }, (c, t) => { t.engagedBy = 'other'; },
+        c => { c.pending = {}; }, c => { c.scene.isInStarterTown = () => true; },
+        c => { c.health = 0; }, c => { c.mana = 0; },
+    ]) {
+        const { combat, target } = fixture();
+        const trap = getUnlockedActiveSpells(combat.progress, 'hunter')[0];
+        mutate(combat, target);
+        const mana = combat.mana;
+        combat.castTalentSpell(trap, 100);
+        assert.equal(combat.mana, mana);
+        assert.equal(combat.spellCooldowns.has(trap.slot), false);
+        assert.equal(target.trappedUntil, undefined);
+    }
+});
+
+test('la trappe bloque le déplacement, expire et se brise dès un dégât', () => {
+    const { combat, target } = fixture();
+    const trap = getUnlockedActiveSpells(combat.progress, 'hunter')[0];
+    combat.castTalentSpell(trap, 100);
+    Object.assign(target.sprite, { visible: true, setTint() {} });
+    Monster.prototype.update.call(target, 6099, 16, combat.scene.position);
+    assert.deepEqual([target.sprite.x, target.sprite.y], [50, 0]);
+    Object.assign(combat, { impacts: [], spawnFloatingText() {} });
+    combat.applyDamageToMonster(target, 1, 'Flèche', 0xffffff, 1000);
+    assert.equal(target.trappedUntil, 0);
+    assert.equal(target.health, 29);
+    combat.castTalentSpell(trap, 1100);
+    assert.equal(combat.mana, 88);
+    target.trappedUntil = 6100;
+    Object.assign(target, { stunUntil: 0, counterAt: 0, stats: { attackIntervalMs: 1800 }, canAttack: () => true,
+        startAttack() { this.resumed = true; } });
+    combat.updateMonsterCounter(target, 6100);
+    assert.equal(target.resumed, true);
+});
+
+test('le repère de trappe reste fixe et disparaît lorsque la cible est libérée ou capturée', () => {
+    const { combat, target } = fixture();
+    const calls = [];
+    combat.vfx = { play: (...args) => calls.push(args) };
+    combat.scene.motionPreference = { matches: true };
+    target.trappedUntil = 6100;
+    combat.spellEffects = [{ kind: 'taming_trap', target, start: 100, duration: 6000 }];
+    drawSpellEffectsView(combat, 100);
+    drawSpellEffectsView(combat, 4000);
+    assert.deepEqual(calls[0], calls[1]);
+    assert.equal(calls[0][0], 'trap');
+    target.trappedUntil = 0;
+    drawSpellEffectsView(combat, 4001);
+    target.isAlive = false;
+    target.trappedUntil = 6100;
+    drawSpellEffectsView(combat, 4002);
+    assert.equal(calls.length, 2);
+});
 
 test('apprivoiser exige une créature accessible, affaiblie, de niveau adapté et du mana', () => {
     for (const mutate of [

@@ -16,6 +16,13 @@ export function tameError(combat, target) {
     return null;
 }
 
+export function tamingTrapError(combat, target) {
+    if (combat.classKey !== 'hunter' || combat.health <= 0) return 'Cette trappe est réservée au Chasseur vivant.';
+    if (combat.pending || combat.taming) return 'Termine ton action avant de poser la trappe.';
+    if (combat.scene.isInStarterTown?.()) return 'Sors du Bastion pour poser une trappe.';
+    return tameError(combat, target);
+}
+
 export function inheritedPetStats(stats, protector = false) {
     const defense = (stats.attributes?.defense?.total ?? 0) * .35;
     return {
