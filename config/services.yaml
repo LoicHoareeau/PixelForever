@@ -12,3 +12,7 @@ services:
 
     App\Repository\:
         resource: '../src/Repository/'
+
+    App\Game\GameAssets:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

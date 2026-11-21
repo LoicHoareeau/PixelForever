@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="{% block theme_color %}#19272e{% endblock %}">
     <title>{% block title %}{% endblock %} · PixelForever</title>
-    <link rel="stylesheet" href="{{ app.request.basePath }}/pixel.css">
+    <link rel="stylesheet" href="{{ app.request.basePath }}/pixel.css{% if pixelCssVersion is defined %}?v={{ pixelCssVersion }}{% endif %}">
     {% block stylesheets %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">

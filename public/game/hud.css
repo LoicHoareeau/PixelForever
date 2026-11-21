@@ -3,6 +3,10 @@ body.game-fullscreen { --hud-opacity: .91; }
 .combat-vitals { display: contents; }
 .combat-vitals[hidden] { display: none; }
 [data-hud-block] { position: fixed; transform-origin: top left; z-index: 25; }
+/* Positions utilisables même avant la fin du chargement du moteur. */
+[data-hud-block="player"] { left: 14px; top: 24px; }
+[data-hud-block="target"] { left: 40%; top: 24px; }
+[data-hud-block="quick"] { right: 14px; top: 24px; }
 .player-hud, .target-hud, .top-right-hud, .tutorial-quest, .game-chat {
     border: 2px solid #887249;
     border-radius: 2px;
@@ -47,11 +51,12 @@ body.game-fullscreen { --hud-opacity: .91; }
 .chat-tabs { display: flex; gap: .15rem; border-bottom: 1px solid #8e805044; margin-bottom: .4rem; }
 .chat-tabs button { font: inherit; font-size: 11px; min-height: 2rem; padding: .3rem .35rem; border: 0; background: transparent; color: #cfceb6; box-shadow: none; }
 .chat-tabs button[aria-pressed="true"] { color: #f2d59b; box-shadow: inset 0 -2px #c9ae75; }
-.chat-log { max-height: 9rem; padding: .3rem 0; }
+.chat-log { height: 6rem; min-height: 0; max-height: 9rem; padding: .3rem 0; background: transparent; }
 .chat-log p { margin: 0 0 .4rem; }
 .chat-log strong { color: #d9c496; }
 .chat-tools { margin: .3rem 0; }
 .chat-tools summary { background: none; border: 0; padding: .2rem 0; font-size: 11px; color: #bdc5ab; min-height: 1.5rem; }
+.chat-party:empty { display: none; }
 .game-chat input, .game-chat select { border-radius: 2px; background: #15241a; border-color: #786c49; color: #eee0c0; }
 .chat-send input { min-width: 0; }
 .chat-send button { border-radius: 2px; font: inherit; background: #35432e; color: #e7d5af; }
@@ -80,7 +85,13 @@ body.game-fullscreen { --hud-opacity: .91; }
 #game-options label { display: block; margin-top: .8rem; }
 #game-options input { width: 100%; accent-color: #ceb47c; }
 #game-menu output { float: right; }
-@media(max-width:650px) {
+@media(min-width:761px) and (max-width:1100px) {
+    [data-hud-block="target"] { left: auto; right: 14px; }
+    [data-hud-block="quick"] { top: 140px; }
+}
+@media(max-width:760px) {
+    [data-hud-block="target"] { left: 14px; right: auto; top: 140px; }
+    [data-hud-block="quick"] { left: 14px; right: auto; top: 245px; }
     .player-hud { width: min(21rem, calc(100vw - 1rem)); }
     .target-hud { width: min(20rem, calc(100vw - 1rem)); }
     .top-right-hud { width: min(22rem, calc(100vw - 1rem)); }

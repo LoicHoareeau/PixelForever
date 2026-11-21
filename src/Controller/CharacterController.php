@@ -8,6 +8,7 @@ use App\Entity\PlayerCharacter;
 use App\Entity\User;
 use App\Game\Character;
 use App\Game\CharacterClass;
+use App\Game\GameAssets;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -147,7 +148,7 @@ final class CharacterController extends AbstractController
     }
 
     #[Route('/jeu', name: 'game_play', methods: ['GET'])]
-    public function play(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    public function play(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities, GameAssets $assets): Response
     {
         $session = $request->getSession();
         $selectedId = $session->get(self::SELECTED_CHARACTER);
@@ -176,6 +177,7 @@ final class CharacterController extends AbstractController
         $session->set('tutorial_pending', array_values(array_diff($pending, [$character->getId()])));
 
         return $this->render('game/play.html.twig', [
+            ...$assets->forGame($request->getBasePath()),
             'showTutorial' => $showTutorial,
             'character' => $character,
             'combat' => [

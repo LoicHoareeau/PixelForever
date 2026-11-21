@@ -1,4 +1,4 @@
-import { normalizeHudSettings, swapHudSlots, fitHudPoint } from './hud-settings.js';
+import { normalizeHudSettings, swapHudSlots, fitHudPoint, defaultHudLayout } from './hud-settings.js';
 import { setSpellIcon } from './spell-state.js';
 
 export class HudControls {
@@ -142,22 +142,18 @@ export class HudControls {
 
     layout(reset = false) {
         const width = window.innerWidth, height = window.innerHeight;
-        const defaults = {
-            player: { x: 14, y: 16 }, target: { x: width * .4, y: 16 }, quick: { x: width - 360, y: 16 },
-            actions: { x: width / 2 - 390, y: height - 120 }, chat: { x: 14, y: height - 420 },
-            quest: { x: width - 290, y: 150 }, feedback: { x: width / 2 - 190, y: height - 200 },
-        };
-        if (width < 1100) { defaults.quick.y = 135; defaults.quest.y = 245; }
-        if (width < 760) {
-            defaults.target = { x: 12, y: 140 }; defaults.quick.y = 245; defaults.quest.y = 345;
-            defaults.chat.y = height - 210;
-        }
+        const fallback = { player: [368, 108], target: [320, 90], quick: [416, 85], actions: [812, 108], chat: [336, 250], quest: [272, 110], feedback: [400, 30] };
+        const sizes = Object.fromEntries(this.blocks.map(block => [block.dataset.hudBlock, {
+            width: block.offsetWidth || fallback[block.dataset.hudBlock][0],
+            height: block.offsetHeight || fallback[block.dataset.hudBlock][1],
+        }]));
+        const defaults = defaultHudLayout(width, height, sizes, this.settings.scale);
         for (const block of this.blocks) {
             const name = block.dataset.hudBlock;
-            const scale = Math.min(this.settings.scale, (width - 12) / (block.offsetWidth || 300));
+            const scale = Math.min(this.settings.scale, (width - 12) / sizes[name].width);
             block.style.setProperty('--hud-block-scale', String(scale));
             const point = !reset && this.settings.positions[name];
-            const position = fitHudPoint(point ? { x: point.x * width, y: point.y * height } : defaults[name], (block.offsetWidth || 300) * scale, (block.offsetHeight || 90) * scale, width, height);
+            const position = fitHudPoint(point ? { x: point.x * width, y: point.y * height } : defaults[name], sizes[name].width * scale, sizes[name].height * scale, width, height);
             block.style.left = position.x + 'px'; block.style.top = position.y + 'px';
             block.style.right = 'auto'; block.style.bottom = 'auto';
             block.style.transform = `scale(${scale})`;

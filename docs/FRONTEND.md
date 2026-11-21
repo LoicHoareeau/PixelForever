@@ -134,3 +134,5 @@ L’ATH utilise `game/hud.css` et `HudControls` : cadres bois/métal, portraits 
 Les onglets du tchat choisissent le canal d’envoi ; l’historique conserve ses messages étiquetés. Le menu ne suspend pas le monde multijoueur.
 
 Chaque personnage dispose du lien « Supprimer ». Une page dédiée rappelle le nom, le niveau et la perte définitive de progression ; « Annuler » revient à la liste. Le GET ne supprime rien et le formulaire POST fonctionne sans JavaScript.
+
+Les URL des modules du jeu et des deux feuilles de style portent une empreinte de leur contenu. Une import map native applique aussi ces URL aux imports relatifs : versionner uniquement `world.js` laisserait ses dépendances en ancien cache. Des positions CSS de secours évitent la superposition des cadres avant l’initialisation. Les positions calculées tiennent compte de la taille réelle des blocs et du zoom : la barre reste centrée et les accès rapides passent sous les cadres lorsque la largeur manque. Le tchat est plus compact et les informations de groupe sont rangées dans « Groupe et destinataire ».
