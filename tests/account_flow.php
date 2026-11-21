@@ -131,6 +131,12 @@ try {
     check($alice->get('selected_character') === $rolandId, 'La sélection de Roland doit rester active.');
     $warriorPage = visit($alice, 'GET', '/personnages/jeu', 200);
     $warriorRules = json_decode(htmlValue($warriorPage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    if ($previewPath = getenv('PIXEL_HUD_HTML')) {
+        file_put_contents($previewPath, $warriorPage->getContent());
+    }
+    check(str_contains(htmlValue($warriorPage, '//script[@type="module"]/@src'), '?v='), 'Le module du jeu doit changer d’URL lorsque son contenu change.');
+    $moduleMap = json_decode(htmlValue($warriorPage, '//script[@type="importmap"]'), true, flags: JSON_THROW_ON_ERROR);
+    check(str_contains($moduleMap['imports']['/game/hud-controls.js'], '?v=') && str_contains($moduleMap['imports']['/game/spell-icons.js'], '?v='), 'Les dépendances de l’ATH doivent aussi être versionnées.');
     check(htmlValue($warriorPage, '//dialog[@id="game-guide"]/@data-welcome') === 'true', 'Le nouveau personnage doit recevoir le tutoriel.');
     check(htmlValue($warriorPage, '//button[@id="guide-open"]/@aria-controls') === 'game-guide', 'L’ATH doit donner accès au guide.');
     check(htmlValue($warriorPage, '//button[@id="game-menu-open"]/@aria-controls') === 'game-menu', 'Le menu Échap doit être relié à son dialogue.');

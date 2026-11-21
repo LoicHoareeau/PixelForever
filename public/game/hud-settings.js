@@ -31,3 +31,28 @@ export function fitHudPoint(point, width, height, viewportWidth, viewportHeight)
         y: Math.max(24, Math.min(Math.max(24, viewportHeight - height - 4), point.y)),
     };
 }
+
+export function defaultHudLayout(width, height, sizes, scale) {
+    const size = name => {
+        const block = sizes[name];
+        const zoom = Math.min(scale, (width - 12) / block.width);
+        return { width: block.width * zoom, height: block.height * zoom };
+    };
+    const player = size('player'), target = size('target'), quick = size('quick');
+    const actions = size('actions'), feedback = size('feedback'), chat = size('chat');
+    const positions = { player: { x: 14, y: 24 }, target: { x: width * .4, y: 24 } };
+    if (player.width + target.width + 44 <= width) {
+        positions.target.x = Math.max(player.width + 30, positions.target.x);
+    } else {
+        positions.target = { x: 14, y: player.height + 40 };
+    }
+    positions.quick = { x: width - quick.width - 14, y: 24 };
+    if (positions.target.x + target.width + quick.width + 30 > width) {
+        positions.quick.y = Math.max(24 + player.height, positions.target.y + target.height) + 16;
+    }
+    positions.quest = { x: width - size('quest').width - 14, y: Math.max(150, positions.quick.y + quick.height + 20) };
+    positions.actions = { x: (width - actions.width) / 2, y: height - actions.height - 12 };
+    positions.feedback = { x: (width - feedback.width) / 2, y: positions.actions.y - feedback.height - 18 };
+    positions.chat = { x: 14, y: positions.actions.y - chat.height - 18 };
+    return positions;
+}

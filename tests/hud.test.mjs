@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeHudSettings, swapHudSlots, fitHudPoint } from '../public/game/hud-settings.js';
+import { normalizeHudSettings, swapHudSlots, fitHudPoint, defaultHudLayout } from '../public/game/hud-settings.js';
 import { HudControls } from '../public/game/hud-controls.js';
 
 test('réglages ATH : bornes, sauvegarde invalide et permutation complète par classe', () => {
@@ -27,6 +27,26 @@ test('le changement de case change la touche sans déplacer les identifiants de 
     assert.equal(hud.attackForCode('Digit3'), 'special');
     assert.equal(hud.attackForCode('Digit0'), undefined);
     assert.deepEqual(swapHudSlots(order, 'unknown', 'basic'), order);
+});
+
+test('les cadres par défaut ne se recouvrent pas et la barre reste centrée aux trois tailles', () => {
+    const sizes = Object.fromEntries(Object.entries({ player: [368, 108], target: [320, 90], quick: [416, 85], actions: [812, 108], chat: [336, 250], quest: [272, 110], feedback: [400, 30] }).map(([id, [width, height]]) => [id, { width, height }]));
+    for (const width of [760, 1024, 1280, 1920]) for (const scale of [.7, 1, 1.3]) {
+        const layout = defaultHudLayout(width, 960, sizes, scale);
+        const rect = name => {
+            const s = Math.min(scale, (width - 12) / sizes[name].width);
+            const r = sizes[name];
+            const p = fitHudPoint(layout[name], r.width * s, r.height * s, width, 960);
+            return { ...p, w: r.width * s, h: r.height * s };
+        };
+        for (const [a, b] of [['player', 'target'], ['player', 'quick'], ['target', 'quick']]) {
+            const x = rect(a), y = rect(b);
+            assert.ok(x.x + x.w <= y.x || y.x + y.w <= x.x || x.y + x.h <= y.y || y.y + y.h <= x.y, `${a}/${b}, ${width}px, ${scale}`);
+        }
+        const bar = rect('actions');
+        assert.ok(Math.abs(bar.x + bar.w / 2 - width / 2) < 1);
+        assert.ok(rect('chat').y + rect('chat').h < bar.y);
+    }
 });
 
 test('le glissement exige un maintien, ne lance pas le sort et annule les glissements interrompus', () => {

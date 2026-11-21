@@ -3,7 +3,7 @@
 {% block title %}Val-des-Saules{% endblock %}
 {% block body_class %}game-fullscreen{% endblock %}
 {% block layout %}game-layout{% endblock %}
-{% block stylesheets %}<link rel="stylesheet" href="{{ app.request.basePath }}/game/hud.css">{% endblock %}
+{% block stylesheets %}<link rel="stylesheet" href="{{ app.request.basePath }}/game/hud.css?v={{ gameCssVersion }}">{% endblock %}
 
 {% block body %}
     {% set warrior = character.class.value == 'warrior' %}
@@ -616,5 +616,6 @@
     </section>
 
     <script src="{{ app.request.basePath }}/game/phaser-3.90.0.min.js" defer></script>
-    <script src="{{ app.request.basePath }}/game/world.js" type="module"></script>
+    <script type="importmap">{{ gameModules|json_encode(constant('JSON_HEX_TAG'))|raw }}</script>
+    <script src="{{ gameEntryUrl }}" type="module"></script>
 {% endblock %}
