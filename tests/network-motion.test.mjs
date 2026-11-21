@@ -107,7 +107,7 @@ test('une erreur réseau isolée ne fait pas disparaître les joueurs ; une expi
     t.mock.method(performance, 'now', () => now);
     t.mock.method(globalThis, 'fetch', async () => { throw new TypeError('offline'); });
     const presence = Object.create(WorldPresence.prototype);
-    Object.assign(presence, { players: new Map([[1, {}]]), lastSnapshotAt: 0, notice: {}, state: () => ({}),
+    Object.assign(presence, { players: new Map([[1, {}]]), lastSnapshotAt: 0, notice: {}, counter: onlineCounter(), state: () => ({}),
         captureActions() {}, remove() { removed++; } });
     await presence.request();
     assert.equal(presence.players.size, 1);
@@ -129,4 +129,30 @@ test('un acteur immobile ne réinitialise pas sa texture à chaque image', t => 
     Object.assign(presence, { captureActions() {}, lastSnapshotAt: 1000, players: new Map([[1, player]]) });
     for (let i = 0; i < 120; i++) presence.update();
     assert.equal(textures, 1);
+});
+
+function onlineCounter() {
+    return { textContent: '', attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
+}
+
+test('le compteur affiche le total serveur, puis une indisponibilité et la reconnexion', async t => {
+    const replies = [
+        { ok: true, json: async () => ({ players: [], onlineCount: 3 }) },
+        new TypeError('offline'),
+        { ok: true, json: async () => ({ players: [], onlineCount: 1 }) },
+        { status: 409 },
+        { ok: true, json: async () => ({ players: [], onlineCount: -1 }) },
+    ];
+    t.mock.method(globalThis, 'fetch', async () => {
+        const reply = replies.shift();
+        if (reply instanceof Error) throw reply;
+        return reply;
+    });
+    const presence = Object.create(WorldPresence.prototype);
+    Object.assign(presence, { players: new Map(), notice: {}, counter: onlineCounter(), state: () => ({}) });
+    for (const expected of ['3', '—', '1', '—', '—']) {
+        await presence.request();
+        assert.equal(presence.counter.textContent, expected);
+        assert.match(presence.counter.attributes['aria-label'], expected === '—' ? /indisponible/ : /connecté/);
+    }
 });

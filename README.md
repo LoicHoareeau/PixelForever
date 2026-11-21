@@ -118,3 +118,5 @@ La synchronisation conserve une cadence cible de 300 ms et le navigateur interpo
 ATH personnalisable : Échap ouvre le menu 16 bits (Options, Modifier l’ATH, Guides). Taille de 70 à 130 %, opacité, cadres déplaçables et maintien du clic de 350 ms pour échanger deux cases de sorts. Une fenêtre de bienvenue et une initiation en sept étapes accompagnent les nouveaux personnages.
 
 Depuis « Mes personnages », le lien « Supprimer » ouvre une confirmation avant la suppression définitive du personnage et de sa progression.
+
+Un petit nombre en haut de l’écran indique le total des personnages actifs sur le serveur, toi compris, quelle que soit leur distance. Les présences expirent après 12 s sans nouvelles ; « — » indique une connexion indisponible.

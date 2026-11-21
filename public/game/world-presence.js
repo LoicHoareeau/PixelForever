@@ -17,7 +17,12 @@ export class WorldPresence {
         this.notice.className = 'world-presence-status';
         this.notice.setAttribute('role', 'status');
         this.notice.textContent = 'Connexion au monde…';
-        document.getElementById('world').after(this.notice);
+        this.counter = document.createElement('span');
+        this.counter.className = 'world-online-count';
+        this.counter.setAttribute('role', 'status');
+        this.counter.setAttribute('aria-atomic', 'true');
+        this.setOnlineCount(null);
+        document.getElementById('world').after(this.notice, this.counter);
         this.pagehide = () => { void this.request(true); };
         window.addEventListener('pagehide', this.pagehide);
         scene.events.once('shutdown', () => {
@@ -26,8 +31,18 @@ export class WorldPresence {
             this.controller?.abort();
             window.removeEventListener('pagehide', this.pagehide);
             this.notice.remove();
+            this.counter.remove();
             for (const player of this.players.values()) this.remove(player);
         });
+    }
+
+    setOnlineCount(count) {
+        const value = count === null ? '—' : String(count);
+        if (this.counter.textContent === value) return;
+        this.counter.textContent = value;
+        const label = count === null ? 'Nombre de joueurs connectés indisponible' : count + ' joueur(s) connecté(s) sur le serveur';
+        this.counter.setAttribute('aria-label', label);
+        this.counter.title = label;
     }
 
     state() {
@@ -76,11 +91,12 @@ export class WorldPresence {
             if (response.status === 409) {
                 this.retry = true;
                 this.notice.textContent = 'Personnage déjà connecté dans un autre onglet.';
+                this.setOnlineCount(null);
                 return;
             }
             if (!response.ok) throw new Error('Presence unavailable');
             const snapshot = await response.json();
-            if (!Array.isArray(snapshot.players)) throw new Error('Invalid presence');
+            if (!Array.isArray(snapshot.players) || !Number.isSafeInteger(snapshot.onlineCount) || snapshot.onlineCount < 1) throw new Error('Invalid presence');
             const now = performance.now();
             const serverTime = Number(snapshot.serverTime) || now;
             const offset = serverTime - (sentAt + now) / 2;
@@ -106,12 +122,14 @@ export class WorldPresence {
             for (const [id, player] of this.players) {
                 if (!seen.has(id)) { this.remove(player); this.players.delete(id); }
             }
+            this.setOnlineCount(snapshot.onlineCount);
             this.notice.textContent = this.players.size ? `${this.players.size} joueur(s) à proximité` : 'Monde connecté';
             this.retry = false;
         } catch {
             if (!leave && !this.stopped) {
                 this.retry = true;
                 this.notice.textContent = 'Connexion interrompue · reconnexion…';
+                this.setOnlineCount(null);
             }
         } finally {
             clearTimeout(timeout);
