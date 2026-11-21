@@ -1,4 +1,6 @@
+import { WorldPresence } from './world-presence.js';
 import { vfxFrameSize } from './combat-vfx.js';
+import { equippedWeaponStyles } from './equipped-art.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -12,6 +14,8 @@ import { createWorldLighting } from './world-lighting.js';
 import { CameraFeel } from './camera-feel.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
+import { petAction } from './pet-controls.js';
+import { petKeys } from './pet-rules.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -92,6 +96,21 @@ import { saveProgress } from './progression.js';
             this.load.spritesheet(this.walkSheet, art + '/walk.png', { frameWidth: 48, frameHeight: 48 });
             const attackSize = this.skin === 'noe' ? 68 : 64;
             this.load.spritesheet(this.attackSheet, art + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
+            if (equippedWeaponStyles[this.skin]) {
+                for (const pose of ['idle', 'walk', 'attack']) {
+                    this.load.spritesheet(this.skin + '-' + pose + '-equipped', art + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
+                }
+            }
+            for (const skin of ['lina', 'noe', 'hunter', 'rogue', 'warlock'].filter(skin => skin !== this.skin)) {
+                const directory = skin === 'lina' ? 'warrior' : skin;
+                directions.forEach(direction => this.load.image(skin + '-' + direction, directory + '/' + direction + '.png'));
+                this.load.spritesheet(skin + '-walk', directory + '/walk.png', { frameWidth: 48, frameHeight: 48 });
+                const size = skin === 'noe' ? 68 : 64;
+                this.load.spritesheet(skin + '-attack', directory + '/attack.png', { frameWidth: size, frameHeight: size });
+                if (equippedWeaponStyles[skin]) for (const pose of ['idle', 'walk', 'attack']) {
+                    this.load.spritesheet(skin + '-' + pose + '-equipped', directory + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
+                }
+            }
             this.load.spritesheet('class-gear', 'class-gear.png', { frameWidth: 40, frameHeight: 32 });
             this.load.spritesheet('class-familiars', 'class-familiars.png', { frameWidth: 32, frameHeight: 32 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
@@ -119,6 +138,7 @@ import { saveProgress } from './progression.js';
             this.animateZoneAmbience = createZoneAmbience(this, tileSize);
             this.lighting = createWorldLighting(this, width, height, tileSize, [...clearing.lights, ...town.lights]);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
+            if (this.skin !== 'noe') createPoseSheet(this, 'noe', directions);
             this.questMarker = this.add.text(questNpc.x, questNpc.y - 47, '!', {
                 fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold',
                 color: '#f0c781', stroke: '#19272e', strokeThickness: 3,
@@ -178,8 +198,10 @@ import { saveProgress } from './progression.js';
             ];
 
             this.cameraFeel = new CameraFeel();
-            this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);
+            const rules = JSON.parse(world.dataset.combat);
+            this.combat = new TrainingCombat(this, monsters, rules, tileSize);
             this.renderAvatar(this.time.now);
+            if (rules.worldUrl) this.presence = new WorldPresence(this, rules);
 
             this.updateCameraZoom(this.scale.width, this.scale.height);
             this.cameras.main.centerOn(x, y);
@@ -430,7 +452,7 @@ import { saveProgress } from './progression.js';
                     toggleInventory();
                     return;
                 }
-                if (event.code === 'KeyC' && !event.repeat) {
+                if (event.code === 'KeyP' && !event.repeat) {
                     event.preventDefault();
                     toggleCharacterSheet();
                     return;
@@ -449,6 +471,12 @@ import { saveProgress } from './progression.js';
                     return;
                 }
                 const movement = Object.hasOwn(bindings, event.code);
+                const petCommand = petKeys[event.code];
+                if (petCommand !== undefined && ['hunter', 'warlock'].includes(this.combat.classKey)) {
+                    event.preventDefault();
+                    if (!event.repeat) petAction(this.combat, petCommand, this.time.now);
+                    return;
+                }
                 const attack = attacks[event.code];
                 const potion = potions[event.code];
                 if (!movement && !attack && !potion) {
@@ -482,6 +510,9 @@ import { saveProgress } from './progression.js';
             }
             this.combat.buttons.forEach(button => {
                 button.addEventListener('click', () => this.combat.attack(button.dataset.attack, this.time.now), { signal: keyboard.signal });
+            });
+            this.combat.petButtons.forEach(button => {
+                button.addEventListener('click', () => petAction(this.combat, Number(button.dataset.petAction), this.time.now), { signal: keyboard.signal });
             });
             this.combat.resetButton.addEventListener('click', () => {
                 releaseKeys();
@@ -563,6 +594,7 @@ import { saveProgress } from './progression.js';
             this.combat.update(time, delta);
             this.refreshQuest();
             this.renderAvatar(time);
+            this.presence?.update(time);
             this.animateClearing(time, this.motionPreference.matches);
             this.animateTown(time, this.motionPreference.matches);
             this.animateZoneAmbience(time, this.motionPreference.matches);
@@ -662,10 +694,26 @@ import { saveProgress } from './progression.js';
                     : step % walkFrames;
                 frame = directions.indexOf(this.facing) * walkFrames + walkFrame;
             }
+            const integratedWeapon = equippedWeaponStyles[this.skin];
+            const equippedPose = integratedWeapon && this.combat.weaponStyle === integratedWeapon
+                && (!gesture || gesture.attack.weaponStyle === integratedWeapon);
+            if (equippedPose) {
+                const facing = gesture?.attack.facing ?? this.facing;
+                const row = directions.indexOf(facing);
+                const pose = gesture ? 'attack' : walking ? 'walk' : 'idle';
+                texture = this.skin + '-' + pose + '-equipped';
+                frame = gesture ? row * 9 + gesture.frame : walking ? row * 8 + Math.floor(this.walkDistance / pixelsPerWalkFrame) % 8 : row;
+                origin = 56 / 64;
+            }
             if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
-            if (this.weaponSprite) this.renderArmament(gesture, walking, time);
+            if (this.weaponSprite) {
+                if (integratedWeapon) {
+                    this.weaponSprite.setVisible(false);
+                    this.offHandSprite.setVisible(false);
+                } else this.renderArmament(gesture, walking, time);
+            }
         }
 
         renderArmament(gesture, walking, time) {

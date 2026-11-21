@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import { TrainingCombat, selectNextTarget } from '../public/game/combat.js';
 import { CameraFeel } from '../public/game/camera-feel.js';
 import { frontierSpecies } from '../public/game/exploration.js';
+import { petKeys } from '../public/game/pet-rules.js';
+import { equippedWeaponStyles } from '../public/game/equipped-art.js';
 
 function fakeMonster(name, x, y, alive = true) {
     return {
@@ -114,6 +116,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     };
 
     const cycled = [];
+    const petCommands = [];
     class MockTrainingCombat {
         constructor() {
             this.progressSync = { flush() {} };
@@ -122,6 +125,8 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
             this.spellButtons = [];
             this.potionButtons = [];
             this.weaponButtons = [];
+            this.petButtons = [];
+            this.classKey = 'hunter';
             this.buttons = [{ focus() {}, addEventListener() {} }];
             this.resetButton = { addEventListener() {} };
         }
@@ -178,6 +183,9 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         document: doc,
         HTMLElement: class {},
         TrainingCombat: MockTrainingCombat,
+        petKeys,
+        equippedWeaponStyles,
+        petAction: (_combat, index) => petCommands.push(index),
         buildClearing: () => ({ animate() {}, lights: [] }),
         createZoneAmbience: () => () => {},
         createWorldLighting: () => ({ update() {}, destroy() {} }),
@@ -280,4 +288,17 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     // Alt+Tab ou Ctrl+Tab restent libres pour le système/navigateur
     const altTab = dispatch({ altKey: true });
     assert.equal(altTab.prevented, false);
+
+    const gameListener = windowListeners.find(l => l.type === 'keydown' && !l.capture);
+    for (const code of ['KeyZ', 'KeyX', 'KeyC']) {
+        const event = { code, target: canvas, preventDefault() { this.prevented = true; } };
+        gameListener.fn(event);
+        assert.equal(event.prevented, true);
+    }
+    assert.deepEqual(petCommands, [0, 1, 2], 'W/X/C AZERTY utilise les mêmes positions que Z/X/C QWERTY');
+    gameListener.fn({ code: 'KeyW', target: canvas, preventDefault() {} });
+    assert.equal(scene.heldKeys.has('KeyW'), true, 'la touche physique de déplacement reste disponible');
+    dialog.open = true;
+    gameListener.fn({ code: 'KeyZ', target: canvas, preventDefault() {} });
+    assert.deepEqual(petCommands, [0, 1, 2], 'les commandes ne traversent pas une modale ouverte');
 });

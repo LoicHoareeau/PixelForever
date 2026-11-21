@@ -1,6 +1,9 @@
+import { skillCost, potionRestore, potionCooldownMs, levelDamageFactor, victoryReward, xpRequired } from './balance.js';
 import { createCombatVfx } from './combat-vfx.js';
 import { classAttacks } from './class-talents.js';
 import { applyTechnique, classEffect, dismissFamiliar, updateClassCombat } from './class-combat.js';
+import { bowGrip } from './equipped-art.js';
+import { cancelTaming, rememberPetHealth, updatePetControls } from './pet-controls.js';
 import {
     createMalakorTrial, isMalakorWaveHit, malakorEmberMs, malakorFirstTrialDelay,
     malakorPhases, malakorThresholds, malakorTrialInterval, malakorWave,
@@ -147,7 +150,7 @@ export class TrainingCombat {
         // Références de l'ATH principal et de la barre d'actions
         this.status = document.getElementById('combat-status');
         this.levelUpBanner = document.getElementById('level-up-banner');
-        this.levelUpBannerUntil = 0;
+        this.levelUpBannerUntil = undefined;
         this.resetButton = document.getElementById('combat-reset');
         this.targetHud = document.getElementById('combat-target');
         this.targetNameLabel = document.getElementById('combat-target-name');
@@ -160,6 +163,8 @@ export class TrainingCombat {
         this.combatActions = document.getElementById('combat-actions');
         this.buttons = [...document.querySelectorAll('[data-attack]')];
         this.talentSlotButtons = [...document.querySelectorAll('[data-talent-slot]')];
+        this.petButtons = [...document.querySelectorAll('[data-pet-action]')];
+        this.petStatus = document.getElementById('pet-status');
         this.potionButtons = [...document.querySelectorAll('[data-potion]')];
         this.amounts = [...document.querySelectorAll('[data-quantity]')];
         this.weaponButtons = [...document.querySelectorAll('[data-weapon]')];
@@ -330,6 +335,7 @@ export class TrainingCombat {
      * Réinitialise l'affrontement sans effacer la progression sauvegardée du personnage.
      */
     reset() {
+        this.taming = null;
         dismissFamiliar(this);
         this.periodicEffects?.clear();
         this.guard = null;
@@ -382,6 +388,7 @@ export class TrainingCombat {
      * Déclenche une attaque de base, le sort spécial ou un sort débloqué par talent.
      */
     attack(kind, now) {
+        if (this.taming) { this.tell('Termine ou interromps l’apprivoisement avant d’attaquer.'); return; }
         if (this.health === 0) {
             return;
         }
@@ -431,7 +438,7 @@ export class TrainingCombat {
         }
 
         const manaCost = special
-            ? Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))))
+            ? skillCost(this.rules.specialManaCost, this.stats.maxMana, this.stats.manaCostReduction)
             : 0;
 
         if (special && this.mana < manaCost) {
@@ -485,8 +492,10 @@ export class TrainingCombat {
             interruptible: ranged && castMs >= 500,
             manaCost,
             slotKey: special ? 'special' : 'basic',
-            x: this.scene.position.x + Math.cos(angle) * 7,
-            y: this.scene.position.y - 20 + Math.sin(angle) * 4,
+            ...(this.classKey === 'hunter' && ranged ? bowGrip(this.scene.position, this.scene.facing) : {
+                x: this.scene.position.x + Math.cos(angle) * 7,
+                y: this.scene.position.y - 20 + Math.sin(angle) * 4,
+            }),
         };
 
         this.pending = attack;
@@ -554,6 +563,8 @@ export class TrainingCombat {
     }
 
     castTalentSpell(talent, now) {
+        if (this.taming) return;
+        if (talent.technique?.healPet && !this.familiar) { this.tell('Aucun familier à soigner.'); return; }
         if (this.mustDodgeMalakor()) return;
         if (this.pending?.kind === 'classCast') {
             this.tell('Une incantation est déjà en cours.');
@@ -572,7 +583,8 @@ export class TrainingCombat {
             return;
         }
 
-        const manaCost = Math.max(1, Math.round((talent.manaCost ?? 6) * (1 - (this.stats.manaCostReduction ?? 0))));
+        const baseCost = talent.technique?.summon ? Math.max(talent.manaCost, Math.ceil(this.stats.maxMana * .28)) : talent.manaCost ?? 6;
+        const manaCost = skillCost(baseCost, this.stats.maxMana, this.stats.manaCostReduction);
         if (this.mana < manaCost) {
             this.tell(`${this.rules.resourceName} insuffisant(e) pour ${talent.name} (${manaCost}).`);
             return;
@@ -607,7 +619,7 @@ export class TrainingCombat {
                 this.pending = this.attackVisual = {
                     kind: 'classCast', talent, target, manaCost, cdMs, angle,
                     damage: this.stats.specialDamage * berserkMult, ranged: true, facing: this.scene.facing,
-                    weaponStyle: 'grimoire', name: talent.name, start: now, end: now + technique.castMs,
+                    weaponStyle: this.weaponStyle, name: talent.name, start: now, end: now + technique.castMs,
                     castMs: technique.castMs, nextPulse: now + (technique.channel ?? technique.castMs), interruptible: true,
                 };
                 this.refreshCastBar(now);
@@ -831,7 +843,7 @@ export class TrainingCombat {
             start: now,
             end: now + durationMs,
         });
-        if (slotKey !== 'basic' && slotKey !== 'special') {
+        if (slotKey !== 'basic' && slotKey !== 'special' && this.pending?.kind !== 'classCast') {
             this.attackVisual = {
                 start: now, end: now + 210, castMs: 180,
                 ranged: this.ranged, facing: this.scene.facing,
@@ -860,6 +872,7 @@ export class TrainingCombat {
                 this.resolveAttack(attack, now);
             }
         }
+        updatePetControls(this, now);
         if (this.familiar || this.periodicEffects?.size) updateClassCombat(this, now, delta);
 
         const inCombat = this.monsters.some((m) => m.isAlive && m.alert);
@@ -954,13 +967,17 @@ export class TrainingCombat {
             return 'Il ne reste plus de potion de ce type.';
         }
 
+        if (!['health', 'mana'].includes(type)) return 'Potion invalide.';
+        const now = this.scene.time.now;
+        if (now < (this.potionReadyAt ?? 0)) return 'Potion en recharge.';
         const maximum = this.meters[type === 'health' ? 0 : 1].meter.max;
         if (this[type] === maximum) {
             return 'Cette réserve est déjà pleine.';
         }
 
-        const amount = Math.min(maximum - this[type], this.rules[type + 'Restore']);
+        const amount = Math.min(maximum - this[type], potionRestore(this.rules[type + 'Restore'], maximum));
         this[type] += amount;
+        this.potionReadyAt = now + potionCooldownMs;
         this.progress.items[type]--;
         saveProgress(this.progressKey, this.progress);
         this.refreshVitals();
@@ -1107,7 +1124,7 @@ export class TrainingCombat {
     get weaponStyle() {
         if (!this.equipped) return 'fist';
         if (this.progress.weapon === 'axe') return 'axe';
-        return { warrior: 'sword', rogue: 'daggers', hunter: 'bow', warlock: 'grimoire', mage: 'wand' }[this.classKey];
+        return { warrior: 'sword', rogue: 'daggers', hunter: 'bow', warlock: 'shadow', mage: 'wand' }[this.classKey];
     }
 
     get weaponBonus() {
@@ -1140,7 +1157,7 @@ export class TrainingCombat {
         this.meters[0].meter.max = this.stats.maxHealth;
         this.meters[1].meter.max = this.stats.maxMana;
         this.levelLabel.textContent = level;
-        this.xpMeter.max = xpRequiredFromProgress(level);
+        this.xpMeter.max = xpRequired(level);
         this.xpMeter.value = xp;
         this.xpLabel.textContent = xp + ' / ' + this.xpMeter.max;
 
@@ -1153,7 +1170,7 @@ export class TrainingCombat {
         }
 
         if (this.specialMetaLabel) {
-            const cost = Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))));
+            const cost = skillCost(this.rules.specialManaCost, this.stats.maxMana, this.stats.manaCostReduction);
             this.specialMetaLabel.textContent = cost + ' ' + this.rules.resourceName.toLowerCase() + ' · ' + this.stats.specialDamage + ' dég.';
         }
 
@@ -1162,7 +1179,7 @@ export class TrainingCombat {
             + ' · Portée : ' + this.basicRangeLabel;
         this.buttons[1].title = this.rules.specialName
             + ' · ' + this.stats.specialDamage + ' dégâts'
-            + ' · ' + this.rules.specialManaCost + ' ' + this.rules.resourceName.toLowerCase()
+            + ' · ' + skillCost(this.rules.specialManaCost, this.stats.maxMana, this.stats.manaCostReduction) + ' ' + this.rules.resourceName.toLowerCase()
             + ' · Portée : ' + this.rangeLabel;
 
         this.refreshActionSlots();
@@ -1215,11 +1232,12 @@ export class TrainingCombat {
         }
 
         this.applyDamageToMonster(target, attack.damage, attack.name, attack.color, now, Boolean(attack.special));
-        if (this.familiar && target.isAlive) this.familiar.target = target;
+        if (this.familiar && !this.familiar.recalled && target.isAlive) this.familiar.target = target;
     }
 
     applyDamageToMonster(monster, rawDamage, attackName, color, now, isSpecial = false) {
         if (!monster.isAlive || monster.trial) return;
+        rawDamage = Math.max(1, Math.round(rawDamage * levelDamageFactor(this.progress.level, monster.level)));
         const phaseFloor = monster.isBoss ? Math.round(monster.maxHealth * (malakorThresholds[monster.phase - 1] ?? 0)) : 0;
         const damage = Math.min(monster.health - phaseFloor, monster.isBoss ? Math.max(1, Math.round(rawDamage * .8)) : rawDamage);
         monster.health -= damage;
@@ -1260,8 +1278,8 @@ export class TrainingCombat {
         }
     }
 
-    showLevelUpBanner(now = 0) {
-        showLevelUpBannerUi(this, now);
+    showLevelUpBanner(now = 0, count = 1) {
+        showLevelUpBannerUi(this, now, count);
     }
 
     defeatMonster(monster, now) {
@@ -1283,7 +1301,9 @@ export class TrainingCombat {
             this.triggerShake('large');
         }
 
-        const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
+        const previousLevel = this.progress.level;
+        const gainedXp = monster.isBoss ? monster.xpReward : victoryReward(this.progress.level, monster.level);
+        const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, gainedXp);
         const armor = awardArmor(this.progress, this.classKey, monster.species, monster.level);
         recordTrailQuestDefeat(this.progress.trailQuest, monster.species);
         saveProgress(this.progressKey, this.progress);
@@ -1296,11 +1316,11 @@ export class TrainingCombat {
             this.manaCarry = 0;
             this.healthCarry = 0;
             this.refreshVitals();
-            this.showLevelUpBanner(now);
+            this.showLevelUpBanner(now, this.progress.level - previousLevel);
         }
 
         const loot = this.rules.loot[item];
-        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${armor ? ' · ' + armor.name : ''}`);
+        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${gainedXp} XP · ${loot.name}${armor ? ' · ' + armor.name : ''}`);
     }
 
     mustDodgeMalakor() {
@@ -1357,6 +1377,7 @@ export class TrainingCombat {
     }
 
     takeMonsterHit(monster, damage, now, physical = true) {
+        cancelTaming(this, 'Apprivoisement interrompu par une attaque.');
         const blocking = now < (this.guard?.until ?? 0);
         const protection = (1 - (this.stats.damageReduction ?? 0))
             * (1 - (physical ? this.stats.physicalMitigation ?? 0 : 0))
@@ -1459,11 +1480,13 @@ export class TrainingCombat {
 
             if (!specialVisual) this.triggerShake(monster.isBoss || monster.species === 'dragon' ? 'medium' : 'small');
             if (guardian) {
-                guardian.health -= rawDamage;
+                guardian.health -= Math.max(1, Math.round(rawDamage * (1 - (guardian.mitigation ?? 0))));
+                rememberPetHealth(this);
                 classEffect(this, 'chaos', { x: defender.x, y: defender.y - 12 }, now, 0, .44);
                 if (guardian.health <= 0) {
                     dismissFamiliar(this);
-                    this.tell('Le marcheur du Vide a été dissipé.');
+                    this.petReadyAt = now + 30000;
+                    this.tell('Ton familier a été vaincu. Rappel disponible dans 30 secondes.');
                 }
             } else {
                 this.takeMonsterHit(monster, rawDamage, now, !shot && specialVisual?.special !== 'magma_rift');
@@ -1485,7 +1508,7 @@ export class TrainingCombat {
 
     guardianFor(monster) {
         const pet = this.familiar;
-        return pet?.kind === 'void' && !monster.isBoss && pet.target === monster && this.distanceTo(monster) < 130
+        return pet && !pet.recalled && !monster.isBoss && pet.target === monster && this.distanceTo(monster) < 130
             && inZone(monster.template.zone, pet.actor.x, pet.actor.y) ? pet : null;
     }
 
@@ -1579,8 +1602,4 @@ export class TrainingCombat {
             this.status.textContent = message;
         }
     }
-}
-
-function xpRequiredFromProgress(level) {
-    return 100 + (level - 1) * 50;
 }

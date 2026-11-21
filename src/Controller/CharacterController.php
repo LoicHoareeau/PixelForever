@@ -131,7 +131,7 @@ final class CharacterController extends AbstractController
         [$basic, $special, $weapon, $basicIcon, $specialIcon, $rareName, $epicName, $rareIcon, $epicIcon, $usage] = match ($class) {
             CharacterClass::Warrior => ['Coup d’épée', 'Attaque chargée', 'Épée de fer', 'sword', 'charge', 'Lame des saules', 'Croc de Saphyr', 'blade', 'fang', 'Corps à corps'],
             CharacterClass::Mage => ['Trait arcanique', 'Boule de feu', 'Baguette de braise', 'bolt', 'fire', 'Bâton des saules', 'Sceptre de Saphyr', 'staff', 'wand', 'Corps à corps'],
-            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Grimoire de cendres', 'bolt', 'rune', 'Codex des saules', 'Codex de Saphyr', 'grimoire', 'grimoire', 'Grimoire · à distance'],
+            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Essence de cendres', 'bolt', 'rune', 'Sceau des saules', 'Sceau de Saphyr', 'shadow-focus', 'shadow-focus', 'Focalisation d’ombre · à distance'],
             CharacterClass::Rogue => ['Coup de dague', 'Entaille venimeuse', 'Dagues de fer', 'sword', 'charge', 'Dagues des saules', 'Dagues de Saphyr', 'daggers', 'daggers', 'Dagues · corps à corps'],
             CharacterClass::Hunter => ['Flèche rapide', 'Tir perforant', 'Arc de frêne', 'bolt', 'charge', 'Arc des saules', 'Arc de Saphyr', 'bow', 'bow', 'Arc · à distance'],
         };
@@ -145,8 +145,8 @@ final class CharacterController extends AbstractController
                 'resourceName' => $class->resourceName(),
                 'range' => $class->attackRange(),
                 'specialRange' => $class === CharacterClass::Mage ? 15.0 : $class->attackRange(),
-                'wandDamageMultiplier' => 0.5,
-                'ranged' => $class->attackRange() > 1.5,
+                'wandDamageMultiplier' => 1.0,
+                'ranged' => !in_array($class, [CharacterClass::Warrior, CharacterClass::Rogue], true),
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),
                 'basicName' => $basic,
@@ -161,7 +161,8 @@ final class CharacterController extends AbstractController
                 'manaRestore' => Character::MANA_POTION_RESTORE,
                 'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
                 'level' => $character->getLevel(),
-                'progress' => ['level' => max(1, $character->getLevel()), 'xp' => $character->getExperience()],
+                'progress' => ['level' => max(1, $character->getLevel()), 'xp' => $character->getExperience(), 'xpVersion' => 2],
+                'worldUrl' => $this->generateUrl('character_world', ['id' => $character->getId()]),
                 'progressUrl' => $this->generateUrl('character_progress', ['id' => $character->getId()]),
                 'progressToken' => $this->container->get('security.csrf.token_manager')->getToken('character_progress_'.$character->getId())->getValue(),
                 'baseStats' => $class->baseStats(),
@@ -226,9 +227,10 @@ final class CharacterController extends AbstractController
         if (!is_string($data['_token'] ?? null) || !$this->isCsrfTokenValid('character_progress_'.$id, $data['_token'])) {
             return $this->json(['error' => 'Session de sauvegarde invalide.'], 403);
         }
+        if (($data['xpVersion'] ?? null) !== 2) return $this->json(['error' => 'Recharge le jeu pour actualiser le barème XP.'], 409);
         $level = $data['level'] ?? null;
         $xp = $data['xp'] ?? null;
-        if (!is_int($level) || $level < 1 || $level > 9999 || !is_int($xp) || $xp < 0 || $xp >= 100 + ($level - 1) * 50) {
+        if (!is_int($level) || $level < 1 || $level > 9999 || !is_int($xp) || $xp < 0 || $xp >= \App\Game\Balance::xpRequired($level)) {
             return $this->json(['error' => 'Niveau ou expérience invalide.'], 400);
         }
 
@@ -238,6 +240,6 @@ final class CharacterController extends AbstractController
             ->setParameters(['level' => $level, 'xp' => $xp, 'id' => $id, 'owner' => $owner])->execute();
         $entities->refresh($character);
 
-        return $this->json(['level' => $character->getLevel(), 'xp' => $character->getExperience()]);
+        return $this->json(['level' => $character->getLevel(), 'xp' => $character->getExperience(), 'xpVersion' => 2]);
     }
 }

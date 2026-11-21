@@ -4,7 +4,7 @@ import test from 'node:test';
 import { applyTechnique, updateClassCombat } from '../public/game/class-combat.js';
 import { starterTalents } from '../public/game/class-talents.js';
 import { TrainingCombat } from '../public/game/combat.js';
-import { allocateStat, basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent, getUnlockedActiveSpells, loadProgress } from '../public/game/progression.js';
+import { allocateStat, basicWeaponProfile, computeCharacterStats, createInitialProgress, findTalent, getUnlockedActiveSpells, getUnlockedPetSpells, loadProgress } from '../public/game/progression.js';
 import { zones, tileSize } from '../public/game/exploration.js';
 
 function combat(classKey = 'warlock') {
@@ -101,7 +101,7 @@ test('Drain de vie pulse quatre fois et interrompt les pulsations restantes au d
     instance.updateClassCast(2000);
     assert.equal(target.health, 400);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 36);
+    assert.equal(instance.mana, 33);
     assert.ok(instance.spellCooldowns.has('drain_life'));
 
     instance.spellCooldowns.clear();
@@ -111,7 +111,7 @@ test('Drain de vie pulse quatre fois et interrompt les pulsations restantes au d
     assert.equal(instance.cancelCastOnMove(), true);
     assert.equal(instance.pending, null);
     assert.equal(target.health, 375);
-    assert.equal(instance.mana, 22);
+    assert.equal(instance.mana, 16);
 });
 
 test('Immolation conserve la ressource et sa recharge si la cible est trop loin ou si le mana manque', () => {
@@ -134,10 +134,10 @@ test('Immolation conserve la ressource et sa recharge si la cible est trop loin 
     instance.updateClassCast(1000);
     assert.equal(target.health, 450);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 37);
+    assert.equal(instance.mana, 33);
     instance.castTalentSpell(talent, 1001);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 37);
+    assert.equal(instance.mana, 33);
 });
 
 test('les invocations et malédictions du Démoniste ont un temps d’incantation', () => {
@@ -155,11 +155,14 @@ test('les invocations et malédictions du Démoniste ont un temps d’incantatio
 
 test('les invocations sont exclusives, le diablotin tire à distance et le marcheur récupère l’aggro', () => {
     const { instance, target } = combat();
-    assert.equal(getUnlockedActiveSpells(createInitialProgress(), 'warlock')[0].slot, 'summon_imp');
+    assert.equal(getUnlockedPetSpells(createInitialProgress(), 'warlock')[0].slot, 'summon_imp');
+    assert.equal(getUnlockedActiveSpells(createInitialProgress(), 'warlock').length, 0);
     applyTechnique(instance, { summon: 'imp', vfx: 'summon' }, null, 0, 'Diablotin', 0);
     const imp = instance.familiar;
     imp.target = target;
     imp.actor.setPosition(12, 0);
+    imp.x = 12;
+    imp.y = 0;
     updateClassCombat(instance, 1000, 16);
     assert.equal(instance.spellEffects.at(-1).kind, 'familiar_bolt');
     assert.equal(target.health, 500);
@@ -185,6 +188,12 @@ test('les quatre atlas jouables ont huit directions et toutes leurs images de ma
         for (const [file, size, columns] of [['walk', 48, 8], ['attack', 64, 9]]) {
             const png = readFileSync(new URL(`../public/game/val-des-saules/${skin}/${file}.png`, import.meta.url));
             assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [size * columns, size * 8]);
+        }
+    }
+    for (const skin of ['warlock', 'rogue', 'hunter']) {
+        for (const [file, width, height] of [['idle-equipped', 512, 64], ['walk-equipped', 512, 512], ['attack-equipped', 576, 512]]) {
+            const png = readFileSync(new URL(`../public/game/val-des-saules/${skin}/${file}.png`, import.meta.url));
+            assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [width, height]);
         }
     }
 });

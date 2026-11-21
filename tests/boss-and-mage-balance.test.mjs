@@ -173,7 +173,7 @@ test('la Rage déclenche la déferlante visuelle avant de programmer la premièr
     const combat = Object.create(TrainingCombat.prototype);
     Object.assign(combat, {
         monsters: [boss], scene: { position: { x: boss.sprite.x + 14, y: boss.sprite.y } },
-        health: 1000, stats: {}, impacts: [], spellEffects: [],
+        health: 1000, progress: createInitialProgress(40), stats: {}, impacts: [], spellEffects: [],
         spawnFloatingText() {}, refreshTargetHud() {}, tell() {},
     });
     combat.applyDamageToMonster(boss, 300, 'Test', 0xffffff, now);
@@ -312,7 +312,7 @@ test('le Mage incante à 15 cases et peut annuler une incantation d’une second
     });
 
     combat.attack('special', 100);
-    assert.equal(combat.mana, 36);
+    assert.equal(combat.mana, 25);
     assert.equal(combat.pending.castMs, 1000);
     assert.equal(combat.cancelCastOnMove(), true);
     assert.equal(combat.mana, 50);
@@ -323,5 +323,5 @@ test('le Mage incante à 15 cases et peut annuler une incantation d’une second
     combat.castTalentSpell(fireWall, 300);
     assert.equal(combat.pending.kind, 'talentCast');
     assert.equal(combat.pending.end, 1300);
-    assert.equal(combat.mana, 28);
+    assert.equal(combat.mana, 25);
 });

@@ -4,6 +4,8 @@
 
 ## Accueil et choix du personnage
 
+`#level-up-banner` annonce les montées de niveau avec `role="status"`, sans bloquer les commandes. `combat-ui.js` met les annonces en file et utilise l’horloge Phaser pour afficher chacune pendant trois secondes, avec une pause de 150 ms entre elles.
+
 Twig rend l’accueil public du Val-des-Saules, la connexion, l’inscription et les écrans de personnage. `public/portal/val.css` adapte leur mise en page aux petits écrans. Le diorama 3D de l’accueil et de la connexion est une illustration JPEG. Les cartes des personnages mettent les sprites de jeu sur des socles éclairés et indiquent la classe, le niveau et les caractéristiques de base. **Actif** indique le personnage sélectionné en session.
 
 ## Carte et ressources visuelles
@@ -30,7 +32,13 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 1,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 7,5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
+Pour `hunter` et `rogue`, `idle-equipped.png`, `walk-equipped.png` et `attack-equipped.png` intègrent l’arme au personnage. Les fichiers de `warlock` contiennent désormais le corps sans livre. Cellules de 64 × 64 px : repos 512 × 64, marche 512 × 512, attaque 576 × 512. Les pieds sont alignés à y=54 et l’origine Phaser vaut 56/64 ; passer du repos à la marche ou au tir ne fait pas sauter le personnage. À mains nues, les planches originales sont utilisées et aucun ancien sprite d’arme séparé n’est dessiné pour ces trois classes.
+
+Le style du Démoniste est `shadow`. `warlock-vfx.js` calcule l’enveloppe de son aura depuis `attackVisual`, y compris sa dissipation après résolution lorsque `pending` est vide. `combat-renderer.js` maintient ce rendu pendant la queue visuelle sans toucher au calcul des dégâts ou de la ressource. Le mouvement réduit fixe la pose des textures et supprime les fragments. `php tests/warlock_art.php` vérifie que les huit poses au repos correspondent pixel par pixel au corps d’origine sans objet ajouté.
+
+`tools/build_equipped_sprites.php` compose les neuf planches à partir des corps existants, sans réécrire ces sources. Après régénération des corps via `tools/build_class_sprites.php`, lancer `php tools/build_equipped_sprites.php`. `php tools/build_equipped_sprites.php --check` vérifie leur reproductibilité pixel par pixel, la préservation du visage et des cheveux et l’absence d’arme coupée sur les bords. `equipped-art.js` donne la prise de l’arc au combat et aux VFX pour éviter un décalage entre la corde et le projectile.
+
+L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 2,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 5 cases avant bonus, sans mana et à pleine puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
@@ -41,6 +49,8 @@ Le Mage utilise des poses orientées pour le tir et l’incantation. Le bâton p
 Les deux atlas de VFX partagent un pool de sprites. Les effets au sol suivent les coordonnées du combat, tandis que les animations des personnages suivent la direction et l’équipement. [Catalogue, génération et vérifications des VFX](VFX.md)
 
 ## Monstres et PNJ
+
+`pet-rules.js` valide les créatures apprivoisables et calcule les statistiques héritées ; `pet-controls.js` gère la canalisation, la sauvegarde locale de la créature et les trois commandes ; `class-combat.js` gère les sprites, déplacements et attaques du familier. `getUnlockedPetSpells` sépare les invocations des techniques de la barre principale. La barre `data-pet-action` utilise les touches physiques KeyZ/KeyX/KeyC ; la fiche est déplacée sur KeyP. La créature et sa fraction de PV sont normalisées à la reprise du profil local du Chasseur.
 
 Les 59 créatures peuplant la carte se répartissent sur des secteurs élargis : 7 sangliers N.1–5 dans la clairière, 6 squelettes N.5–10 au cimetière, 5 dragons N.10–20 dans les montagnes, 16 démons (6 diablotins, 5 molosses et 5 gardes N.21–35) dans les trois secteurs des Terres dévastées, le Boss de palier niveau 40 **Malakor, Seigneur de la Brèche** au Trône d’Obsidienne (`128 × 128 px`, trois phases télégraphiées et jauge avec seuils de phase) et huit créatures dans chacun des trois secteurs N.41–60. Les variantes teintent les atlases du molosse et du garde et emploient les mêmes télégraphies circulaires et linéaires que Malakor. Chaque espèce standard dispose d’au moins 10 points de patrouille.
 
@@ -67,7 +77,8 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | Attaque de base / compétence principale | `1` / `2` |
 | Techniques disponibles | `3` à `6`, jusqu’à `8` pour le Guerrier et `9` pour le Démoniste |
 | Potions de vie / ressource | `R` / `F` |
-| Fiche / talents / inventaire | `C` / `T` / `I` |
+| Fiche / talents / inventaire | `P` / `T` / `I` |
+| Familier (Chasseur/Démoniste) | `W` / `X` / `C` AZERTY ; `Z` / `X` / `C` QWERTY |
 | Parler au PNJ à proximité | `E` ou clic |
 
 Les commandes utilisent `KeyboardEvent.code`. Sur AZERTY, les touches physiques de la rangée des chiffres activent les actions sans Maj. Les raccourcis sont suspendus pendant la saisie et lorsque les dialogues l’exigent.
@@ -85,3 +96,9 @@ Les victoires donnent l’XP du monstre et un tirage : vie 47 %, ressource 30 %,
 Vérifier en navigateur la portée des attaques avec l’arme équipée, le coût et la recharge des techniques, les déplacements, la quête et la reconnexion. [Scénarios VFX](VFX.md#vérifications) · [Parcours après déploiement](DEPLOIEMENT.md#vérifications-après-déploiement)
 
 Voir le [game design](GAME_DESIGN.md) et le [back-end](BACKEND.md).
+
+## XP et présence
+
+`balance.js` centralise seuils, récompenses, écarts de niveau et coûts. `progression.js` convertit une fois les sauvegardes non versionnées vers `xpVersion: 2` en conservant le niveau et la fraction d’XP. `progress-sync.js` envoie cette version ; une page ancienne doit être rechargée. Les potions ont une recharge commune de 15 s affichée dans les deux cases et restaurent 30 % du maximum avec un plancher fixe.
+
+`world-presence.js` envoie position/orientation/pose et reçoit les personnages voisins. Les textures des cinq classes sont préchargées. Les déplacements sont interpolés, avec position directe en mouvement réduit. La présence continue quand le rendu Phaser est suspendu en arrière-plan ; les requêtes en échec sont espacées et les acteurs distants retirés. Un autre onglet du même personnage affiche un conflit de présence et réessaie après expiration du bail. Cela ne valide pas les combats locaux. Le rendu à deux fenêtres reste à vérifier : le serveur local était inaccessible depuis Edge pendant ce contrôle.

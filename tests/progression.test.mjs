@@ -76,13 +76,13 @@ test('les victoires créditent le butin, le niveau, les points de stats et de so
     assert.equal(progress.statPoints, 0);
     assert.equal(progress.spellPoints, 0);
 
-    assert.deepEqual(awardVictory(progress, loot, () => 0.99), {
+    assert.deepEqual(awardVictory(progress, loot, () => 0.99, xpRequired(1) - 50), {
         item: 'epic',
         levelUp: true,
     });
     assert.equal(progress.level, 2);
     assert.equal(progress.xp, 0);
-    assert.equal(xpRequired(progress.level), 150);
+    assert.equal(xpRequired(progress.level), 280);
     assert.equal(progress.statPoints, 3);
     assert.equal(progress.spellPoints, 1);
     assert.deepEqual(progress.items, { health: 0, mana: 0, rare: 1, epic: 1 });
@@ -146,14 +146,14 @@ test('les caractéristiques naturelles, l’Esprit et la spécialisation N.10 ag
         computeCharacterStats(mageRules, mageBase, 0).manaRegenPerSec,
     );
 
-    // Spécialisation Guerrier N.10 (Rempart) : +3 Défense + croissance niveau 10 sans réécrire les niveaux 2..9
+    // Au N.10 : +3 Défense, croissance spécialisée à partir du niveau suivant.
     const war10 = createInitialProgress(10);
     const beforeSpec = computeCharacterStats({ classKey: 'warrior', health: 60, mana: 20, basicDamage: 10, specialDamage: 18 }, war10, 0);
     assert.equal(chooseSpecialization(war10, 'warrior', 'bulwark'), true);
     const afterSpec = computeCharacterStats({ classKey: 'warrior', health: 60, mana: 20, basicDamage: 10, specialDamage: 18 }, war10, 0);
-    assert.equal(afterSpec.attributes.defense.naturalRaw, 5.8);
+    assert.equal(afterSpec.attributes.defense.naturalRaw, 5.4);
     assert.equal(afterSpec.attributes.defense.specBonus, 3);
-    assert.equal(afterSpec.attributes.defense.total, 15);
+    assert.equal(afterSpec.attributes.defense.total, 14);
     assert.ok(afterSpec.physicalMitigation > beforeSpec.physicalMitigation);
 });
 
@@ -216,7 +216,7 @@ test('le niveau de la base est restauré sans cache et ses bonus restent ceux d�
     const previous = globalThis.localStorage;
     globalThis.localStorage = { getItem: () => null };
     t.after(() => { if (previous === undefined) delete globalThis.localStorage; else globalThis.localStorage = previous; });
-    const progress = loadProgress('character', 4, { level: 4, xp: 27 });
+    const progress = loadProgress('character', 4, { level: 4, xp: 27, xpVersion: 2 });
     assert.equal(progress.level, 4);
     assert.equal(progress.xp, 27);
     assert.equal(progress.statPoints, 9);
@@ -241,7 +241,7 @@ test('les anciens points gratuits sont retirés sans perdre le niveau, l’XP ou
     assert.deepEqual(progress.talents, {});
     assert.equal(progress.statPoints, 0);
     assert.equal(progress.spellPoints, 0);
-    const advanced = loadProgress('character', 4, { level: 4, xp: 27 });
+    const advanced = loadProgress('character', 4, { level: 4, xp: 27, xpVersion: 2 });
     assert.equal(advanced.level, 4);
     assert.equal(advanced.xp, 27);
     assert.equal(advanced.items.health, 7);
@@ -270,4 +270,23 @@ test('la montée de niveau affiche le bandeau dédié « Vous avez prit un nivea
     assert.equal(banner.hidden, false);
     assert.equal(banner.textContent, 'Vous avez prit un niveau');
     assert.equal(status.textContent, 'Sanglier vaincu · +50 XP');
+});
+
+test('la spécialisation change la croissance après le niveau 10 sans recalculer les niveaux précédents', () => {
+    const rules = { classKey: 'warrior', health: 60, mana: 20, basicDamage: 10, specialDamage: 18 };
+    for (const spec of ['bulwark', 'berserker']) {
+        const progress = createInitialProgress(10);
+        const baseline = computeCharacterStats(rules, progress);
+        progress.specialization = spec;
+        const selected = computeCharacterStats(rules, progress);
+        for (const key of ['strength', 'defense', 'vitality']) {
+            assert.equal(selected.attributes[key].naturalRaw, baseline.attributes[key].naturalRaw);
+        }
+        const mainStat = spec === 'bulwark' ? 'defense' : 'strength';
+        assert.equal(selected.attributes[mainStat].specBonus, 3);
+        progress.level = 11;
+        const next = computeCharacterStats(rules, progress);
+        assert.equal(Math.round((next.attributes[mainStat].naturalRaw - selected.attributes[mainStat].naturalRaw) * 100), 100);
+        assert.equal(Math.round((next.attributes.vitality.naturalRaw - selected.attributes.vitality.naturalRaw) * 100), 60);
+    }
 });

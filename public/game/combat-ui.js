@@ -1,3 +1,4 @@
+import { skillCost, potionRestore, potionCooldownMs } from './balance.js';
 import { armorItems, armorSlots } from './armor.js';
 import {
     canInvestTalent,
@@ -28,19 +29,29 @@ function el(tag, className, text) {
     return node;
 }
 
-export function showLevelUpBannerUi(combat, now = 0) {
+export function showLevelUpBannerUi(combat, now = 0, count = 1) {
     const banner = combat.levelUpBanner ?? (typeof document !== 'undefined' ? document.getElementById('level-up-banner') : null);
-    combat.levelUpBannerUntil = now + 3800;
     if (!banner) return;
+    combat.levelUpBanner = banner;
+    combat.levelNotifications = (combat.levelNotifications ?? 0) + count;
+    if (combat.levelUpBannerUntil !== undefined) return;
+    combat.levelNotifications--;
+    combat.levelUpBannerUntil = now + 3000;
     banner.textContent = 'Vous avez prit un niveau';
     banner.hidden = false;
 }
 
 export function updateLevelUpBannerUi(combat, now) {
     const banner = combat.levelUpBanner;
-    if (!banner || banner.hidden) return;
+    if (!banner || combat.levelUpBannerUntil === undefined) return;
     if (now >= (combat.levelUpBannerUntil ?? 0)) {
-        banner.hidden = true;
+        if (!banner.hidden) {
+            banner.hidden = true;
+            combat.levelUpBannerUntil = now + 150;
+        } else {
+            combat.levelUpBannerUntil = undefined;
+            if (combat.levelNotifications > 0) showLevelUpBannerUi(combat, now, 0);
+        }
     }
 }
 
@@ -49,6 +60,9 @@ export function updateCooldownsUi(combat, now) {
         basic: combat.buttons[0],
         special: combat.buttons[1],
     };
+    for (const button of combat.potionButtons ?? []) {
+        if (button.classList.contains('action-slot')) slotMap['potion-' + button.dataset.potion] = button;
+    }
     const unlocked = getUnlockedActiveSpells(combat.progress, combat.classKey);
     combat.talentSlotButtons.forEach((btn, idx) => {
         const talent = unlocked[idx];
@@ -63,7 +77,9 @@ export function updateCooldownsUi(combat, now) {
 
     for (const [key, btn] of Object.entries(slotMap)) {
         if (!btn) continue;
-        const info = combat.spellCooldowns.get(key);
+        const info = key.startsWith('potion-')
+            ? { end: combat.potionReadyAt ?? 0, start: (combat.potionReadyAt ?? 0) - potionCooldownMs }
+            : combat.spellCooldowns.get(key);
         const remaining = info ? Math.max(0, info.end - now) : 0;
         const total = info ? Math.max(1, info.end - info.start) : 1;
         const percent = remaining > 0 ? Math.ceil((100 * remaining) / total) : 0;
@@ -107,7 +123,7 @@ export function refreshActionSlotsUi(combat) {
             return;
         }
         button.dataset.unlocked = 'true';
-        const cost = Math.max(1, Math.round((talent.manaCost ?? 6) * (1 - (combat.stats?.manaCostReduction ?? 0))));
+        const cost = skillCost(talent.manaCost ?? 6, combat.stats.maxMana, combat.stats.manaCostReduction);
         button.title = `${talent.name} · ${cost} ${combat.rules.resourceName.toLowerCase()} · ${talent.description}`;
         if (iconEl) iconEl.className = `action-icon ${talent.icon}`;
         if (nameEl) nameEl.textContent = talent.name;
@@ -122,6 +138,9 @@ export function refreshInventoryUi(combat) {
 
     combat.potionButtons.forEach((button) => {
         button.disabled = combat.health === 0;
+        const type = button.dataset.potion;
+        const maximum = type === 'health' ? combat.stats.maxHealth : combat.stats.maxMana;
+        button.title = `Rend ${potionRestore(combat.rules[type + 'Restore'], maximum)} ${type === 'health' ? 'PV' : combat.rules.resourceName.toLowerCase()} · recharge partagée 15 s`;
     });
 
     combat.weaponButtons.forEach((button) => {
