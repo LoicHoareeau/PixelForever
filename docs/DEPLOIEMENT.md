@@ -59,3 +59,9 @@ Après déploiement : vérifier les icônes de chaque classe et arme, compteur �
 Les tests serveur et de rendu logique passent localement ; les interactions visuelles réelles restent à contrôler sur Render faute d’accès au serveur HTTP local. Aucun déploiement Render déclenché par l’agent.
 
 Inclure `spell-icons-atlas.png`, `spell-icons.js`, `spell-state.js`, `chat.js` et le partiel `game/_chat.html.twig` dans le même déploiement ; ne pas publier uniquement le CSS. La planche des sorts a été inspectée et sa direction validée par le propriétaire. Les sprites des personnages restent identiques.
+
+## Lot fluidité réseau
+
+Déployer ensemble `remote-motion.js`, `world-presence.js`, `world.js` et `WorldController.php`. Aucune migration. Vérifier à 2 puis 10 joueurs : marche continue, changement de direction, arrêt, neuf poses des attaques courtes, interruption d’une incantation, vraie téléportation et retour après défaite. Simuler ensuite un court retard réseau : pas de disparition immédiate ni de marche infinie ; reprise progressive. Fermer un onglet et contrôler l’expiration. Comparer les FPS, temps de réponse, CPU du service et charge PostgreSQL sur Render avant de relever la cible de population.
+
+Les tests locaux de relecture passent, mais ils n’incluent ni le GPU du navigateur ni le réseau/hébergement Render. Le joueur local reste immédiat ; le tampon des acteurs distants ajoute volontairement un délai pour lisser leur mouvement. Aucun déploiement Render déclenché par l’agent.

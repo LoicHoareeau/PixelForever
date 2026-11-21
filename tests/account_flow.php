@@ -192,6 +192,7 @@ try {
     $worldPath = $warriorRules['worldUrl'];
     $first = visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld));
     check(json_decode($first->getContent(), true)['players'] === [], 'Le premier joueur arrive seul.');
+    check(is_numeric(json_decode($first->getContent(), true)['serverTime']), 'Le serveur doit horodater ses instantanés.');
     $second = visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode($bobWorld));
     $visible = json_decode($second->getContent(), true)['players'];
     check(count($visible) === 1 && $visible[0]['name'] === 'Roland' && $visible[0]['skin'] === 'lina', 'Bob doit voir le personnage et l’apparence d’Alice.');
@@ -209,6 +210,24 @@ try {
     $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 1');
     $seen = visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld));
     check(json_decode($seen->getContent(), true)['players'][0]['name'] === 'Merlin', 'La présence doit être réciproque entre deux comptes.');
+
+    $animation = ['33333333-3333-4333-8333-333333333333', 120, 180, 390, true, 0];
+    foreach (['invalid', ['bad' => $animation], [[$leaseAlice, 120, 180, 390, true, 0]], array_fill(0, 7, $animation), [[...$animation, 1]], [['bad', 120, 180, 390, true, 0]],
+        [[$animation[0], 6001, 180, 390, true, 0]], [[$animation[0], 120, 0, 390, true, 0]],
+        [[$animation[0], 120, 180, 391, true, 0]], [[$animation[0], 120, 180, 390, 1, 0]],
+        [[$animation[0], 120, 180, 390, true, 8]]] as $invalidActions) {
+        visit($alice, 'POST', $worldPath, 400, json: json_encode([...$aliceWorld, 'state' => [...$position, 'actions' => $invalidActions]]));
+    }
+    $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 1');
+    visit($alice, 'POST', $worldPath, 200, json: json_encode([...$aliceWorld, 'state' => [...$position, 'actions' => [$animation]]]));
+    $stored = json_decode($presenceDb->query('SELECT state FROM world_presence WHERE character_id = '.$rolandId)->fetchColumn(), true);
+    $actionStart = $stored['actions'][0][1];
+    check($stored['updatedAt'] > $actionStart && $stored['actions'][0][0] === $animation[0], 'Le serveur doit reconstruire la chronologie visuelle sans exposer le bail.');
+    $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 1');
+    $animation[1] = 220; $animation[3] = 80;
+    visit($alice, 'POST', $worldPath, 200, json: json_encode([...$aliceWorld, 'state' => [...$position, 'actions' => [$animation]]]));
+    $stored = json_decode($presenceDb->query('SELECT state FROM world_presence WHERE character_id = '.$rolandId)->fetchColumn(), true);
+    check($stored['actions'][0][1] === $actionStart && $stored['actions'][0][3] === 80, 'L’identité d’une animation conserve son début et son annulation.');
     visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode([...$bobWorld, 'leave' => true]));
     $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 13');
     visit($alice, 'POST', $worldPath, 200, json: json_encode([...$aliceWorld, 'lease' => $leaseBob]));

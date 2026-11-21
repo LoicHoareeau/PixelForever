@@ -596,7 +596,7 @@ import { petKeys } from './pet-rules.js';
             this.combat.update(time, delta);
             this.refreshQuest();
             this.renderAvatar(time);
-            this.presence?.update(time);
+            this.presence?.update();
             this.animateClearing(time, this.motionPreference.matches);
             this.animateTown(time, this.motionPreference.matches);
             this.animateZoneAmbience(time, this.motionPreference.matches);

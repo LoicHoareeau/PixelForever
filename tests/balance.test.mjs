@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { xpRequired, killXp, migrateXp, ordinaryStats, levelDamageFactor, skillCost, victoryReward } from '../public/game/balance.js';
-import { interpolatePosition } from '../public/game/world-presence.js';
+import { interpolatePosition } from '../public/game/remote-motion.js';
 import { TrainingCombat } from '../public/game/combat.js';
 
 test('les seuils représentent 316 victoires de niveau égal jusqu’au niveau 60', () => {

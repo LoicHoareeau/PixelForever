@@ -144,3 +144,7 @@ La trappe ne cause aucun dégât et neutralise déplacements et attaques de la c
 Les compétences affichent leur recharge en secondes. Une ressource insuffisante grise l’illustration et empêche le clic ; le sort redevient disponible après récupération. Les raccourcis gardent les validations de combat. Ce lot ne change pas les coûts, dégâts ni sprites de personnage.
 
 Quatre canaux : global, groupe sur invitation (5 personnages), chuchotement à un personnage connecté précis, proximité à 12 cases. Les messages ne transmettent pas de balisage actif. Les groupes servent ici à discuter : monstres, PV, butin et XP restent individuels. Le chef invite ; s’il part, le groupe est dissous. Entrée/Échap permettent de passer de la carte à la saisie et inversement.
+
+## Synchronisation visuelle
+
+Cible validée : 2 à 10 joueurs dans une zone. Le joueur local répond à ses commandes immédiatement. Les autres personnages sont affichés depuis un historique réseau, avec un retard de lissage de 500–850 ms et une courte prédiction bornée. Une vraie téléportation reste immédiate. Les attaques distantes déroulent leurs poses complètes et leur annulation. Le tampon traite les retards habituels sans promettre l’absence de saccade en cas de coupure ou de surcharge ; il ne remplace pas le futur moteur de combats partagés.

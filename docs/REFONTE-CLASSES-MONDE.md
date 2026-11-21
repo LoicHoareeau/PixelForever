@@ -121,3 +121,5 @@ Non livré : autorité serveur des combats, monstres/PV/morts/captures partagés
 Ajout ciblé : Trappe d’apprivoisement de départ du Chasseur, touche 3, neutralisation 6 s puis W pour capturer, recharge 20 s. Réutilise les conditions existantes et reste locale au navigateur.
 
 Lot communication : quatre canaux de tchat Symfony (global/groupe/chuchotement/proximité), groupes privés sur invitation, compteurs de recharge et état visuel de ressource des sorts. Ce tchat ne livre pas les combats partagés ni l’XP de groupe. Illustrations des sorts remplacées seules selon le choix du propriétaire ; apparences des personnages conservées.
+
+Itération fluidité : cible 2 à 10 joueurs confirmée, cadence réseau corrigée, positions horodatées interpolées, événements d’animation rejoués localement, maintien des acteurs pendant les courts défauts réseau. Le lissage implique un tampon sur les acteurs distants ; les FPS réels et la capacité Render restent à mesurer, sans modifier le périmètre futur des combats partagés.
