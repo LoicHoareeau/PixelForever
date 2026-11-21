@@ -1,0 +1,50 @@
+// Atlas : 8 colonnes × 6 lignes, ordre de lecture gauche → droite.
+export const spellIconKeys = [
+    "agony",
+    "arcane_blast",
+    "berserk",
+    "blade_flurry",
+    "chaos_bolt",
+    "cleave",
+    "dismiss",
+    "drain_life",
+    "engage",
+    "fire_wall",
+    "fire_whirl",
+    "frost_nova",
+    "hunter_basic",
+    "hunter_special",
+    "immolate",
+    "mage_basic",
+    "mage_special",
+    "mage_staff",
+    "prey_mark",
+    "provocation",
+    "recall",
+    "rempart",
+    "rogue_basic",
+    "rogue_special",
+    "rupture",
+    "shadow_step",
+    "shadow_strike",
+    "shield_bash",
+    "spike_trap",
+    "summon_hawk",
+    "summon_imp",
+    "summon_succubus",
+    "summon_void",
+    "tame",
+    "taming_trap",
+    "unarmed_basic",
+    "volley",
+    "warlock_basic",
+    "warlock_special",
+    "warrior_axe",
+    "warrior_basic",
+    "warrior_special"
+];
+
+export function spellIconPosition(key) {
+    const index = spellIconKeys.indexOf(key);
+    return index < 0 ? null : `${(index % 8) * 100 / 7}% ${Math.floor(index / 8) * 100 / 5}%`;
+}

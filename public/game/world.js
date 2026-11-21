@@ -1,3 +1,4 @@
+import { GameChat } from './chat.js';
 import { WorldPresence } from './world-presence.js';
 import { vfxFrameSize } from './combat-vfx.js';
 import { equippedWeaponStyles } from './equipped-art.js';
@@ -201,6 +202,7 @@ import { petKeys } from './pet-rules.js';
             const rules = JSON.parse(world.dataset.combat);
             this.combat = new TrainingCombat(this, monsters, rules, tileSize);
             this.renderAvatar(this.time.now);
+            if (rules.chatUrl) this.chat = new GameChat(this, rules);
             if (rules.worldUrl) this.presence = new WorldPresence(this, rules);
 
             this.updateCameraZoom(this.scale.width, this.scale.height);
@@ -407,7 +409,7 @@ import { petKeys } from './pet-rules.js';
                 const target = event.target;
                 const isEditable = target
                     && typeof target.matches === 'function'
-                    && (target.isContentEditable || target.matches('input, select, textarea'));
+                    && (target.closest?.('#game-chat') || target.isContentEditable || target.matches('input, select, textarea'));
                 if (isEditable) {
                     return;
                 }
@@ -444,7 +446,7 @@ import { petKeys } from './pet-rules.js';
                     return;
                 }
                 const target = event.target;
-                if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, select, textarea'))) {
+                if (target instanceof HTMLElement && (target.closest?.('#game-chat') || target.isContentEditable || target.matches('input, select, textarea'))) {
                     return;
                 }
                 if (event.code === 'KeyI' && !event.repeat) {

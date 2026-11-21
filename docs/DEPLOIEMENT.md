@@ -49,3 +49,13 @@ Déployer ensemble PHP, migration, Twig et ressources JavaScript. Les anciens on
 ### Lot trappe du Chasseur
 
 Déployer ensemble les modules de talents, règles de familier, combat/IA/rendu et Twig. L’atlas de trappe est déjà versionné, sans nouvel asset ni migration. Sur Render : Chasseur N.1, affaiblir un sanglier à 30 %, cibler puis `3` et W ; vérifier la capture sans coup de la cible, le coût affiché, les 20 s de recharge et la libération sur nouvelle attaque. Vérifier le refus sur squelette, niveau supérieur et hors portée sans consommation. Les autres créatures peuvent toujours interrompre la capture.
+
+## Lot sorts et tchat
+
+Branche `front/sorts-et-tchat`, dépendante du lot trappe de la PR #32. Déployer ensemble contrôleur, migration `Version20261121050000`, Twig, modules JavaScript, CSS et illustrations de sorts. Le démarrage Docker applique les migrations. Aucune modification directe de la base Render pendant le développement.
+
+Après déploiement : vérifier les icônes de chaque classe et arme, compteur à l’échéance, gris à mana/énergie insuffisante et retour après régénération, invocations W/X/C et potion en recharge. Avec trois personnages : global pour tous, chuchotement privé, groupe après acceptation uniquement, proximité pour les personnages proches. Contrôler le refus d’un non-membre, départ du groupe et dissolution par le chef, message trop long et double envoi réseau. Écrire ZQSD/1/T dans le tchat sans déplacer le personnage ni lancer un sort ; Entrée pour saisir, Échap pour revenir à la carte.
+
+Les tests serveur et de rendu logique passent localement ; les interactions visuelles réelles restent à contrôler sur Render faute d’accès au serveur HTTP local. Aucun déploiement Render déclenché par l’agent.
+
+Inclure `spell-icons-atlas.png`, `spell-icons.js`, `spell-state.js`, `chat.js` et le partiel `game/_chat.html.twig` dans le même déploiement ; ne pas publier uniquement le CSS. La planche des sorts a été inspectée et sa direction validée par le propriétaire. Les sprites des personnages restent identiques.

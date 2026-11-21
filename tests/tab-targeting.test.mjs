@@ -89,6 +89,7 @@ test('TrainingCombat.cycleTarget met à jour la sélection, le HUD et le journal
 });
 
 test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM dans la fenêtre', () => {
+    class MockHTMLElement {}
     const windowListeners = [];
     const canvas = {
         tabIndex: -1,
@@ -181,7 +182,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     vm.runInNewContext(source, {
         window: win,
         document: doc,
-        HTMLElement: class {},
+        HTMLElement: MockHTMLElement,
         TrainingCombat: MockTrainingCombat,
         petKeys,
         equippedWeaponStyles,
@@ -290,6 +291,19 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     assert.equal(altTab.prevented, false);
 
     const gameListener = windowListeners.find(l => l.type === 'keydown' && !l.capture);
+    const chatControl = new MockHTMLElement();
+    chatControl.matches = () => false;
+    chatControl.closest = selector => selector === '#game-chat' ? {} : null;
+    const chatTab = dispatch({ target: chatControl });
+    assert.equal(chatTab.prevented, false, 'Tab doit rester natif dans le panneau de tchat');
+    for (const code of ['KeyW', 'Digit1', 'KeyT', 'KeyZ', 'KeyE']) {
+        const event = { code, target: chatControl, preventDefault() { this.prevented = true; } };
+        gameListener.fn(event);
+        assert.equal(event.prevented, undefined, code + ' ne doit pas déclencher le jeu depuis le tchat');
+    }
+    assert.equal(scene.heldKeys.size, 0);
+    assert.deepEqual(petCommands, []);
+
     for (const code of ['KeyZ', 'KeyX', 'KeyC']) {
         const event = { code, target: canvas, preventDefault() { this.prevented = true; } };
         gameListener.fn(event);

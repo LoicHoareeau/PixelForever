@@ -1,3 +1,4 @@
+import { cooldownLabel, setSpellIcon } from './spell-state.js';
 import { getUnlockedPetSpells, saveProgress } from './progression.js';
 import { dismissFamiliar, summonFamiliar } from './class-combat.js';
 import { tameError } from './pet-rules.js';
@@ -85,15 +86,27 @@ export function updatePetControls(combat, now) {
         button.disabled = combat.health <= 0 || (combat.classKey === 'warlock' ? !talent : index === 1 && !combat.progress.capturedPet);
         button.dataset.active = combat.classKey === 'warlock' ? String(combat.familiar?.kind === demonKinds[index])
             : String(index === 0 && !!combat.taming || index === 1 && !!combat.familiar);
+        const cost = combat.classKey === 'warlock'
+            ? talent ? Math.max(1, Math.round(Math.max(talent.manaCost, Math.ceil(combat.stats.maxMana * .28)) * (1 - (combat.stats.manaCostReduction ?? 0)))) : 0
+            : index === 0 || index === 1 && !combat.familiar ? Math.max(10, Math.ceil(combat.stats.maxMana * .28)) : 0;
+        button.dataset.noResource = String(combat.mana < cost);
+        button.disabled ||= combat.mana < cost;
+        setSpellIcon(button.querySelector('.action-icon'), combat.classKey === 'warlock' ? 'summon_' + demonKinds[index] : ['tame', 'recall', 'dismiss'][index]);
+        let remaining = 0;
         if (combat.classKey === 'warlock') {
             const cooldown = combat.spellCooldowns.get(talent?.slot);
-            const remaining = Math.max(0, (cooldown?.end ?? 0) - now);
-            const cost = talent ? Math.max(1, Math.round(Math.max(talent.manaCost, Math.ceil(combat.stats.maxMana * .28)) * (1 - (combat.stats.manaCostReduction ?? 0)))) : 0;
+            remaining = Math.max(0, (cooldown?.end ?? 0) - now, (combat.petReadyAt ?? 0) - now);
             button.title = talent ? talent.name + ' · ' + cost + ' mana · ' + (remaining ? Math.ceil(remaining / 1000) + ' s de recharge' : talent.description) : 'À apprendre dans les talents';
             button.disabled ||= remaining > 0 || !!combat.pending || now < (combat.petReadyAt ?? 0);
-        } else if (index < 2 && !combat.familiar) {
+        } else if (index < 2 && (index === 0 || !combat.familiar)) {
+            remaining = Math.max(0, (combat.petReadyAt ?? 0) - now);
             button.disabled ||= now < (combat.petReadyAt ?? 0) || !!combat.pending || !!combat.taming;
         }
+        if (combat.classKey === 'hunter') button.title = ['Apprivoiser', 'Appeler / rappeler', 'Révoquer'][index]
+            + (cost ? ' · ' + cost + ' mana' : '') + (remaining ? ' · Recharge ' + cooldownLabel(remaining) : '');
+        const badge = button.querySelector('.slot-cd');
+        if (badge) badge.textContent = cooldownLabel(remaining);
+        button.setAttribute('aria-label', (button.title || 'Familier') + (combat.mana < cost ? ' · Mana insuffisant' : ''));
     }
     if (combat.petStatus) {
         const text = cast && combat.taming ? 'Apprivoisement : ' + Math.ceil((cast.end - now) / 1000) + ' s'

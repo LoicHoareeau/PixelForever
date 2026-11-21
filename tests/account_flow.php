@@ -215,6 +215,97 @@ try {
     check((int) $presenceDb->query('SELECT COUNT(*) FROM world_presence')->fetchColumn() === 1, 'La déconnexion retire Bob, le bail expiré d’Alice peut être repris.');
     $presenceDb = null;
 
+
+    // Trois personnages isolés : Alice, Merlin et le Chasseur de Bob, sans utiliser la base réelle.
+    $chatDb = new PDO('sqlite:'.$database);
+    $chatDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $chatRules = ['a' => $warriorRules, 'b' => $mageRules, 'c' => $rules];
+    $chatSessions = ['a' => $alice, 'b' => $bob, 'c' => $bob];
+    $ids = array_map(static fn ($r) => $r['characterId'], $chatRules);
+    foreach ($ids as $key => $characterId) {
+        $state = json_encode(['x' => $key === 'c' ? 3000 : 1240, 'y' => 580]);
+        $stmt = $chatDb->prepare('INSERT INTO world_presence(character_id, lease, state, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(character_id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at');
+        $stmt->execute([$characterId, $leaseAlice, $state, microtime(true)]);
+    }
+    $chat = static function (string $key, array $data, int $status = 200) use ($chatRules, $chatSessions): array {
+        $response = visit($chatSessions[$key], 'POST', $chatRules[$key]['chatUrl'], $status, json: json_encode(['_token' => $chatRules[$key]['progressToken'], 'action' => 'poll', ...$data], JSON_THROW_ON_ERROR));
+        return json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR);
+    };
+    $nonce = static fn (): string => substr(bin2hex(random_bytes(18)), 0, 36);
+    $send = static function (string $key, string $channel, string $text, string $target = '') use ($chat, $nonce): array {
+        return $chat($key, ['action' => 'send', 'channel' => $channel, 'text' => $text, 'target' => $target, 'nonce' => $nonce()]);
+    };
+    $contains = static fn (array $snapshot, string $text): bool => in_array($text, array_column($snapshot['messages'] ?? [], 'body'), true);
+    $resetRate = static fn () => $chatDb->exec('UPDATE chat_sender SET last_sent = 0');
+    $chat('a', ['action' => 'send', 'channel' => 'group', 'text' => 'refus hors groupe', 'nonce' => $nonce()], 400);
+    $global = $send('a', 'global', '<script>texte sans HTML</script>');
+    check($contains($chat('b', []), '<script>texte sans HTML</script>') && $contains($chat('c', []), '<script>texte sans HTML</script>'), 'Le canal global doit être visible sur les autres personnages.');
+    check($global['messages'][0]['sender_name'] === 'Roland', 'L’expéditeur vient de la session du propriétaire.');
+    $chat('a', ['action' => 'send', 'channel' => 'global', 'text' => 'spam', 'nonce' => $nonce()], 400);
+    $send('b', 'global', 'message de Bob');
+    $chat('c', ['action' => 'send', 'channel' => 'global', 'text' => 'même compte trop rapide', 'nonce' => $nonce()], 400);
+    $resetRate();
+    $privateNonce = $nonce();
+    $private = ['action' => 'send', 'channel' => 'whisper', 'text' => 'secret privé', 'target' => '#'.$ids['b'], 'nonce' => $privateNonce];
+    $chat('a', $private); $chat('a', $private);
+    check((int) $chatDb->query("SELECT COUNT(*) FROM chat_message WHERE body = 'secret privé'")->fetchColumn() === 1, 'Une relance réseau ne doit pas dupliquer un message.');
+    check($contains($chat('b', []), 'secret privé') && !$contains($chat('c', []), 'secret privé'), 'Un chuchotement ne doit parvenir qu’au destinataire et à son auteur.');
+    $resetRate(); $send('a', 'nearby', 'près du Bastion');
+    check($contains($chat('b', []), 'près du Bastion') && !$contains($chat('c', []), 'près du Bastion'), 'Le canal de proximité ne doit pas atteindre les joueurs éloignés.');
+    $chatDb->exec('UPDATE world_presence SET updated_at = updated_at - 13 WHERE character_id = '.$ids['a']);
+    $resetRate(); $chat('a', ['action' => 'send', 'channel' => 'nearby', 'text' => 'position expirée', 'nonce' => $nonce()], 400);
+    $chatDb->exec('UPDATE world_presence SET updated_at = '.microtime(true));
+    $resetRate(); $chat('a', ['action' => 'invite', 'target' => '#'.$ids['b']]);
+    check($chat('b', [])['invitation']['name'] === 'Roland', 'Le joueur invité doit pouvoir accepter ou refuser.');
+    $chat('c', ['action' => 'answer', 'accept' => true], 400);
+    $resetRate(); $send('a', 'group', 'avant acceptation');
+    check(!$contains($chat('b', []), 'avant acceptation'), 'Une invitation seule ne doit pas donner accès aux messages de groupe.');
+    $accepted = $chat('b', ['action' => 'answer', 'accept' => true, 'invitation' => (int) $chat('b', [])['invitation']['id']]);
+    check(count($accepted['party']['members']) === 2 && !$contains($accepted, 'avant acceptation'), 'Seule l’acceptation ajoute au groupe, sans accès rétroactif.');
+
+    $extras = $chatDb->query('SELECT id FROM PlayerCharacter WHERE id NOT IN ('.implode(',', $ids).') LIMIT 3')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($extras as $extra) $chatDb->exec('INSERT INTO chat_member(character_id, party_id) VALUES ('.$extra.','.$accepted['party']['id'].')');
+    $resetRate(); $chat('a', ['action' => 'invite', 'target' => '#'.$ids['c']], 400);
+    foreach ($extras as $extra) $chatDb->exec('DELETE FROM chat_member WHERE character_id = '.$extra);
+    $resetRate(); $send('a', 'group', 'secret du groupe');
+    check($contains($chat('b', []), 'secret du groupe') && !$contains($chat('c', []), 'secret du groupe'), 'Le groupe doit rester privé.');
+    $chat('c', ['action' => 'send', 'channel' => 'group', 'text' => 'intrus', 'party_id' => $accepted['party']['id'], 'nonce' => $nonce()], 400);
+    $chat('b', ['action' => 'invite', 'target' => '#'.$ids['c']], 400);
+    $resetRate(); $chat('a', ['action' => 'invite', 'target' => '#'.$ids['c']]);
+    $chat('c', ['action' => 'answer', 'accept' => false, 'invitation' => (int) $chat('c', [])['invitation']['id']]);
+    check($chat('c', [])['party'] === null && $chat('c', [])['invitation'] === null, 'Refuser ne doit pas créer une adhésion.');
+
+    $resetRate(); $chat('a', ['action' => 'invite', 'target' => '#'.$ids['c']]);
+    $chatDb->exec('UPDATE chat_invite SET expires_at = 0');
+    check($chat('c', [])['invitation'] === null, 'Une invitation expirée doit disparaître.');
+    $chat('c', ['action' => 'answer', 'accept' => true], 400);
+    $chat('b', ['action' => 'leave', 'party' => $accepted['party']['id']]);
+    $resetRate(); $send('a', 'group', 'après départ');
+    check(!$contains($chat('b', []), 'après départ'), 'Un ancien membre ne reçoit plus le groupe.');
+    $chat('a', ['action' => 'leave', 'party' => $accepted['party']['id']]);
+    check((int) $chatDb->query('SELECT COUNT(*) FROM chat_party')->fetchColumn() === 0, 'Le chef dissout son groupe en partant.');
+    foreach ([['channel' => 'invalid'], ['text' => str_repeat('x', 501)], ['text' => ''], ['text' => "ligne\nsuivante"], ['nonce' => 'invalid'], ['text' => []]] as $invalid) {
+        $chat('a', ['action' => 'send', 'channel' => 'global', 'text' => 'test', 'nonce' => $nonce(), ...$invalid], 400);
+    }
+    $chat('a', ['after' => -1], 400);
+    $chat('a', ['_token' => 'invalid'], 403);
+    visit($bob, 'POST', $warriorRules['chatUrl'], 404, json: json_encode(['action' => 'poll', '_token' => $warriorRules['progressToken']]));
+    visit(new Session(new MockArraySessionStorage()), 'POST', $warriorRules['chatUrl'], 302, json: '{}');
+    visit($alice, 'POST', $warriorRules['chatUrl'], 413, json: str_repeat(' ', 4097));
+
+    $cursor = $chat('c', [])['cursor'];
+    $insertMessage = $chatDb->prepare("INSERT INTO chat_message(sender_id, sender_name, channel, body, nonce, created_at) VALUES (?, 'Roland', 'global', ?, ?, ?)");
+    for ($i = 0; $i < 55; $i++) $insertMessage->execute([$ids['a'], 'pagination '.$i, $nonce(), microtime(true)]);
+    $firstBatch = $chat('c', ['after' => $cursor]);
+    $secondBatch = $chat('c', ['after' => $firstBatch['cursor']]);
+    check(count($firstBatch['messages']) === 50 && count($secondBatch['messages']) === 5, 'Le curseur doit récupérer le retard sans perte ni doublon.');
+    $chatDb->exec('UPDATE chat_message SET created_at = 0');
+    check($chat('c', [])['messages'] === [], 'Les messages de plus de sept jours doivent être retirés.');
+    $insertMessage = null;
+    $resetRate = null;
+    $stmt = null;
+    $chatDb = null;
+
     $progressPath = $warriorRules['progressUrl'];
     $progressData = ['_token' => $warriorRules['progressToken'], 'level' => 3, 'xp' => 77, 'xpVersion' => 2];
     $saved = visit($alice, 'POST', $progressPath, 200, json: json_encode($progressData, JSON_THROW_ON_ERROR));
