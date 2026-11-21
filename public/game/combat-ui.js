@@ -88,7 +88,7 @@ export function updateCooldownsUi(combat, now) {
         const state = spellState(combat, key, now, talents.get(key));
         const remaining = state.remaining;
         btn.dataset.noResource = String(state.noResource);
-        btn.disabled = state.unavailable;
+        btn.disabled = combat.scene?.hud?.editing ? false : state.unavailable;
         const label = btn.querySelector('.slot-name')?.textContent ?? key;
         btn.setAttribute('aria-label', label + (remaining ? ' · Recharge ' + cooldownLabel(remaining) : state.noResource ? ' · ' + combat.rules.resourceName + ' insuffisant(e), coût ' + state.cost : state.blocked || combat.health <= 0 ? ' · Action indisponible' : ' · Disponible'));
         let unavailable = btn.querySelector('.slot-unavailable');
@@ -388,6 +388,11 @@ export function renderTalentTreeUi(combat) {
 export function refreshTargetHudUi(combat) {
     if (!combat.targetHud) return;
     const target = combat.selectedMonster;
+    const portrait = combat.targetHud.querySelector?.('.target-portrait');
+    if (portrait && target?.portraitArt && portrait.dataset.art !== target.portraitArt) {
+        portrait.dataset.art = target.portraitArt;
+        portrait.style.backgroundImage = `url("${new URL('./val-des-saules/monsters/' + target.portraitArt + '.png', import.meta.url).href}")`;
+    }
     if (!target || !target.isAlive) {
         combat.targetHud.hidden = true;
         combat.targetHud.dataset.boss = 'false';

@@ -131,6 +131,13 @@ try {
     check($alice->get('selected_character') === $rolandId, 'La sélection de Roland doit rester active.');
     $warriorPage = visit($alice, 'GET', '/personnages/jeu', 200);
     $warriorRules = json_decode(htmlValue($warriorPage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    check(htmlValue($warriorPage, '//dialog[@id="game-guide"]/@data-welcome') === 'true', 'Le nouveau personnage doit recevoir le tutoriel.');
+    check(htmlValue($warriorPage, '//button[@id="guide-open"]/@aria-controls') === 'game-guide', 'L’ATH doit donner accès au guide.');
+    check(htmlValue($warriorPage, '//button[@id="game-menu-open"]/@aria-controls') === 'game-menu', 'Le menu Échap doit être relié à son dialogue.');
+    check(htmlValue($warriorPage, '//input[@id="hud-scale"]/@max') === '130', 'La taille de l’ATH doit être réglable.');
+    check(htmlValue($warriorPage, '//button[@data-chat-channel="whisper"]/@aria-pressed') === 'false', 'Le tchat doit proposer le chuchotement.');
+    $returnToGame = visit($alice, 'GET', '/personnages/jeu', 200);
+    check(htmlValue($returnToGame, '//dialog[@id="game-guide"]/@data-welcome') === 'false', 'Le tutoriel ne doit pas se rouvrir automatiquement à chaque visite.');
     check(htmlValue($warriorPage, '//div[@id="world"]/@data-skin') === 'lina', 'Les personnages Guerrier existants doivent conserver leur identifiant.');
     check(str_ends_with(htmlValue($warriorPage, '//img[contains(@class,"hud-portrait")]/@src'), '/warrior/south.png'), 'Le portrait du Guerrier doit utiliser son nouvel atlas.');
     check(str_contains($warriorPage->getContent(), 'data-weapon="axe"') && isset($warriorRules['baseStats']['defense']), 'Le Guerrier voit sa hache et la Défense.');

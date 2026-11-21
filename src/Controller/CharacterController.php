@@ -83,6 +83,9 @@ final class CharacterController extends AbstractController
             $entities->persist($character);
             $entities->flush();
             $request->getSession()->set(self::SELECTED_CHARACTER, $character->getId());
+            $pending = $request->getSession()->get('tutorial_pending', []);
+            $pending[] = $character->getId();
+            $request->getSession()->set('tutorial_pending', $pending);
             $this->addFlash('success', 'Ton personnage est créé.');
 
             return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
@@ -136,7 +139,12 @@ final class CharacterController extends AbstractController
             CharacterClass::Hunter => ['Flèche rapide', 'Tir perforant', 'Arc de frêne', 'bolt', 'charge', 'Arc des saules', 'Arc de Saphyr', 'bow', 'bow', 'Arc · à distance'],
         };
 
+        $pending = $session->get('tutorial_pending', []);
+        $showTutorial = in_array($character->getId(), $pending, true);
+        $session->set('tutorial_pending', array_values(array_diff($pending, [$character->getId()])));
+
         return $this->render('game/play.html.twig', [
+            'showTutorial' => $showTutorial,
             'character' => $character,
             'combat' => [
                 'classKey' => $class->value,

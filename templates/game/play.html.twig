@@ -3,6 +3,7 @@
 {% block title %}Val-des-Saules{% endblock %}
 {% block body_class %}game-fullscreen{% endblock %}
 {% block layout %}game-layout{% endblock %}
+{% block stylesheets %}<link rel="stylesheet" href="{{ app.request.basePath }}/game/hud.css">{% endblock %}
 
 {% block body %}
     {% set warrior = character.class.value == 'warrior' %}
@@ -79,7 +80,7 @@
 
             {# ATH haut : Joueur à gauche, Cible au centre, Menu rapide à droite #}
             <div id="combat-vitals" class="combat-vitals" hidden>
-                <section class="player-hud" aria-label="État du personnage">
+                <section class="player-hud" data-hud-block="player" data-hud-label="Personnage" aria-label="État du personnage">
                     <img
                         class="hud-portrait"
                         src="{{ app.request.basePath }}/game/val-des-saules/{{ warrior ? 'warrior' : character.class.skin }}/south.png"
@@ -122,7 +123,8 @@
                     </div>
                 </section>
 
-                <section class="target-hud" id="combat-target" aria-label="Cible sélectionnée" hidden>
+                <section class="target-hud" id="combat-target" data-hud-block="target" data-hud-label="Cible" aria-label="Cible sélectionnée" hidden>
+                    <span class="target-portrait" aria-hidden="true"></span>
                     <div class="target-header">
                         <strong id="combat-target-name">Saphyr</strong>
                         <span id="combat-target-level" class="target-level-badge">Niv. 10</span>
@@ -137,7 +139,8 @@
                     </label>
                 </section>
 
-                <div class="top-right-hud">
+                <div class="top-right-hud" data-hud-block="quick" data-hud-label="Accès rapides">
+                    <button id="game-menu-open" type="button" class="hud-quick-btn" aria-haspopup="dialog" aria-controls="game-menu">Échap · Menu</button>
                     <span id="current-zone" class="zone-badge">Bastion de Braise · Zone sûre</span>
                     <button id="quest-open" class="hud-quick-btn" type="button" aria-haspopup="dialog" aria-controls="quest-dialog">Parler (E)</button>
                     <button
@@ -154,7 +157,7 @@
 
             {# Bandeau dédié de montée de niveau + Journal flottant #}
             <div id="level-up-banner" class="level-up-banner" role="status" aria-live="polite" hidden></div>
-            <div class="floating-feedback">
+            <div class="floating-feedback" data-hud-block="feedback" data-hud-label="Incantation et messages">
                 <div id="cast-bar" class="cast-bar" role="status" hidden>
                     <div class="cast-bar-header">
                         <strong id="cast-bar-name">Incantation</strong>
@@ -174,7 +177,7 @@
             </div>
 
             {# Barre de sorts MMO plein écran (bas centre) #}
-            <div id="combat-actions" class="combat-actions" hidden>
+            <div id="combat-actions" class="combat-actions" data-hud-block="actions" data-hud-label="Barre d’actions" hidden>
                 {% if combat.classKey in ['hunter', 'warlock'] %}
                     <div class="pet-bar" role="group" aria-label="Commandes du familier">
                         <span id="pet-status" class="pet-status" aria-live="polite">Aucun familier actif</span>
@@ -313,6 +316,7 @@
                                     <span class="action-icon icon-bag" aria-hidden="true"></span>
                                     <span class="micro-key">I</span>
                                 </button>
+                                <button id="guide-open" class="micro-btn guide-button" type="button" aria-label="Guides et tutoriels" aria-haspopup="dialog" aria-controls="game-guide" title="Guides et tutoriels"><span aria-hidden="true">?</span></button>
                             </div>
                         </div>
                     </div>
@@ -333,6 +337,37 @@
         <p id="game-controls" class="sr-only">
             Déplacement avec les flèches, ZQSD ou WASD · Changer de cible (Tab) · Parler (E) · Sorts (1-6) · Potions (R/F) · Fiche (P) · Talents (T) · Sac (I). Familier : W/X/C sur AZERTY, Z/X/C sur QWERTY.
         </p>
+
+        <aside id="tutorial-quest" class="tutorial-quest" data-hud-block="quest" data-hud-label="Initiation" aria-labelledby="tutorial-quest-title" hidden>
+            <strong id="tutorial-quest-title">Premiers pas dans le Val</strong>
+            <p id="tutorial-objective" role="status"></p>
+        </aside>
+        <dialog id="game-guide" aria-labelledby="game-guide-title" data-welcome="{{ showTutorial ? 'true' : 'false' }}">
+            <div class="inventory-heading">
+                <h2 id="game-guide-title">Guides et tutoriels</h2>
+                <form method="dialog"><button type="submit" class="quiet" autofocus>Fermer</button></form>
+            </div>
+            <p>Bienvenue dans le Val ! La quête « Premiers pas » accompagne chaque nouveau personnage. Le monde continue de vivre pendant ta lecture : consulte ce guide dans le Bastion, à l’abri.</p>
+            <h3>Les touches essentielles</h3>
+            <dl class="guide-controls">
+                <dt>Flèches · ZQSD / WASD</dt><dd>Se déplacer (selon ton clavier).</dd>
+                <dt>Tab · Maj + Tab</dt><dd>Choisir la cible suivante ou précédente. Tu peux aussi cliquer sur un monstre.</dd>
+                <dt>1 · 2 · 3 à 9</dt><dd>Auto-attaque, compétence spéciale, puis emplacements de techniques disponibles selon ta classe et tes talents.</dd>
+                <dt>R · F</dt><dd>Utiliser une potion de vie ou de mana / énergie, s’il en reste dans le sac.</dd>
+                <dt>E</dt><dd>Parler à un habitant proche et prendre ou rendre une quête.</dd>
+                <dt>P · T · I</dt><dd>Ouvrir la fiche, les talents et l’inventaire.</dd>
+                <dt>W / X / C (AZERTY) · Z / X / C (QWERTY)</dt><dd>Actions du familier du Chasseur ou du Démoniste, selon les cases disponibles au-dessus de la barre.</dd>
+                <dt>Entrée · Échap</dt><dd>Ouvrir le tchat / quitter sa saisie. Échap ferme aussi une fenêtre de menu.</dd>
+            </dl>
+            <h3>Lire l’ATH</h3>
+            <p>Échap ouvre le menu : règle la taille de l’ATH entre 70 et 130 % dans Options, ou choisis Modifier l’ATH pour déplacer ses cadres. Maintiens le clic sur un sort puis glisse-le vers une autre case : la touche suit le numéro de la case. En mode édition, tu peux aussi sélectionner la source puis la destination avec Entrée. Enregistre ou annule tes changements.</p>
+            <p>En haut à gauche : ta vie et ta ressource. En haut au centre : le nom, le niveau et les PV de la cible. En bas : l’expérience, les sorts et les potions. Le chiffre sur un sort indique le temps de recharge restant ; un sort grisé peut manquer de ressource ou être indisponible. Le « ? » rouge rouvre ce guide.</p>
+            <h3>Caractéristiques et talents</h3>
+            <p>La Force favorise les combattants physiques ; la Dextérité est prioritaire pour le Voleur et le Chasseur. L’Intelligence favorise les dégâts magiques et la réserve de mana. La Vitalité augmente la vie, l’Esprit améliore la réserve et la régénération des ressources, et la Défense réduit les dégâts physiques reçus. L’Intelligence ne donne pas de régénération.</p>
+            <p>Au niveau 1, aucun point de caractéristique ni de talent n’est à dépenser. En progressant, consulte ta fiche (P) et choisis tes talents (T) : ils demandent parfois un palier ou un prérequis et peuvent débloquer des techniques. Les caractéristiques gagnent aussi de petits bonus naturels à chaque niveau.</p>
+            <h3>Premiers combats</h3>
+            <p>Sors du Bastion par la porte est, puis cherche les sangliers proches du départ. Sélectionne une cible avant d’attaquer et surveille ta vie. Une baguette attaque à distance, un bâton au contact ; les sorts gardent leur portée propre. Économise tes ressources et alterne avec l’auto-attaque. Le Chasseur peut affaiblir une créature à 30 % de vie, la piéger, puis l’apprivoiser avec sa commande de familier ; les squelettes ne s’apprivoisent pas.</p>
+        </dialog>
 
         {# Fenêtre modale : Inventaire #}
         <dialog id="inventory" aria-labelledby="inventory-title" aria-describedby="inventory-description">
@@ -574,6 +609,7 @@
         </dialog>
 
         {% include 'game/_chat.html.twig' %}
+        {% include 'game/_hud-menu.html.twig' %}
         <noscript>
             <p>Active JavaScript pour déplacer ton personnage.</p>
         </noscript>

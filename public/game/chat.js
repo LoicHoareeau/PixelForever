@@ -22,6 +22,17 @@ export class GameChat {
         this.channel = byId('channel'); this.form = byId('form'); this.sendButton = byId('send');
         this.events = new AbortController();
         const signal = this.events.signal;
+        const tabs = [...this.root.querySelectorAll('[data-chat-channel]')];
+        const refreshChannel = () => {
+            this.root.dataset.channel = this.channel.value;
+            tabs.forEach(tab => tab.setAttribute('aria-pressed', String(tab.dataset.chatChannel === this.channel.value)));
+        };
+        tabs.forEach(tab => tab.addEventListener('click', () => {
+            this.channel.value = tab.dataset.chatChannel; refreshChannel();
+            if (this.channel.value === 'whisper') this.root.querySelector('.chat-tools').open = true;
+        }, { signal }));
+        this.channel.addEventListener('change', refreshChannel, { signal });
+        refreshChannel();
         this.root.addEventListener('focusin', () => { scene.heldKeys.clear(); scene.buttonMove = null; }, { signal });
         this.root.addEventListener('keydown', event => {
             event.stopPropagation();

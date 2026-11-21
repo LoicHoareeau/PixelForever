@@ -947,7 +947,7 @@ body.game-fullscreen .masthead {
 /* Micro-menu MMO à droite de la barre */
 .micro-menu {
     display: grid;
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: repeat(4, auto);
     gap: .22rem;
     padding-left: .35rem;
     border-left: 1px solid #55473a;
@@ -1081,6 +1081,7 @@ body.game-fullscreen .masthead {
    ========================================================================== */
 
 #inventory,
+#game-guide,
 #character-sheet,
 #quest-dialog,
 #talent-tree {
@@ -1109,11 +1110,44 @@ body.game-fullscreen .masthead {
 }
 
 #inventory::backdrop,
+#game-guide::backdrop,
 #character-sheet::backdrop,
 #quest-dialog::backdrop,
 #talent-tree::backdrop {
     background: #0a0f13c8;
 }
+
+.micro-btn.guide-button {
+    color: #ff7777;
+    font-size: 1.8rem;
+    font-weight: bold;
+    text-shadow: 1px 2px #480d0d;
+}
+
+#game-guide {
+    width: min(calc(100% - 1.5rem), 44rem);
+    max-height: 85dvh;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+
+.guide-controls dt { color: #efd397; font-weight: bold; }
+.guide-controls dd { margin: 0 0 .65rem; }
+.tutorial-quest {
+    position: absolute;
+    z-index: 20;
+    top: 6rem;
+    right: 1rem;
+    width: min(18rem, calc(100% - 2rem));
+    padding: .75rem;
+    border: 1px solid #a2875f;
+    background: #172025ee;
+    color: var(--ink);
+    font-size: .85rem;
+    pointer-events: none;
+}
+.tutorial-quest[hidden] { display: none; }
+.tutorial-quest p { margin: .4rem 0 0; }
 
 .inventory-heading {
     display: flex;

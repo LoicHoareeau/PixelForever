@@ -65,3 +65,7 @@ Inclure `spell-icons-atlas.png`, `spell-icons.js`, `spell-state.js`, `chat.js` e
 Déployer ensemble `remote-motion.js`, `world-presence.js`, `world.js` et `WorldController.php`. Aucune migration. Vérifier à 2 puis 10 joueurs : marche continue, changement de direction, arrêt, neuf poses des attaques courtes, interruption d’une incantation, vraie téléportation et retour après défaite. Simuler ensuite un court retard réseau : pas de disparition immédiate ni de marche infinie ; reprise progressive. Fermer un onglet et contrôler l’expiration. Comparer les FPS, temps de réponse, CPU du service et charge PostgreSQL sur Render avant de relever la cible de population.
 
 Les tests locaux de relecture passent, mais ils n’incluent ni le GPU du navigateur ni le réseau/hébergement Render. Le joueur local reste immédiat ; le tampon des acteurs distants ajoute volontairement un délai pour lisser leur mouvement. Aucun déploiement Render déclenché par l’agent.
+
+ATH et initiation : déployer PHP, les templates, `hud.css`, `hud-controls.js`, `hud-settings.js`, `tutorial.js` et les modules modifiés ensemble ; reconstruire le cache Symfony. Aucune migration supplémentaire.
+
+Après déploiement sur Render, vérifier une création de personnage, le menu Échap, la taille et l’opacité, les cadres à plusieurs résolutions, une permutation 2/3 et son raccourci réel, puis la restauration après rechargement. Tester aussi une insuffisance de mana et une recharge après déplacement du sort, ainsi que le tchat privé et de groupe.

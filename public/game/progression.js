@@ -448,6 +448,7 @@ export function createInitialProgress(startingLevel = 1) {
         },
         talents: {},
         trailQuest: normalizeTrailQuest(),
+        tutorialStep: null,
     };
 }
 
@@ -517,6 +518,7 @@ function normalizeProgress(saved, classKey) {
         spells,
         talents,
         trailQuest: normalizeTrailQuest(saved.trailQuest),
+        tutorialStep: Number.isInteger(saved.tutorialStep) && saved.tutorialStep >= 0 && saved.tutorialStep <= 7 ? saved.tutorialStep : null,
     };
 }
 

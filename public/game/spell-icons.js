@@ -41,7 +41,12 @@ export const spellIconKeys = [
     "warlock_special",
     "warrior_axe",
     "warrior_basic",
-    "warrior_special"
+    "warrior_special",
+    "potion_health",
+    "potion_mana",
+    "menu_inventory",
+    "menu_talents",
+    "menu_profile"
 ];
 
 export function spellIconPosition(key) {
