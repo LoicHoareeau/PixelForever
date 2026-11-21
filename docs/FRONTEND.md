@@ -38,7 +38,7 @@ Le style du Démoniste est `shadow`. `warlock-vfx.js` calcule l’enveloppe de s
 
 `tools/build_equipped_sprites.php` compose les neuf planches à partir des corps existants, sans réécrire ces sources. Après régénération des corps via `tools/build_class_sprites.php`, lancer `php tools/build_equipped_sprites.php`. `php tools/build_equipped_sprites.php --check` vérifie leur reproductibilité pixel par pixel, la préservation du visage et des cheveux et l’absence d’arme coupée sur les bords. `equipped-art.js` donne la prise de l’arc au combat et aux VFX pour éviter un décalage entre la corde et le projectile.
 
-L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 2,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
+L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 2,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 5 cases avant bonus, sans mana et à pleine puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
@@ -96,3 +96,9 @@ Les victoires donnent l’XP du monstre et un tirage : vie 47 %, ressource 30 %,
 Vérifier en navigateur la portée des attaques avec l’arme équipée, le coût et la recharge des techniques, les déplacements, la quête et la reconnexion. [Scénarios VFX](VFX.md#vérifications) · [Parcours après déploiement](DEPLOIEMENT.md#vérifications-après-déploiement)
 
 Voir le [game design](GAME_DESIGN.md) et le [back-end](BACKEND.md).
+
+## XP et présence
+
+`balance.js` centralise seuils, récompenses, écarts de niveau et coûts. `progression.js` convertit une fois les sauvegardes non versionnées vers `xpVersion: 2` en conservant le niveau et la fraction d’XP. `progress-sync.js` envoie cette version ; une page ancienne doit être rechargée. Les potions ont une recharge commune de 15 s affichée dans les deux cases et restaurent 30 % du maximum avec un plancher fixe.
+
+`world-presence.js` envoie position/orientation/pose et reçoit les personnages voisins. Les textures des cinq classes sont préchargées. Les déplacements sont interpolés, avec position directe en mouvement réduit. La présence continue quand le rendu Phaser est suspendu en arrière-plan ; les requêtes en échec sont espacées et les acteurs distants retirés. Un autre onglet du même personnage affiche un conflit de présence et réessaie après expiration du bail. Cela ne valide pas les combats locaux. Le rendu à deux fenêtres reste à vérifier : le serveur local était inaccessible depuis Edge pendant ce contrôle.

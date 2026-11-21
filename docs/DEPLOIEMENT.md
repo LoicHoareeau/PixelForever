@@ -22,14 +22,14 @@ Après mise à jour de la branche suivie, utiliser **Deploy latest commit** si l
 
 Conserver `PORT=8080`, une valeur stable de `APP_SECRET` et `DATABASE_URL` avec l’URL interne PostgreSQL dédiée au service. Garder ces valeurs dans les variables Render, sans publier les identifiants dans Git ou dans les rapports. Le conteneur peut générer un secret de secours au démarrage ; un secret stable évite les changements de session/CSRF lors des redémarrages.
 
-PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les colonnes existantes, sans migration supplémentaire. Sac, arme, coiffes, gants, allocations et quête restent locaux au navigateur : le stockage Render ne les rend pas persistants en base à lui seul. Vérifier dans Render la durée de validité et les sauvegardes de l’instance PostgreSQL utilisée.
+PostgreSQL conserve comptes, personnages et niveau/XP. Le lot XP/présence ajoute la migration `Version20261120090000` : conversion proportionnelle de l’XP et création de `world_presence`. Le démarrage Docker exécute les migrations. Sac, arme, coiffes, gants, allocations et quête restent locaux au navigateur : le stockage Render ne les rend pas persistants en base à lui seul. Vérifier dans Render la durée de validité et les sauvegardes de l’instance PostgreSQL utilisée.
 
 ## Vérifications après déploiement
 
 1. Comparer le SHA déployé avec celui de la branche suivie ; consulter les journaux de construction et de migration en cas d’échec.
 2. Ouvrir l’accueil et vérifier que le diorama se charge. Suivre **Se connecter**, jouer avec un personnage existant et vérifier son niveau et son XP après reconnexion.
 3. Vérifier le plein écran, le défilement de caméra, les décors et le chargement des sprites sans erreur.
-4. Vérifier que la Baguette de braise et le Sceptre tirent en mouvement à 7,5 cases avant bonus avec des dégâts réduits, et que le Bâton des saules frappe au contact. Lancer Boule de feu à 15 cases avec le bâton, puis vérifier la recharge, le mana et le remboursement si le Mage se déplace pendant l’incantation.
+4. Vérifier que la Baguette de braise et le Sceptre tirent en mouvement à 5 cases avant bonus et pleine puissance, et que le Bâton des saules frappe au contact. Lancer Boule de feu à 15 cases avec le bâton, puis vérifier la recharge, le mana et le remboursement si le Mage se déplace pendant l’incantation.
 5. Vérifier l’ATH de sauvegarde après une victoire. Si les anciens scripts semblent encore actifs, recharger les ressources puis comparer les fichiers servis au commit déployé.
 6. Suivre le chemin à l’est des montagnes jusqu’aux Terres dévastées. Contrôler les trois bandes de niveau N.21–35 et esquiver un souffle du dragon en quittant sa ligne après le lancement.
 7. Depuis le Trône d’Obsidienne, suivre la chaussée sud puis la route vers l’est jusqu’au Belvédère des Brisants. Vérifier les trois bandes N.41–60 dans l’ATH, les limites des falaises et une esquive circulaire ou linéaire.
@@ -41,3 +41,7 @@ PostgreSQL conserve comptes, personnages et niveau/XP. La sauvegarde utilise les
 Contrôler le chargement de `combat-vfx.png`, `class-vfx.png`, `class-gear.png` et `class-familiars.png` dans l’onglet Réseau du navigateur. [Vérifications VFX](VFX.md#vérifications)
 
 Pour PostgreSQL local, suivre le [démarrage Docker](../README.md#lancer-pixelforever-avec-postgresql). La procédure manuelle Render est décrite dans les [déploiements Render](https://render.com/docs/deploys).
+
+## Lot XP/présence — contrôle Render
+
+Déployer ensemble PHP, migration, Twig et ressources JavaScript. Les anciens onglets doivent être rechargés après conversion du barème. Comparer les niveaux et la fraction d’XP avant/après, puis reconnecter deux comptes distincts dans la même zone et vérifier apparences, marche, disparition après fermeture et conflit pour deux onglets du même personnage. Contrôler une potion puis la recharge commune de R/F. Le rendu à deux fenêtres n’a pas pu être validé localement (connexion locale expirée dans Edge) ; les parcours serveur avec deux comptes passent. Les monstres et récompenses restent individuels dans ce lot. Aucun déploiement Render n’a été déclenché par l’agent.

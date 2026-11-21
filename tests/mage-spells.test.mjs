@@ -12,7 +12,7 @@ function battle(weapon = 'rare', targetX = 240) {
     Object.assign(instance, {
         rules: { classKey: 'mage', range: 7.5, specialRange: 15, ranged: true, resourceName: 'Mana' },
         classKey: 'mage', ranged: true, progress: { ...createInitialProgress(), weapon },
-        stats: { basicDamage: 12, specialDamage: 22 }, mana: 40, tileSize: 16,
+        stats: { basicDamage: 12, specialDamage: 22, maxMana: 40 }, mana: 40, tileSize: 16,
         scene: { position: { x: 0, y: 0 }, facing: 'east', face() {} },
         monsters: [casterNeighbor, target, targetNeighbor], spellCooldowns: new Map(), impacts: [],
         getActiveTarget: () => target, refreshVitals() {}, tell() {},
@@ -27,7 +27,7 @@ for (const slot of ['fire_wall', 'fire_whirl', 'frost_nova', 'arcane_blast']) {
             const { instance, hits, targetNeighbor } = battle(weapon);
             instance.castTalentSpell({ slot, name: slot, manaCost: 7 }, 100);
             assert.deepEqual(hits, slot === 'arcane_blast' ? ['Cible'] : ['Cible', 'Près de la cible'], String(weapon));
-            assert.equal(instance.mana, 33);
+            assert.equal(instance.mana, 28);
             assert.equal(instance.attackVisual.ranged, true);
             if (slot === 'frost_nova') assert.equal(targetNeighbor.slowUntil, 2600);
         }

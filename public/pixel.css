@@ -1634,3 +1634,5 @@ body.game-fullscreen .masthead {
     background: #362a1d;
     color: #ffe8a3;
 }
+
+.world-presence-status { position: fixed; top: 94px; left: 18px; z-index: 20; color: #b5ded5; font: 11px system-ui, sans-serif; text-shadow: 0 1px 3px #101719; pointer-events: none; }

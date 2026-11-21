@@ -22,7 +22,7 @@ test('les sauvegardes partagées envoient niveau/XP avec CSRF et survivent à un
     assert.equal(await sync.flush(), true);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, '/personnages/1/progression');
-    assert.deepEqual(JSON.parse(calls[0].body), { level: 1, xp: 42, _token: 'csrf-test' });
+    assert.deepEqual(JSON.parse(calls[0].body), { level: 1, xp: 42, xpVersion: 2, _token: 'csrf-test' });
     assert.equal(calls[0].credentials, 'same-origin');
     assert.equal(calls[0].keepalive, true);
     assert.deepEqual(states, ['saving', 'saved']);

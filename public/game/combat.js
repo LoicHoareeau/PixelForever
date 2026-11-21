@@ -1,3 +1,4 @@
+import { skillCost, potionRestore, potionCooldownMs, levelDamageFactor, victoryReward, xpRequired } from './balance.js';
 import { createCombatVfx } from './combat-vfx.js';
 import { classAttacks } from './class-talents.js';
 import { applyTechnique, classEffect, dismissFamiliar, updateClassCombat } from './class-combat.js';
@@ -437,7 +438,7 @@ export class TrainingCombat {
         }
 
         const manaCost = special
-            ? Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))))
+            ? skillCost(this.rules.specialManaCost, this.stats.maxMana, this.stats.manaCostReduction)
             : 0;
 
         if (special && this.mana < manaCost) {
@@ -583,7 +584,7 @@ export class TrainingCombat {
         }
 
         const baseCost = talent.technique?.summon ? Math.max(talent.manaCost, Math.ceil(this.stats.maxMana * .28)) : talent.manaCost ?? 6;
-        const manaCost = Math.max(1, Math.round(baseCost * (1 - (this.stats.manaCostReduction ?? 0))));
+        const manaCost = skillCost(baseCost, this.stats.maxMana, this.stats.manaCostReduction);
         if (this.mana < manaCost) {
             this.tell(`${this.rules.resourceName} insuffisant(e) pour ${talent.name} (${manaCost}).`);
             return;
@@ -966,13 +967,17 @@ export class TrainingCombat {
             return 'Il ne reste plus de potion de ce type.';
         }
 
+        if (!['health', 'mana'].includes(type)) return 'Potion invalide.';
+        const now = this.scene.time.now;
+        if (now < (this.potionReadyAt ?? 0)) return 'Potion en recharge.';
         const maximum = this.meters[type === 'health' ? 0 : 1].meter.max;
         if (this[type] === maximum) {
             return 'Cette réserve est déjà pleine.';
         }
 
-        const amount = Math.min(maximum - this[type], this.rules[type + 'Restore']);
+        const amount = Math.min(maximum - this[type], potionRestore(this.rules[type + 'Restore'], maximum));
         this[type] += amount;
+        this.potionReadyAt = now + potionCooldownMs;
         this.progress.items[type]--;
         saveProgress(this.progressKey, this.progress);
         this.refreshVitals();
@@ -1152,7 +1157,7 @@ export class TrainingCombat {
         this.meters[0].meter.max = this.stats.maxHealth;
         this.meters[1].meter.max = this.stats.maxMana;
         this.levelLabel.textContent = level;
-        this.xpMeter.max = xpRequiredFromProgress(level);
+        this.xpMeter.max = xpRequired(level);
         this.xpMeter.value = xp;
         this.xpLabel.textContent = xp + ' / ' + this.xpMeter.max;
 
@@ -1165,7 +1170,7 @@ export class TrainingCombat {
         }
 
         if (this.specialMetaLabel) {
-            const cost = Math.max(1, Math.round(this.rules.specialManaCost * (1 - (this.stats.manaCostReduction ?? 0))));
+            const cost = skillCost(this.rules.specialManaCost, this.stats.maxMana, this.stats.manaCostReduction);
             this.specialMetaLabel.textContent = cost + ' ' + this.rules.resourceName.toLowerCase() + ' · ' + this.stats.specialDamage + ' dég.';
         }
 
@@ -1174,7 +1179,7 @@ export class TrainingCombat {
             + ' · Portée : ' + this.basicRangeLabel;
         this.buttons[1].title = this.rules.specialName
             + ' · ' + this.stats.specialDamage + ' dégâts'
-            + ' · ' + this.rules.specialManaCost + ' ' + this.rules.resourceName.toLowerCase()
+            + ' · ' + skillCost(this.rules.specialManaCost, this.stats.maxMana, this.stats.manaCostReduction) + ' ' + this.rules.resourceName.toLowerCase()
             + ' · Portée : ' + this.rangeLabel;
 
         this.refreshActionSlots();
@@ -1232,6 +1237,7 @@ export class TrainingCombat {
 
     applyDamageToMonster(monster, rawDamage, attackName, color, now, isSpecial = false) {
         if (!monster.isAlive || monster.trial) return;
+        rawDamage = Math.max(1, Math.round(rawDamage * levelDamageFactor(this.progress.level, monster.level)));
         const phaseFloor = monster.isBoss ? Math.round(monster.maxHealth * (malakorThresholds[monster.phase - 1] ?? 0)) : 0;
         const damage = Math.min(monster.health - phaseFloor, monster.isBoss ? Math.max(1, Math.round(rawDamage * .8)) : rawDamage);
         monster.health -= damage;
@@ -1296,7 +1302,8 @@ export class TrainingCombat {
         }
 
         const previousLevel = this.progress.level;
-        const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, monster.xpReward);
+        const gainedXp = monster.isBoss ? monster.xpReward : victoryReward(this.progress.level, monster.level);
+        const { item, levelUp } = awardVictory(this.progress, this.rules.loot, Math.random, gainedXp);
         const armor = awardArmor(this.progress, this.classKey, monster.species, monster.level);
         recordTrailQuestDefeat(this.progress.trailQuest, monster.species);
         saveProgress(this.progressKey, this.progress);
@@ -1313,7 +1320,7 @@ export class TrainingCombat {
         }
 
         const loot = this.rules.loot[item];
-        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${monster.xpReward} XP · ${loot.name}${armor ? ' · ' + armor.name : ''}`);
+        this.tell(`${monster.name} (N.${monster.level}) vaincu · +${gainedXp} XP · ${loot.name}${armor ? ' · ' + armor.name : ''}`);
     }
 
     mustDodgeMalakor() {
@@ -1595,8 +1602,4 @@ export class TrainingCombat {
             this.status.textContent = message;
         }
     }
-}
-
-function xpRequiredFromProgress(level) {
-    return 100 + (level - 1) * 50;
 }

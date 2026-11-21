@@ -1,3 +1,5 @@
+import { xpRequired, xpVersion, migrateXp } from './balance.js';
+export { xpRequired } from './balance.js';
 import { armorBonuses, armorItems, armorSlots } from './armor.js';
 import { classTalents, protectionTalents, starterTalents } from './class-talents.js';
 // Barèmes d'expérience, de caractéristiques, de sorts et de régénération
@@ -6,9 +8,6 @@ import { normalizeCapturedPet } from './pet-rules.js';
 
 export const victoryXp = 50;
 
-export const xpRequired = (level) => {
-    return 100 + (level - 1) * 50;
-};
 
 const coreStats = ['strength', 'intelligence', 'vitality', 'spirit'];
 const dexterityClasses = ['rogue', 'hunter'];
@@ -419,6 +418,7 @@ export const specializationProfiles = {
 export function createInitialProgress(startingLevel = 1) {
     return {
         level: startingLevel,
+        xpVersion,
         xp: 0,
         items: {
             health: 2,
@@ -527,7 +527,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null, clas
     let progress = createInitialProgress(Math.max(1, startingLevel));
 
     try {
-        const saved = JSON.parse(localStorage.getItem(key));
+        const saved = migrateXp(JSON.parse(localStorage.getItem(key)));
         const hasValidBase = saved
             && Number.isSafeInteger(saved.level)
             && saved.level >= 1
@@ -555,6 +555,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null, clas
         // Conserve la partie jouable si le stockage du navigateur est indisponible.
     }
 
+    serverProgress = migrateXp(serverProgress);
     if (serverProgress && Number.isSafeInteger(serverProgress.level) && serverProgress.level >= 1
         && serverProgress.level <= 9999 && Number.isSafeInteger(serverProgress.xp) && serverProgress.xp >= 0
         && serverProgress.xp < xpRequired(serverProgress.level)
@@ -568,6 +569,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null, clas
  * Garde le cache local et déclenche l’enregistrement du niveau et de l’XP en base.
  */
 export function saveProgress(key, progress) {
+    progress.xpVersion = xpVersion;
     try {
         localStorage.setItem(key, JSON.stringify(progress));
     } catch {

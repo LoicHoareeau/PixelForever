@@ -12,7 +12,7 @@ function combat(weapon = 'starter') {
     Object.assign(instance, {
         rules: { classKey: 'mage', range: 7.5, specialRange: 15, ranged: true, cooldownMs: 500, specialManaCost: 10, wandDamageMultiplier: 0.5 },
         progress: { ...createInitialProgress(), weapon },
-        stats: { basicDamage: 12, specialDamage: 22 },
+        stats: { basicDamage: 12, specialDamage: 22, maxMana: 40 },
         classKey: 'mage', ranged: true, tileSize: 16, health: 40, mana: 40, readyAt: 0,
         scene: { position: { x: 0, y: 0 }, facing: 'east', face() {} },
         targetHud: {}, refreshTargetHud() {}, refreshVitals() {}, setSlotCooldown() {}, tell() {},
@@ -51,7 +51,7 @@ test('un sort de talent du mage joue aussi une incantation avec un bâton équip
     instance.setSlotCooldown = TrainingCombat.prototype.setSlotCooldown;
     instance.castTalentSpell({ slot: 'frost_nova', name: 'Nova de givre', manaCost: 7 }, 0);
     assert.equal(instance.attackPose(50)?.attack.ranged, true);
-    assert.equal(instance.mana, 33);
+    assert.equal(instance.mana, 28);
 });
 
 test('la frappe de contact conserve son impact et montre ses neuf images à 30 FPS', () => {

@@ -101,7 +101,7 @@ test('Drain de vie pulse quatre fois et interrompt les pulsations restantes au d
     instance.updateClassCast(2000);
     assert.equal(target.health, 400);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 36);
+    assert.equal(instance.mana, 33);
     assert.ok(instance.spellCooldowns.has('drain_life'));
 
     instance.spellCooldowns.clear();
@@ -111,7 +111,7 @@ test('Drain de vie pulse quatre fois et interrompt les pulsations restantes au d
     assert.equal(instance.cancelCastOnMove(), true);
     assert.equal(instance.pending, null);
     assert.equal(target.health, 375);
-    assert.equal(instance.mana, 22);
+    assert.equal(instance.mana, 16);
 });
 
 test('Immolation conserve la ressource et sa recharge si la cible est trop loin ou si le mana manque', () => {
@@ -134,10 +134,10 @@ test('Immolation conserve la ressource et sa recharge si la cible est trop loin 
     instance.updateClassCast(1000);
     assert.equal(target.health, 450);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 37);
+    assert.equal(instance.mana, 33);
     instance.castTalentSpell(talent, 1001);
     assert.equal(instance.pending, null);
-    assert.equal(instance.mana, 37);
+    assert.equal(instance.mana, 33);
 });
 
 test('les invocations et malédictions du Démoniste ont un temps d’incantation', () => {

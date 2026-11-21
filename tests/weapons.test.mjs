@@ -4,7 +4,7 @@ import { basicWeaponProfile, createInitialProgress, loadProgress, awardVictory, 
 import { TrainingCombat } from '../public/game/combat.js';
 
 const rules = { classKey: 'mage', range: 7.5, specialRange: 15, ranged: true, wandDamageMultiplier: 0.5 };
-const stats = { basicDamage: 20, bonusRangeTiles: .5 };
+const stats = { maxMana: 40, basicDamage: 20, bonusRangeTiles: .5 };
 
 test('la baguette tire de loin, le bâton et les mains nues frappent au contact', () => {
     const progress = createInitialProgress(10);
@@ -62,11 +62,11 @@ test('le bâton préserve la portée des sorts, leur coût en mana et leur recha
     combat.attack('special', 100);
     assert.equal(combat.pending.ranged, true);
     assert.equal(combat.pending.range, 248);
-    assert.equal(combat.mana, 10);
+    assert.equal(combat.mana, 8);
     const first = combat.pending;
     combat.attack('special', 110);
     assert.equal(combat.pending, first);
-    assert.equal(combat.mana, 10);
+    assert.equal(combat.mana, 8);
     combat.pending = null;
     combat.mana = 0;
     combat.attack('special', 1000);

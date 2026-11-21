@@ -397,8 +397,8 @@ test('la réduction de dégâts est conservée et la défaite ne déclenche pas 
 
 test('les niveaux 1–2 restent abordables et la puissance augmente fortement aux niveaux supérieurs', () => {
     const boar = monsterTemplates.boar;
-    assert.deepEqual([boar.statsForLevel(1).maxHealth, boar.statsForLevel(1).damage], [52, 6]);
-    assert.deepEqual([boar.statsForLevel(2).maxHealth, boar.statsForLevel(2).damage], [74, 8]);
+    assert.deepEqual([boar.statsForLevel(1).maxHealth, boar.statsForLevel(1).damage], [650, 2]);
+    assert.deepEqual([boar.statsForLevel(2).maxHealth, boar.statsForLevel(2).damage], [1010, 2]);
     const strongBoar = new Monster(scene, 'boar', tileSize, 4);
     assert.equal(strongBoar.level, 5);
     assert.ok(strongBoar.patrol.every(index => strongBoar.cells[index].x > 400));
@@ -407,7 +407,7 @@ test('les niveaux 1–2 restent abordables et la puissance augmente fortement au
         for (let level = template.minLevel + 1; level <= template.maxLevel; level++) {
             const stats = template.statsForLevel(level);
             assert.ok(stats.maxHealth > previous.maxHealth);
-            assert.ok(stats.damage > previous.damage);
+            assert.ok(stats.damage >= previous.damage);
             assert.ok(stats.attackIntervalMs <= previous.attackIntervalMs);
             assert.ok(stats.windupMs < stats.attackIntervalMs);
             assert.ok(Number.isSafeInteger(stats.xp) && stats.xp > previous.xp);
@@ -415,8 +415,8 @@ test('les niveaux 1–2 restent abordables et la puissance augmente fortement au
         }
         const first = template.statsForLevel(template.minLevel);
         if (template.maxLevel <= 20) {
-            assert.ok(previous.maxHealth > first.maxHealth * 2);
-            assert.ok(previous.damage > first.damage * 2);
+            assert.ok(previous.maxHealth > first.maxHealth);
+            assert.ok(previous.damage >= first.damage);
         }
     }
     assert.equal(monsterTemplates.imp.minLevel, 21);

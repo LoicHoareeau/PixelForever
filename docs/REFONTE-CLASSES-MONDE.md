@@ -111,3 +111,9 @@ Conserver une branche dédiée et livrer des commits cohérents : rendu/caméra,
 Vérifications attendues : tests de migration, portée et ressources ; zéro régénération issue de l’intelligence ; spécialisation N.10 ; capture/refus d’un squelette ; coefficients de familiers avec équipement ; suppression/remboursement des anciens rangs ; comportement neutre des monstres N.1–10 ; notification ; simulation N.1–60 ; inspection visuelle des planches et de leurs mains ; deux sessions réelles contre un même monstre, déconnexion et récompense sans doublon.
 
 Actualiser les documents du dépôt selon le résultat effectivement livré. Le déploiement Render reste manuel comme demandé précédemment.
+
+## Avancement du 21 novembre 2026
+
+Livré dans le code : barème XP version 2, migration proportionnelle locale/SQL, simulation reproductible des cinq classes (151–178 min de référence), coûts à 28 % minimum, potions à 30 % avec recharge commune 15 s, baguette à pleine puissance, présence Symfony avec interpolation des personnages et bail par personnage.
+
+Non livré : autorité serveur des combats, monstres/PV/morts/captures partagés, attribution atomique des récompenses, XP de groupe, population et réapparition selon les joueurs actifs, profil complet en base. La présence visuelle seule ne constitue pas le monde partagé décrit à la section 6. Contrôle visuel à deux fenêtres restant : serveur local inaccessible depuis Edge.

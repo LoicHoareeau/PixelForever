@@ -1,3 +1,4 @@
+import { WorldPresence } from './world-presence.js';
 import { vfxFrameSize } from './combat-vfx.js';
 import { equippedWeaponStyles } from './equipped-art.js';
 import { malakorFrameSize } from './malakor.js';
@@ -100,6 +101,16 @@ import { petKeys } from './pet-rules.js';
                     this.load.spritesheet(this.skin + '-' + pose + '-equipped', art + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
                 }
             }
+            for (const skin of ['lina', 'noe', 'hunter', 'rogue', 'warlock'].filter(skin => skin !== this.skin)) {
+                const directory = skin === 'lina' ? 'warrior' : skin;
+                directions.forEach(direction => this.load.image(skin + '-' + direction, directory + '/' + direction + '.png'));
+                this.load.spritesheet(skin + '-walk', directory + '/walk.png', { frameWidth: 48, frameHeight: 48 });
+                const size = skin === 'noe' ? 68 : 64;
+                this.load.spritesheet(skin + '-attack', directory + '/attack.png', { frameWidth: size, frameHeight: size });
+                if (equippedWeaponStyles[skin]) for (const pose of ['idle', 'walk', 'attack']) {
+                    this.load.spritesheet(skin + '-' + pose + '-equipped', directory + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
+                }
+            }
             this.load.spritesheet('class-gear', 'class-gear.png', { frameWidth: 40, frameHeight: 32 });
             this.load.spritesheet('class-familiars', 'class-familiars.png', { frameWidth: 32, frameHeight: 32 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
@@ -127,6 +138,7 @@ import { petKeys } from './pet-rules.js';
             this.animateZoneAmbience = createZoneAmbience(this, tileSize);
             this.lighting = createWorldLighting(this, width, height, tileSize, [...clearing.lights, ...town.lights]);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
+            if (this.skin !== 'noe') createPoseSheet(this, 'noe', directions);
             this.questMarker = this.add.text(questNpc.x, questNpc.y - 47, '!', {
                 fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold',
                 color: '#f0c781', stroke: '#19272e', strokeThickness: 3,
@@ -186,8 +198,10 @@ import { petKeys } from './pet-rules.js';
             ];
 
             this.cameraFeel = new CameraFeel();
-            this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);
+            const rules = JSON.parse(world.dataset.combat);
+            this.combat = new TrainingCombat(this, monsters, rules, tileSize);
             this.renderAvatar(this.time.now);
+            if (rules.worldUrl) this.presence = new WorldPresence(this, rules);
 
             this.updateCameraZoom(this.scale.width, this.scale.height);
             this.cameras.main.centerOn(x, y);
@@ -580,6 +594,7 @@ import { petKeys } from './pet-rules.js';
             this.combat.update(time, delta);
             this.refreshQuest();
             this.renderAvatar(time);
+            this.presence?.update(time);
             this.animateClearing(time, this.motionPreference.matches);
             this.animateTown(time, this.motionPreference.matches);
             this.animateZoneAmbience(time, this.motionPreference.matches);

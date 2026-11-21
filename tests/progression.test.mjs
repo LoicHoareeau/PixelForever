@@ -76,13 +76,13 @@ test('les victoires créditent le butin, le niveau, les points de stats et de so
     assert.equal(progress.statPoints, 0);
     assert.equal(progress.spellPoints, 0);
 
-    assert.deepEqual(awardVictory(progress, loot, () => 0.99), {
+    assert.deepEqual(awardVictory(progress, loot, () => 0.99, xpRequired(1) - 50), {
         item: 'epic',
         levelUp: true,
     });
     assert.equal(progress.level, 2);
     assert.equal(progress.xp, 0);
-    assert.equal(xpRequired(progress.level), 150);
+    assert.equal(xpRequired(progress.level), 280);
     assert.equal(progress.statPoints, 3);
     assert.equal(progress.spellPoints, 1);
     assert.deepEqual(progress.items, { health: 0, mana: 0, rare: 1, epic: 1 });
@@ -216,7 +216,7 @@ test('le niveau de la base est restauré sans cache et ses bonus restent ceux d�
     const previous = globalThis.localStorage;
     globalThis.localStorage = { getItem: () => null };
     t.after(() => { if (previous === undefined) delete globalThis.localStorage; else globalThis.localStorage = previous; });
-    const progress = loadProgress('character', 4, { level: 4, xp: 27 });
+    const progress = loadProgress('character', 4, { level: 4, xp: 27, xpVersion: 2 });
     assert.equal(progress.level, 4);
     assert.equal(progress.xp, 27);
     assert.equal(progress.statPoints, 9);
@@ -241,7 +241,7 @@ test('les anciens points gratuits sont retirés sans perdre le niveau, l’XP ou
     assert.deepEqual(progress.talents, {});
     assert.equal(progress.statPoints, 0);
     assert.equal(progress.spellPoints, 0);
-    const advanced = loadProgress('character', 4, { level: 4, xp: 27 });
+    const advanced = loadProgress('character', 4, { level: 4, xp: 27, xpVersion: 2 });
     assert.equal(advanced.level, 4);
     assert.equal(advanced.xp, 27);
     assert.equal(advanced.items.health, 7);

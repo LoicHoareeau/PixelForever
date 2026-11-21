@@ -1,3 +1,4 @@
+import { ordinaryStats } from './balance.js';
 import { malakorActions, malakorActionFrames, malakorFrameSize, malakorIgnitionMs, malakorRageProgress, malakorThresholds } from './malakor.js';
 // Espèces, patrouilles et combat des monstres.
 import { inZone, zones } from './exploration.js';
@@ -183,6 +184,12 @@ export const monsterTemplates = {
         statsForLevel: frontierStats,
     },
 };
+
+for (const template of Object.values(monsterTemplates)) {
+    if (template.isBoss) continue;
+    const original = template.statsForLevel;
+    template.statsForLevel = (level) => ({ ...original(level), ...ordinaryStats(level) });
+}
 
 function randomInt(min, max) {
     return min + Math.floor(Math.random() * (max - min + 1));

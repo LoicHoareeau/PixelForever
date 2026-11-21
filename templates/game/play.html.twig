@@ -196,10 +196,10 @@
                             <meter
                                 id="combat-xp"
                                 class="xp-meter"
-                                max="100"
+                                max="240"
                                 value="0"
                             ></meter>
-                            <span class="xp-bar-text">XP : <span id="combat-xp-value">0 / 100</span></span>
+                            <span class="xp-bar-text">XP : <span id="combat-xp-value">0 / 240</span></span>
                         </div>
 
                         <div class="action-bar-row">
@@ -267,6 +267,7 @@
                                         <span class="action-icon {{ potion.icon }}" aria-hidden="true"></span>
                                         <span class="slot-name">{{ potion.name }}</span>
                                         <small class="slot-qty" data-quantity="{{ type }}">2</small>
+                                    <span class="slot-cd" aria-hidden="true"></span>
                                     </button>
                                 {% endfor %}
                             </div>
@@ -481,7 +482,7 @@
                         </div>
                         <div>
                             <dt>Expérience</dt>
-                            <dd><strong data-sheet-xp>0 / 100</strong></dd>
+                            <dd><strong data-sheet-xp>0 / 240</strong></dd>
                         </div>
                         <div>
                             <dt>Arme équipée</dt>

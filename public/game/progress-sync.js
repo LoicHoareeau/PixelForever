@@ -1,3 +1,4 @@
+import { xpRequired, xpVersion } from './balance.js';
 export function createProgressSync(url, token, onStatus) {
     let pending = null;
     let saved = null;
@@ -18,7 +19,7 @@ export function createProgressSync(url, token, onStatus) {
                 const result = await response.json();
                 const sent = JSON.parse(snapshot);
                 if (!Number.isSafeInteger(result.level) || result.level < sent.level || result.level > 9999
-                    || !Number.isSafeInteger(result.xp) || result.xp < 0 || result.xp >= 100 + (result.level - 1) * 50
+                    || !Number.isSafeInteger(result.xp) || result.xp < 0 || result.xp >= xpRequired(result.level)
                     || (result.level === sent.level && result.xp < sent.xp)) throw new Error('Invalid response');
                 if (pending === snapshot) { saved = snapshot; pending = null; onStatus('saved'); }
                 return true;
@@ -35,7 +36,7 @@ export function createProgressSync(url, token, onStatus) {
 
     return {
         save(progress) {
-            const snapshot = JSON.stringify({ level: progress.level, xp: progress.xp, _token: token });
+            const snapshot = JSON.stringify({ level: progress.level, xp: progress.xp, xpVersion, _token: token });
             if (snapshot === saved && !pending) return;
             pending = snapshot;
             void flush();
