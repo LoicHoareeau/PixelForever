@@ -98,3 +98,5 @@ body.game-fullscreen { --hud-opacity: .91; }
     .game-chat input, .game-chat select { font-size: 16px; }
     .action-bar-core { max-width: none; }
 }
+
+.world-online-count { position: fixed; top: 4px; left: 50%; transform: translateX(-50%); z-index: 26; min-width: 2rem; padding: 1px 7px; border: 1px solid #887249; border-radius: 2px; background: #162019; color: #ecdfc1; font: 12px/16px system-ui, sans-serif; font-variant-numeric: tabular-nums; text-align: center; }

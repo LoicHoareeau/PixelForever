@@ -93,7 +93,8 @@ final class WorldController extends AbstractController
                 if (hypot($player['x'] - $public['x'], $player['y'] - $public['y']) <= 800) $players[] = $player;
                 if (count($players) >= 100) break;
             }
-            return ['status' => 200, 'body' => ['players' => $players, 'serverTime' => microtime(true) * 1000]];
+            $onlineCount = (int) $db->fetchOne('SELECT COUNT(*) FROM world_presence WHERE updated_at > ?', [$now - 12]);
+            return ['status' => 200, 'body' => ['players' => $players, 'onlineCount' => $onlineCount, 'serverTime' => microtime(true) * 1000]];
         });
         // Purger après libération du bail pour éviter les verrous croisés entre retours de joueurs.
         $connection->executeStatement('DELETE FROM world_presence WHERE updated_at < ?', [$now - 60]);
