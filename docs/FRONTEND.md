@@ -132,3 +132,5 @@ L’ATH utilise `game/hud.css` et `HudControls` : cadres bois/métal, portraits 
 Échap ouvre un dialogue natif. L’édition permet de déplacer les blocs à la souris ou avec les flèches sur leur poignée, régler la taille (70–130 %), enregistrer, annuler ou réinitialiser. Les cadres sont bornés à l’écran et réduits pour tenir sur les petits écrans. Un maintien de 350 ms puis glissement échange deux boutons existants sans recréer leurs événements : les numéros des cases deviennent leurs raccourcis. En édition, Entrée sur la source puis la destination offre une alternative clavier. Les références de combat, les recharges et les coûts restent attachés au sort.
 
 Les onglets du tchat choisissent le canal d’envoi ; l’historique conserve ses messages étiquetés. Le menu ne suspend pas le monde multijoueur.
+
+Chaque personnage dispose du lien « Supprimer ». Une page dédiée rappelle le nom, le niveau et la perte définitive de progression ; « Annuler » revient à la liste. Le GET ne supprime rien et le formulaire POST fonctionne sans JavaScript.

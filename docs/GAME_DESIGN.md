@@ -152,3 +152,5 @@ Cible validée : 2 à 10 joueurs dans une zone. Le joueur local répond à ses c
 L’initiation des nouveaux personnages comporte sept étapes : marcher dans le Bastion ; ouvrir le guide et lire l’ATH ; consulter la fiche ; consulter les talents sans dépenser de point au niveau 1 ; consulter le sac sans consommer de potion ; réussir une attaque de base sur un sanglier après ciblage ; retourner parler à Rakka. Les actions hors étape ne valident rien. Le suivi ne se relance pas une fois terminé dans le même navigateur.
 
 Le guide reste accessible avec le ? rouge ou depuis Échap. Réorganiser les cases ne change ni les compétences apprises ni leur équilibrage.
+
+Le joueur peut supprimer définitivement ses propres personnages après confirmation depuis la liste. Aucun autre personnage du compte ni le compte lui-même ne sont supprimés.

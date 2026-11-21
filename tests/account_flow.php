@@ -360,6 +360,42 @@ try {
     $restoredRules = json_decode(htmlValue($restoredGame, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
     check($restoredRules['progress'] === ['level' => 3, 'xp' => 77, 'xpVersion' => 2], 'Le jeu doit restaurer le niveau et l’XP depuis la base.');
 
+    $deletePath = "/personnages/$rolandId/suppression";
+    $confirmation = visit($reconnected, 'GET', $deletePath, 200);
+    check(str_contains($confirmation->getContent(), 'irréversible'), 'La confirmation doit prévenir de la suppression définitive.');
+    visit($reconnected, 'GET', '/personnages/jeu', 200);
+    visit($bob, 'GET', $deletePath, 404);
+    visit($bob, 'POST', $deletePath, 404);
+    visit(new Session(new MockArraySessionStorage()), 'POST', $deletePath, 302);
+    visit($reconnected, 'POST', $deletePath, 403, ['_token' => 'invalid']);
+    visit($reconnected, 'GET', '/personnages/jeu', 200);
+    $deleted = visit($reconnected, 'POST', $deletePath, 303, ['_token' => htmlValue($confirmation, '//input[@name="_token"]/@value')]);
+    check($deleted->headers->get('Location') === '/personnages', 'La suppression doit revenir à la liste.');
+    check(!$reconnected->has('selected_character'), 'La suppression doit effacer la sélection du personnage supprimé.');
+    visit($reconnected, 'GET', '/personnages/jeu', 302);
+    visit($reconnected, 'GET', $deletePath, 404);
+    visit($reconnected, 'POST', $progressPath, 404, json: json_encode($progressData, JSON_THROW_ON_ERROR));
+    visit($bob, 'GET', '/personnages/jeu', 200);
+
+    createCharacter($reconnected, 'À supprimer', 'mage');
+    $spareId = $reconnected->get('selected_character');
+    createCharacter($reconnected, 'À garder', 'hunter');
+    $keptId = $reconnected->get('selected_character');
+    $sparePath = "/personnages/$spareId/suppression";
+    $sparePage = visit($reconnected, 'GET', $sparePath, 200);
+    $deleteDb = new PDO('sqlite:'.$database);
+    $deleteDb->exec("INSERT INTO world_presence(character_id, lease, state, updated_at) VALUES ($spareId, 'deletion-test', '{}', 1)");
+    $deleteDb->exec("INSERT INTO chat_party(leader_id) VALUES ($spareId)");
+    $partyToDelete = $deleteDb->lastInsertId();
+    $deleteDb->exec("INSERT INTO chat_member(character_id, party_id) VALUES ($spareId, $partyToDelete), ($keptId, $partyToDelete)");
+    visit($reconnected, 'POST', $sparePath, 303, ['_token' => htmlValue($sparePage, '//input[@name="_token"]/@value')]);
+    check($reconnected->get('selected_character') === $keptId, 'Supprimer un autre personnage doit conserver la sélection.');
+    check(!in_array($spareId, $reconnected->get('tutorial_pending', []), true), 'La suppression doit retirer le tutoriel en attente du personnage.');
+    check((int) $deleteDb->query("SELECT COUNT(*) FROM world_presence WHERE character_id = $spareId")->fetchColumn() === 0, 'La présence du personnage supprimé doit disparaître.');
+    check((int) $deleteDb->query("SELECT COUNT(*) FROM chat_party WHERE id = $partyToDelete")->fetchColumn() === 0, 'Le groupe du chef supprimé doit être dissous.');
+    check((int) $deleteDb->query("SELECT COUNT(*) FROM chat_member WHERE party_id = $partyToDelete")->fetchColumn() === 0, 'Les membres du groupe dissous doivent être libérés.');
+    $deleteDb = null;
+
     // Le formulaire de connexion redirige les utilisateurs déjà authentifiés.
     $requestStack = new RequestStack();
     $request = Request::create('/connexion');
