@@ -73,7 +73,7 @@ Malakor a 36 000 PV et trois phases. À 65 %, la Brèche balaie le Trône par va
 | Chasseur · Arc | Flèche rapide | 7 cases |
 | Mains nues | Coup de poing | 2,5 case |
 
-L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent la moitié des dégâts d’auto-attaque avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes. [Règles des classes et des talents](docs/GAME_DESIGN.md)
+L’attaque de base est gratuite. La baguette et le sceptre tirent en mouvement et infligent les dégâts d’auto-attaque complets avant les talents propres à la baguette. Boule de feu porte à 15 cases avant bonus et demande une seconde d’incantation, quelle que soit l’arme équipée. Maîtrise des baguettes (+6 % par rang, 5 rangs) et Focalisation de la baguette (+2 dégâts par rang, 3 rangs) renforcent les tirs. La seconde exige la maîtrise et cinq points dans Arcanes. [Règles des classes et des talents](docs/GAME_DESIGN.md)
 
 Le Démoniste combine Corruption instantanée, des incantations et Drain de vie sur deux secondes. Le diablotin est disponible dès le niveau 1. Le Voleur et le Chasseur utilisent la Dextérité pour leurs dagues et leur arc. Le Guerrier peut investir en Défense et équiper la Hache de fer depuis le sac. Son arme apparaît en main et la hache joue une frappe avec un croissant incandescent. [Effets visuels](docs/VFX.md)
 
