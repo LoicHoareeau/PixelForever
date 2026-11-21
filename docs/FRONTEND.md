@@ -138,3 +138,7 @@ Chaque personnage dispose du lien « Supprimer ». Une page dédiée rappelle le
 Les URL des modules du jeu et des deux feuilles de style portent une empreinte de leur contenu. Une import map native applique aussi ces URL aux imports relatifs : versionner uniquement `world.js` laisserait ses dépendances en ancien cache. Des positions CSS de secours évitent la superposition des cadres avant l’initialisation. Les positions calculées tiennent compte de la taille réelle des blocs et du zoom : la barre reste centrée et les accès rapides passent sous les cadres lorsque la largeur manque. Le tchat est plus compact et les informations de groupe sont rangées dans « Groupe et destinataire ».
 
 Déplacement au clavier : ↑ nord, ↓ sud, ← ouest, → est, sur AZERTY comme QWERTY. Deux flèches permettent une diagonale sans gain de vitesse ; le relâchement arrête le déplacement. Le jeu empêche le défilement de la page pendant ces commandes, mais laisse les flèches à la saisie du tchat et aux menus. Le guide accessible par le ? rouge explique ces directions.
+
+## Animations du Chasseur
+
+Les huit orientations du Chasseur à l'arc utilisent les atlas natifs `hunter-v2`, leurs ancrages dans `hunter-frames.js` et le rendu partagé `hunter-art.js`. Les pas et la décoche sont également visibles sur les joueurs distants. Voir [les ressources et leur reconstruction](CHASSEUR_ART.md).

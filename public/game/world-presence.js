@@ -1,4 +1,5 @@
 import { RemoteMotion } from './remote-motion.js';
+import { applyHunterArt } from './hunter-art.js';
 const directions = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 const equipped = ['hunter', 'rogue', 'warlock'];
 
@@ -177,6 +178,7 @@ export class WorldPresence {
             player.sprite.setFlipX(flip).setPosition(Math.round(p.x), Math.round(p.y)).setDepth(p.y)
                 .setAlpha(s.alive ? clock - this.lastSnapshotAt > 3000 ? .5 : 1 : .4);
             player.shadow.setPosition(p.x, p.y - 1);
+            if (this.scene.hunterArtReady) applyHunterArt(this.scene, player.sprite, s.skin, facing, walking, player.distance, attackFrame);
             player.label.setPosition(p.x, p.y - 47).setDepth(p.y + 1);
         }
     }

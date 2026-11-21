@@ -154,3 +154,7 @@ L’initiation des nouveaux personnages comporte sept étapes : marcher dans le 
 Le guide reste accessible avec le ? rouge ou depuis Échap. Réorganiser les cases ne change ni les compétences apprises ni leur équilibrage.
 
 Le joueur peut supprimer définitivement ses propres personnages après confirmation depuis la liste. Aucun autre personnage du compte ni le compte lui-même ne sont supprimés.
+
+## Apparence du Chasseur
+
+Le Chasseur équipé de l'arc dispose de huit orientations de marche et de tir, avec poussière discrète, éclat de décoche et projectile. Cette mise à jour visuelle ne modifie ni portée, ni ressource, ni dégâts, ni progression. Voir [les limites du rendu distant](CHASSEUR_ART.md).

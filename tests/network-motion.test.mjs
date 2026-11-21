@@ -126,7 +126,7 @@ test('un acteur immobile ne réinitialise pas sa texture à chaque image', t => 
     const player = { sprite: actor, shadow: actor, label: actor, distance: 0, renderPosition: { x: 0, y: 0 },
         motion: { sample: () => ({ x: 0, y: 0, state: { skin: 'hunter', facing: 'east', alive: true } }) } };
     const presence = Object.create(WorldPresence.prototype);
-    Object.assign(presence, { captureActions() {}, lastSnapshotAt: 1000, players: new Map([[1, player]]) });
+    Object.assign(presence, { scene: {}, captureActions() {}, lastSnapshotAt: 1000, players: new Map([[1, player]]) });
     for (let i = 0; i < 120; i++) presence.update();
     assert.equal(textures, 1);
 });

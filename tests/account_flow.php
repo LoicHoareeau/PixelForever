@@ -183,6 +183,9 @@ try {
     foreach (['warlock' => 'Morgane', 'rogue' => 'Lys', 'hunter' => 'Arden'] as $class => $name) {
         createCharacter($bob, $name, $class);
         $game = visit($bob, 'GET', '/personnages/jeu', 200);
+        if ($class === 'hunter' && ($previewPath = getenv('PIXEL_HUNTER_HTML'))) {
+            file_put_contents($previewPath, $game->getContent());
+        }
         $rules = json_decode(htmlValue($game, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
         check($class === $rules['classKey'] && $class === htmlValue($game, '//div[@id="world"]/@data-skin'), 'La nouvelle classe doit accéder à son apparence.');
         check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Les nouvelles classes conservent un butin valide.');

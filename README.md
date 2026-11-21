@@ -6,6 +6,8 @@ Le prototype jouable utilise Phaser 3.90.0, Twig et JavaScript. Les règles PHP 
 
 Le Chasseur porte son arc verticalement au repos et le tend à deux mains pour tirer. Le Voleur tient des dagues courtes, abaissées au repos. Le Démoniste lance sa magie directement, entouré de volutes d’ombre violettes pendant ses sorts, sans livre visible. Les personnages d’origine sont conservés. [Animations et génération des planches](docs/FRONTEND.md)
 
+Le Chasseur équipé de son arc utilise désormais huit orientations dessinées séparément, avec huit poses de marche et huit poses de tir par orientation. Poussière, décoche, flèche et impact accompagnent ces animations, visibles également sur les personnages distants. [Ressources du Chasseur](docs/CHASSEUR_ART.md)
+
 ## Aperçu
 
 ### Accueil du Val-des-Saules

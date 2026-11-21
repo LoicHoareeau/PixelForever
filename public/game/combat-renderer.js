@@ -94,8 +94,9 @@ export function drawEffectsView(combat, now) {
         const released = elapsed >= attack.castMs;
         if (attack.projectile === 'arrow' && !released) return;
         const size = attack.special ? .84 : .43;
-        combat.vfx?.play(attack.projectile ?? (attack.special ? 'firebolt' : 'arcane'), x, y,
-            still ? .4 : (elapsed % 220) / 220, released ? size : size * .44, angle, released ? .94 : .78);
+        const hunterArrow = attack.projectile === 'arrow' && combat.scene.hunterArtReady;
+        combat.vfx?.play(hunterArrow ? 'hunter-arrow' : attack.projectile ?? (attack.special ? 'firebolt' : 'arcane'), x, y,
+            still ? .4 : (elapsed % 220) / 220, (released ? size : size * .44) * (hunterArrow ? .55 : 1), angle, released ? .94 : .78);
     } else {
         combat.drawMelee(attack, progress, true);
     }
