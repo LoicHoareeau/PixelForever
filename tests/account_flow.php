@@ -164,6 +164,7 @@ try {
     check(is_int($bobSelection) && $bobSelection !== $previousSelection, 'Bob doit pouvoir changer de personnage.');
     $magePage = visit($bob, 'GET', '/personnages/jeu', 200);
     $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    if ($previewPath = getenv('PIXEL_HUD_BOB_HTML')) file_put_contents($previewPath, $magePage->getContent());
     check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
     check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
     check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5.0, 'La baguette doit porter à 5 cases.');
@@ -206,6 +207,19 @@ try {
     $first = visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld));
     check(json_decode($first->getContent(), true)['players'] === [], 'Le premier joueur arrive seul.');
     check(json_decode($first->getContent(), true)['onlineCount'] === 1, 'Le compteur inclut le personnage qui arrive seul.');
+    $ticketPath = $warriorRules['worldStreamUrl'];
+    $realtime = visit($alice, 'POST', $ticketPath, 200, json: json_encode($aliceWorld));
+    $ticketData = json_decode($realtime->getContent(), true);
+    [$encodedTicket, $signature] = explode('.', $ticketData['ticket']);
+    $ticketProfile = json_decode(base64_decode(strtr($encodedTicket, '-_', '+/')), true);
+    check($ticketProfile['id'] === $rolandId && $ticketProfile['lease'] === $leaseAlice && $ticketProfile['exp'] > time(), 'Le ticket doit être lié au personnage et à son bail actif.');
+    $expectedSignature = rtrim(strtr(base64_encode(hash_hmac('sha256', $encodedTicket, $_SERVER['APP_SECRET'], true)), '+/', '-_'), '=');
+    check(hash_equals($expectedSignature, $signature), 'Le ticket doit être signé avec le secret du serveur.');
+    check(!isset($ticketProfile['email']) && $ticketData['url'] === '/monde-socket', 'Le ticket doit limiter son profil public et utiliser la même origine.');
+    visit($bob, 'POST', $ticketPath, 404, json: json_encode($aliceWorld));
+    visit($alice, 'POST', $ticketPath, 403, json: json_encode([...$aliceWorld, '_token' => 'bad']));
+    visit($alice, 'POST', $ticketPath, 409, json: json_encode([...$aliceWorld, 'lease' => $leaseBob]));
+    visit($alice, 'POST', $ticketPath, 400, json: '{broken');
     check(is_numeric(json_decode($first->getContent(), true)['serverTime']), 'Le serveur doit horodater ses instantanés.');
     $second = visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode($bobWorld));
     check(json_decode($second->getContent(), true)['onlineCount'] === 2, 'Les deux sessions actives doivent être comptées.');

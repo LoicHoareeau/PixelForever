@@ -97,7 +97,7 @@ Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipé
 
 Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence principale, `3`–`9` techniques disponibles selon la classe, `R` potion de vie, `F` potion de ressource, `P` fiche, `T` talents, `I` inventaire, `E` dialogue du PNJ à proximité. Les touches d’action utilisent les positions physiques de la rangée supérieure, sans Maj sur AZERTY. Le clic sélectionne un monstre.
 
-La présence passe par Symfony/PostgreSQL : personnages proches affichés avec leur apparence, orientation et poses, interpolation des déplacements, expiration après 12 secondes et bail par personnage. Ce lot ne synchronise pas les PV, les morts, les familiers ou les récompenses des monstres.
+Les joueurs proches et les visuels de leurs combats sont transmis en continu par WebSocket : mouvements interpolés, monstres animés et barres de vie, projectiles, zones et familiers. Symfony/PostgreSQL conserve le bail de présence et le tchat de proximité. Les dégâts, l’XP et le butin suivent les règles actuelles. [Fonctionnement et vérifications](docs/VISIBILITE-COMBATS.md)
 
 ## Périmètre restant
 
