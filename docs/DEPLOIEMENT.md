@@ -45,3 +45,7 @@ Pour PostgreSQL local, suivre le [démarrage Docker](../README.md#lancer-pixelfo
 ## Lot XP/présence — contrôle Render
 
 Déployer ensemble PHP, migration, Twig et ressources JavaScript. Les anciens onglets doivent être rechargés après conversion du barème. Comparer les niveaux et la fraction d’XP avant/après, puis reconnecter deux comptes distincts dans la même zone et vérifier apparences, marche, disparition après fermeture et conflit pour deux onglets du même personnage. Contrôler une potion puis la recharge commune de R/F. Le rendu à deux fenêtres n’a pas pu être validé localement (connexion locale expirée dans Edge) ; les parcours serveur avec deux comptes passent. Les monstres et récompenses restent individuels dans ce lot. Aucun déploiement Render n’a été déclenché par l’agent.
+
+### Lot trappe du Chasseur
+
+Déployer ensemble les modules de talents, règles de familier, combat/IA/rendu et Twig. L’atlas de trappe est déjà versionné, sans nouvel asset ni migration. Sur Render : Chasseur N.1, affaiblir un sanglier à 30 %, cibler puis `3` et W ; vérifier la capture sans coup de la cible, le coût affiché, les 20 s de recharge et la libération sur nouvelle attaque. Vérifier le refus sur squelette, niveau supérieur et hors portée sans consommation. Les autres créatures peuvent toujours interrompre la capture.

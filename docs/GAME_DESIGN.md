@@ -132,3 +132,9 @@ Voir le [front-end](FRONTEND.md) et le [back-end](BACKEND.md).
 Les compétences coûtent au moins 28 % de la réserve maximale avant réductions de talents, ou leur coût fixe si supérieur. La régénération reste liée à l’Esprit. La baguette utilise désormais 100 % des dégâts de base avant talents. Potions : 30 % de la réserve maximale, minimum 20 PV/15 ressource, recharge commune de 15 s.
 
 La présence des autres joueurs est disponible par requêtes Symfony fréquentes ; les combats restent locaux. Les PV/morts/récompenses communs, le budget XP de groupe et la densité/réapparition selon les joueurs actifs ne sont pas livrés.
+
+## Trappe d’apprivoisement du Chasseur
+
+Disponible dès le N.1 sans talent, dans la première case de technique (`3`), portée 7 cases. Cible vivante apprivoisable, niveau inférieur ou égal au maître, PV ≤30 %, hors Bastion, hors épreuve de boss et hors engagement tiers. Coût fixe 6 mana avec le plancher commun de 28 % du maximum avant réductions ; recharge 20 s.
+
+La trappe ne cause aucun dégât et neutralise déplacements et attaques de la cible pendant 6 s, y compris son attaque déjà préparée ou son projectile en cours. Le Chasseur peut alors utiliser W pour ses 4 s d’apprivoisement. Ses propres dégâts périodiques sur cette cible sont retirés et son familier rappelé en mode passif, projectile annulé, pour éviter un coup involontaire pendant la capture. Tout nouveau dégât libère la cible ; les autres monstres restent dangereux. À expiration, le combat de la cible peut reprendre. Conditions de capture, interruption du Chasseur au déplacement/coup et absence de récompense de capture restent applicables.

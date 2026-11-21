@@ -117,3 +117,5 @@ Actualiser les documents du dépôt selon le résultat effectivement livré. Le 
 Livré dans le code : barème XP version 2, migration proportionnelle locale/SQL, simulation reproductible des cinq classes (151–178 min de référence), coûts à 28 % minimum, potions à 30 % avec recharge commune 15 s, baguette à pleine puissance, présence Symfony avec interpolation des personnages et bail par personnage.
 
 Non livré : autorité serveur des combats, monstres/PV/morts/captures partagés, attribution atomique des récompenses, XP de groupe, population et réapparition selon les joueurs actifs, profil complet en base. La présence visuelle seule ne constitue pas le monde partagé décrit à la section 6. Contrôle visuel à deux fenêtres restant : serveur local inaccessible depuis Edge.
+
+Ajout ciblé : Trappe d’apprivoisement de départ du Chasseur, touche 3, neutralisation 6 s puis W pour capturer, recharge 20 s. Réutilise les conditions existantes et reste locale au navigateur.

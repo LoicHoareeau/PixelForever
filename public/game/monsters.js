@@ -270,6 +270,7 @@ export class Monster {
 
         this.respawnAt = Infinity;
         this.stunUntil = 0;
+        this.trappedUntil = 0;
         this.slowUntil = 0;
         this.counterAt = Infinity;
         this.attackEndsAt = 0;
@@ -324,6 +325,7 @@ export class Monster {
         this.nextRouteAt = 0;
         this.destination = null;
         this.stunUntil = 0;
+        this.trappedUntil = 0;
         this.slowUntil = 0;
         this.counterAt = Infinity;
 
@@ -345,6 +347,7 @@ export class Monster {
     }
 
     hide() {
+        this.trappedUntil = 0;
         this.cancelAttack();
         this.echo = this.trial = null;
         this.alert = false;
@@ -390,6 +393,7 @@ export class Monster {
         this.phase++;
         this.attackCounter = 0;
         this.stunUntil = 0;
+        this.trappedUntil = 0;
         this.slowUntil = 0;
         return true;
     }
@@ -604,7 +608,7 @@ export class Monster {
             return;
         }
 
-        if (now < this.stunUntil) {
+        if (now < this.stunUntil || now < this.trappedUntil) {
             this.sprite.setTint(0x9be0de);
             this.syncOverlays();
             return;
