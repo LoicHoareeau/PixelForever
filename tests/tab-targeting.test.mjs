@@ -298,7 +298,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     chatControl.closest = selector => selector === '#game-chat' ? {} : null;
     const chatTab = dispatch({ target: chatControl });
     assert.equal(chatTab.prevented, false, 'Tab doit rester natif dans le panneau de tchat');
-    for (const code of ['KeyW', 'Digit1', 'KeyT', 'KeyZ', 'KeyE']) {
+    for (const code of ['KeyW', 'Digit1', 'KeyT', 'KeyZ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
         const event = { code, target: chatControl, preventDefault() { this.prevented = true; } };
         gameListener.fn(event);
         assert.equal(event.prevented, undefined, code + ' ne doit pas déclencher le jeu depuis le tchat');
@@ -312,9 +312,31 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         assert.equal(event.prevented, true);
     }
     assert.deepEqual(petCommands, [0, 1, 2], 'W/X/C AZERTY utilise les mêmes positions que Z/X/C QWERTY');
+    const keyUpListener = windowListeners.find(l => l.type === 'keyup');
+    const movements = [];
+    scene.move = (x, y) => movements.push([x, y]);
+    scene.heldKeys.clear();
+    for (const [code, direction] of [['ArrowUp', [0, -1]], ['ArrowDown', [0, 1]], ['ArrowLeft', [-1, 0]], ['ArrowRight', [1, 0]]]) {
+        const event = { code, target: canvas, preventDefault() { this.prevented = true; } };
+        gameListener.fn(event);
+        assert.equal(event.prevented, true, 'La flèche doit empêcher le défilement de la page.');
+        scene.moveFromKeys(100, 40);
+        const [x, y] = movements.at(-1);
+        assert.equal(Math.sign(x), direction[0]);
+        assert.equal(Math.sign(y), direction[1]);
+        keyUpListener.fn({ code });
+        assert.equal(scene.heldKeys.size, 0, 'Relâcher la flèche doit arrêter le déplacement.');
+    }
+    scene.heldKeys.add('ArrowUp'); scene.heldKeys.add('ArrowRight');
+    scene.moveFromKeys(100, 40);
+    assert.ok(Math.abs(Math.hypot(...movements.at(-1)) - 92 * .04) < .00001, 'La diagonale ne doit pas accélérer le personnage.');
+    scene.heldKeys.clear();
     gameListener.fn({ code: 'KeyW', target: canvas, preventDefault() {} });
     assert.equal(scene.heldKeys.has('KeyW'), true, 'la touche physique de déplacement reste disponible');
     dialog.open = true;
     gameListener.fn({ code: 'KeyZ', target: canvas, preventDefault() {} });
     assert.deepEqual(petCommands, [0, 1, 2], 'les commandes ne traversent pas une modale ouverte');
+    scene.heldKeys.clear();
+    for (const code of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) gameListener.fn({ code, target: canvas, preventDefault() {} });
+    assert.equal(scene.heldKeys.size, 0, 'Les flèches ne doivent pas déplacer le personnage pendant un menu.');
 });

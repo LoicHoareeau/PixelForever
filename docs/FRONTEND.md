@@ -119,7 +119,7 @@ Les nouvelles illustrations de sorts sont regroupées dans `public/game/spell-ic
 
 ## Lissage du réseau — cible 2 à 10 joueurs
 
-`remote-motion.js` garde douze positions horodatées par acteur. Le rendu interpole dans un tampon de 500 ms, ajusté progressivement jusqu’à 850 ms selon la cadence et la gigue observées. Une prédiction de 150 ms maximum à vitesse bornée évite les petits trous ; elle cesse ensuite de déplacer l’acteur. Une correction réseau est rattrapée progressivement, tandis qu’un déplacement de plus de 160 px réinitialise le tampon comme une vraie téléportation. Les phases de marche suivent la distance effectivement affichée.
+En repli HTTP, `remote-motion.js` garde douze positions horodatées par acteur. Le rendu interpole dans un tampon de 500 ms, ajusté progressivement jusqu’à 850 ms selon la cadence et la gigue observées. Une prédiction de 150 ms maximum à vitesse bornée évite les petits trous ; elle cesse ensuite de déplacer l’acteur. Une correction réseau est rattrapée progressivement, tandis qu’un déplacement de plus de 160 px réinitialise le tampon comme une vraie téléportation. Les phases de marche suivent la distance effectivement affichée.
 
 `world-presence.js` ancre la prochaine requête sur son départ, afin qu’un temps de réponse de 50 ms ne fasse plus sauter un créneau de 300 ms. Une seule requête reste active. Le délai de reprise après échec reste 1,5 s ; les acteurs sont conservés jusqu’à 12 s sans instantané, avec indication atténuée après 3 s. Les textures ne sont réinitialisées que quand la pose change. Les horloges de rendu réseau ne dépendent pas des pauses de la scène Phaser.
 
@@ -136,6 +136,8 @@ Les onglets du tchat choisissent le canal d’envoi ; l’historique conserve se
 Chaque personnage dispose du lien « Supprimer ». Une page dédiée rappelle le nom, le niveau et la perte définitive de progression ; « Annuler » revient à la liste. Le GET ne supprime rien et le formulaire POST fonctionne sans JavaScript.
 
 Les URL des modules du jeu et des deux feuilles de style portent une empreinte de leur contenu. Une import map native applique aussi ces URL aux imports relatifs : versionner uniquement `world.js` laisserait ses dépendances en ancien cache. Des positions CSS de secours évitent la superposition des cadres avant l’initialisation. Les positions calculées tiennent compte de la taille réelle des blocs et du zoom : la barre reste centrée et les accès rapides passent sous les cadres lorsque la largeur manque. Le tchat est plus compact et les informations de groupe sont rangées dans « Groupe et destinataire ».
+
+Déplacement au clavier : ↑ nord, ↓ sud, ← ouest, → est, sur AZERTY comme QWERTY. Deux flèches permettent une diagonale sans gain de vitesse ; le relâchement arrête le déplacement. Le jeu empêche le défilement de la page pendant ces commandes, mais laisse les flèches à la saisie du tchat et aux menus. Le guide accessible par le ? rouge explique ces directions.
 
 Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement `onlineCount` reçu par la synchronisation existante. Son nom accessible et son infobulle précisent « joueurs connectés sur le serveur ». Il inclut le personnage local et les joueurs éloignés. Chargement, erreur réseau ou conflit de bail affichent « — » pour éviter un ancien total trompeur.
 
