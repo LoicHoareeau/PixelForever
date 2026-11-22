@@ -13,9 +13,38 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final class WorldController extends AbstractController
 {
+    public function __construct(#[Autowire('%env(APP_SECRET)%')] private readonly string $worldSecret) {}
+
+    #[Route('/personnages/{id}/temps-reel', name: 'character_realtime', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function ticket(int $id, Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $character = $entities->getRepository(PlayerCharacter::class)->findOneBy(['id' => $id, 'owner' => $owner]);
+        if (!$character) throw $this->createNotFoundException();
+        if (strlen($request->getContent()) > 2048) return $this->json(['error' => 'Requête trop volumineuse.'], 413);
+        try { $data = $request->toArray(); } catch (JsonException) { return $this->json(['error' => 'JSON invalide.'], 400); }
+        if (!is_string($data['_token'] ?? null) || !$this->isCsrfTokenValid('character_progress_'.$id, $data['_token'])) {
+            return $this->json(['error' => 'Session invalide.'], 403);
+        }
+        $lease = $data['lease'] ?? null;
+        if (!is_string($lease) || !preg_match('/^[a-f0-9-]{36}$/D', $lease)) return $this->json(['error' => 'Bail invalide.'], 400);
+        $row = $entities->getConnection()->fetchAssociative('SELECT lease, updated_at FROM world_presence WHERE character_id = ?', [$id]);
+        if (!$row || $row['lease'] !== $lease || (float) $row['updated_at'] <= microtime(true) - 12) {
+            return $this->json(['error' => 'Présence inactive.'], 409);
+        }
+        $profile = ['id' => $id, 'name' => $character->getName(), 'skin' => $character->getClass()->skin(),
+            'level' => $character->getLevel(), 'lease' => $lease, 'exp' => time() + 45];
+        $base64 = static fn (string $value): string => rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+        $payload = $base64(json_encode($profile, JSON_THROW_ON_ERROR));
+        $response = $this->json(['ticket' => $payload.'.'.$base64(hash_hmac('sha256', $payload, $this->worldSecret, true)),
+            'url' => $request->getBasePath().'/monde-socket']);
+        $response->headers->set('Cache-Control', 'no-store, private');
+        return $response;
+    }
+
     #[Route('/personnages/{id}/monde', name: 'character_world', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function sync(int $id, Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
     {
@@ -93,7 +122,8 @@ final class WorldController extends AbstractController
                 if (hypot($player['x'] - $public['x'], $player['y'] - $public['y']) <= 800) $players[] = $player;
                 if (count($players) >= 100) break;
             }
-            return ['status' => 200, 'body' => ['players' => $players, 'serverTime' => microtime(true) * 1000]];
+            $onlineCount = (int) $db->fetchOne('SELECT COUNT(*) FROM world_presence WHERE updated_at > ?', [$now - 12]);
+            return ['status' => 200, 'body' => ['players' => $players, 'onlineCount' => $onlineCount, 'serverTime' => microtime(true) * 1000]];
         });
         // Purger après libération du bail pour éviter les verrous croisés entre retours de joueurs.
         $connection->executeStatement('DELETE FROM world_presence WHERE updated_at < ?', [$now - 60]);

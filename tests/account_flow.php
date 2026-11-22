@@ -164,6 +164,7 @@ try {
     check(is_int($bobSelection) && $bobSelection !== $previousSelection, 'Bob doit pouvoir changer de personnage.');
     $magePage = visit($bob, 'GET', '/personnages/jeu', 200);
     $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
+    if ($previewPath = getenv('PIXEL_HUD_BOB_HTML')) file_put_contents($previewPath, $magePage->getContent());
     check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
     check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
     check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5.0, 'La baguette doit porter à 5 cases.');
@@ -208,8 +209,23 @@ try {
     $worldPath = $warriorRules['worldUrl'];
     $first = visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld));
     check(json_decode($first->getContent(), true)['players'] === [], 'Le premier joueur arrive seul.');
+    check(json_decode($first->getContent(), true)['onlineCount'] === 1, 'Le compteur inclut le personnage qui arrive seul.');
+    $ticketPath = $warriorRules['worldStreamUrl'];
+    $realtime = visit($alice, 'POST', $ticketPath, 200, json: json_encode($aliceWorld));
+    $ticketData = json_decode($realtime->getContent(), true);
+    [$encodedTicket, $signature] = explode('.', $ticketData['ticket']);
+    $ticketProfile = json_decode(base64_decode(strtr($encodedTicket, '-_', '+/')), true);
+    check($ticketProfile['id'] === $rolandId && $ticketProfile['lease'] === $leaseAlice && $ticketProfile['exp'] > time(), 'Le ticket doit être lié au personnage et à son bail actif.');
+    $expectedSignature = rtrim(strtr(base64_encode(hash_hmac('sha256', $encodedTicket, $_SERVER['APP_SECRET'], true)), '+/', '-_'), '=');
+    check(hash_equals($expectedSignature, $signature), 'Le ticket doit être signé avec le secret du serveur.');
+    check(!isset($ticketProfile['email']) && $ticketData['url'] === '/monde-socket', 'Le ticket doit limiter son profil public et utiliser la même origine.');
+    visit($bob, 'POST', $ticketPath, 404, json: json_encode($aliceWorld));
+    visit($alice, 'POST', $ticketPath, 403, json: json_encode([...$aliceWorld, '_token' => 'bad']));
+    visit($alice, 'POST', $ticketPath, 409, json: json_encode([...$aliceWorld, 'lease' => $leaseBob]));
+    visit($alice, 'POST', $ticketPath, 400, json: '{broken');
     check(is_numeric(json_decode($first->getContent(), true)['serverTime']), 'Le serveur doit horodater ses instantanés.');
     $second = visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode($bobWorld));
+    check(json_decode($second->getContent(), true)['onlineCount'] === 2, 'Les deux sessions actives doivent être comptées.');
     $visible = json_decode($second->getContent(), true)['players'];
     check(count($visible) === 1 && $visible[0]['name'] === 'Roland' && $visible[0]['skin'] === 'lina', 'Bob doit voir le personnage et l’apparence d’Alice.');
     check(!isset($visible[0]['email']) && !isset($visible[0]['lease']) && !isset($visible[0]['items']), 'La présence ne divulgue ni compte, ni session, ni sac.');
@@ -226,6 +242,15 @@ try {
     $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 1');
     $seen = visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld));
     check(json_decode($seen->getContent(), true)['players'][0]['name'] === 'Merlin', 'La présence doit être réciproque entre deux comptes.');
+
+    $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 1');
+    visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode([...$bobWorld, 'state' => [...$position, 'x' => 3000]]));
+    $far = json_decode(visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld))->getContent(), true);
+    check($far['onlineCount'] === 2 && $far['players'] === [], 'Un personnage éloigné est compté sans être transmis comme voisin.');
+    $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 13');
+    $alone = visit($alice, 'POST', $worldPath, 200, json: json_encode($aliceWorld));
+    check(json_decode($alone->getContent(), true)['onlineCount'] === 1, 'Une présence expirée ne doit plus être comptée.');
+    visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode($bobWorld));
 
     $animation = ['33333333-3333-4333-8333-333333333333', 120, 180, 390, true, 0];
     foreach (['invalid', ['bad' => $animation], [[$leaseAlice, 120, 180, 390, true, 0]], array_fill(0, 7, $animation), [[...$animation, 1]], [['bad', 120, 180, 390, true, 0]],
@@ -246,7 +271,8 @@ try {
     check($stored['actions'][0][1] === $actionStart && $stored['actions'][0][3] === 80, 'L’identité d’une animation conserve son début et son annulation.');
     visit($bob, 'POST', $mageRules['worldUrl'], 200, json: json_encode([...$bobWorld, 'leave' => true]));
     $presenceDb->exec('UPDATE world_presence SET updated_at = updated_at - 13');
-    visit($alice, 'POST', $worldPath, 200, json: json_encode([...$aliceWorld, 'lease' => $leaseBob]));
+    $afterLeave = visit($alice, 'POST', $worldPath, 200, json: json_encode([...$aliceWorld, 'lease' => $leaseBob]));
+    check(json_decode($afterLeave->getContent(), true)['onlineCount'] === 1, 'Le départ de Bob doit réduire le compteur.');
     check((int) $presenceDb->query('SELECT COUNT(*) FROM world_presence')->fetchColumn() === 1, 'La déconnexion retire Bob, le bail expiré d’Alice peut être repris.');
     $presenceDb = null;
 

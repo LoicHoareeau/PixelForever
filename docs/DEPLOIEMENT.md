@@ -79,3 +79,9 @@ Contrôles automatiques : `php tests/game_assets.php`, `node --test tests/*.test
 ## Ressources du Chasseur
 
 Déployer ensemble les modules `hunter-art.js`, `hunter-frames.js`, le rendu de combat et les fichiers `public/game/val-des-saules/hunter-v2/`. Leurs noms portent une empreinte de contenu pour éviter de réutiliser une ancienne image en cache. La construction Docker ne régénère pas ces dessins. Aucune migration de base de données n'est nécessaire. Voir [le détail des ressources](CHASSEUR_ART.md).
+
+Contrôler le compteur numérique en haut au centre avec deux personnages : 1 seul, 2 après l’entrée du second, toujours 2 quand ils sont éloignés de plus de 800 px, puis 1 après son départ ou 12 s sans nouvelles. Une coupure de connexion doit afficher « — », puis rétablir le total à la reconnexion. Aucune migration supplémentaire n’est nécessaire pour ce compteur.
+
+Le conteneur inclut désormais Node 22 et la dépendance WebSocket verrouillée par `package-lock.json` ; aucun service Render supplémentaire ni migration n’est requis pour la visibilité des combats. `docker/start.sh` lance le relais local sur 8081 et Apache sur 8080, avec le même `APP_SECRET`, et arrête les deux processus si l’un termine. Apache relaie `/monde-socket` sous la même origine. Vérifier l’upgrade HTTP 101, deux sessions actives plus de 45 s (renouvellement du ticket), un combat vu depuis l’autre session, le compteur et le tchat de proximité. [Procédure et limites](VISIBILITE-COMBATS.md).
+
+La construction Docker utilisée par Render comporte une étape `checks` obligatoire : suite Node, parcours PHP avec base temporaire, manifeste des ressources, syntaxe Twig et script Bash. Une commande en échec interrompt la construction. Les fichiers de test restent dans cette étape ; l’image finale repart du runtime, puis récupère uniquement le témoin de réussite.

@@ -21,13 +21,13 @@ export function hunterPose(facing, walking, distance, attackFrame = -1) {
     return { ...art.frames[name], scale: 40 / art.height };
 }
 
-export function applyHunterArt(scene, sprite, skin, facing, walking, distance, attackFrame = -1, weaponStyle = 'bow') {
+export function applyHunterArt(scene, sprite, skin, facing, walking, distance, attackFrame = -1, weaponStyle = 'bow', emitEffects = true) {
     if (skin !== 'hunter' || weaponStyle !== 'bow') { sprite.setScale(1); return; }
     const pose = hunterPose(facing, walking, distance, attackFrame);
     if (!pose) return;
     if (sprite.texture?.key !== pose.texture || sprite.frame?.name !== pose.frame) sprite.setTexture(pose.texture, pose.frame);
     sprite.setOrigin(pose.origin, 1).setScale(pose.scale).setFlipX(false);
-    if (scene.motionPreference?.matches) return;
+    if (!emitEffects || scene.motionPreference?.matches) return;
     if (walking && attackFrame < 0) scene.combat?.vfx?.play('hunter-dust', sprite.x, sprite.y - 1,
         (distance / 7 % 4) / 4, .15, 0, .6);
     if (attackFrame === 4 || attackFrame === 5) {

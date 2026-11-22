@@ -1,6 +1,12 @@
 **
 !composer.json
 !composer.lock
+!package.json
+!package-lock.json
+!server/
+!server/**
+!tests/
+!tests/**
 !bin/
 !bin/console
 !config/
@@ -8,6 +14,7 @@
 !config/**/*.yaml
 !docker/
 !docker/apache.conf
+!docker/start.sh
 !migrations/
 !migrations/**/*.php
 !public/

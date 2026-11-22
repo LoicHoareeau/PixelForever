@@ -207,6 +207,7 @@ final class CharacterController extends AbstractController
                 'characterId' => $character->getId(),
                 'chatUrl' => $this->generateUrl('character_chat', ['id' => $character->getId()]),
                 'worldUrl' => $this->generateUrl('character_world', ['id' => $character->getId()]),
+                'worldStreamUrl' => $this->generateUrl('character_realtime', ['id' => $character->getId()]),
                 'progressUrl' => $this->generateUrl('character_progress', ['id' => $character->getId()]),
                 'progressToken' => $this->container->get('security.csrf.token_manager')->getToken('character_progress_'.$character->getId())->getValue(),
                 'baseStats' => $class->baseStats(),

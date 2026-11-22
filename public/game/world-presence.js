@@ -1,3 +1,4 @@
+import { CombatVisuals, captureVisuals, recordGraphics } from './combat-visuals.js';
 import { RemoteMotion } from './remote-motion.js';
 import { applyHunterArt } from './hunter-art.js';
 const directions = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
@@ -8,27 +9,48 @@ export class WorldPresence {
         this.scene = scene;
         this.url = rules.worldUrl;
         this.token = rules.progressToken;
+        this.streamUrl = rules.worldStreamUrl;
+        this.nextConnect = 0;
+        this.recordings = [recordGraphics(scene.combat.effect), recordGraphics(scene.combat.rageEffect)];
         this.lease = crypto.randomUUID();
         this.players = new Map();
         this.nextPoll = 0;
         this.actions = [];
         this.lastSnapshotAt = performance.now();
-        this.timer = setInterval(() => this.poll(), 300);
+        this.timer = setInterval(() => { this.poll(); this.streamTick(); }, 50);
         this.notice = document.createElement('span');
         this.notice.className = 'world-presence-status';
         this.notice.setAttribute('role', 'status');
         this.notice.textContent = 'Connexion au monde…';
-        document.getElementById('world').after(this.notice);
-        this.pagehide = () => { void this.request(true); };
+        this.counter = document.createElement('span');
+        this.counter.className = 'world-online-count';
+        this.counter.setAttribute('role', 'status');
+        this.counter.setAttribute('aria-atomic', 'true');
+        this.setOnlineCount(null);
+        document.getElementById('world').after(this.notice, this.counter);
+        this.pagehide = () => { this.socket?.close(); void this.request(true); };
         window.addEventListener('pagehide', this.pagehide);
         scene.events.once('shutdown', () => {
             this.stopped = true;
             clearInterval(this.timer);
             this.controller?.abort();
+            this.authController?.abort();
+            this.socket?.close();
+            this.recordings.forEach(r => r.restore());
             window.removeEventListener('pagehide', this.pagehide);
             this.notice.remove();
+            this.counter.remove();
             for (const player of this.players.values()) this.remove(player);
         });
+    }
+
+    setOnlineCount(count) {
+        const value = count === null ? '—' : String(count);
+        if (this.counter.textContent === value) return;
+        this.counter.textContent = value;
+        const label = count === null ? 'Nombre de joueurs connectés indisponible' : count + ' joueur(s) connecté(s) sur le serveur';
+        this.counter.setAttribute('aria-label', label);
+        this.counter.title = label;
     }
 
     state() {
@@ -76,46 +98,129 @@ export class WorldPresence {
             if (leave || this.stopped) return;
             if (response.status === 409) {
                 this.retry = true;
+                this.hasLease = false;
+                this.socket?.close();
                 this.notice.textContent = 'Personnage déjà connecté dans un autre onglet.';
+                this.setOnlineCount(null);
                 return;
             }
-            if (!response.ok) throw new Error('Presence unavailable');
+            if (!response.ok) {
+                if (response.status === 403 || response.status === 404) { this.hasLease = false; this.socket?.close(); }
+                throw new Error('Presence unavailable');
+            }
             const snapshot = await response.json();
-            if (!Array.isArray(snapshot.players)) throw new Error('Invalid presence');
+            if (!Array.isArray(snapshot.players) || !Number.isSafeInteger(snapshot.onlineCount) || snapshot.onlineCount < 1) throw new Error('Invalid presence');
             const now = performance.now();
             const serverTime = Number(snapshot.serverTime) || now;
             const offset = serverTime - (sentAt + now) / 2;
             this.serverOffset = this.serverOffset === undefined ? offset : this.serverOffset + Math.max(-5, Math.min(5, offset - this.serverOffset));
-            this.lastSnapshotAt = now;
-            const seen = new Set();
-            for (const state of snapshot.players) {
-                seen.add(state.id);
-                let player = this.players.get(state.id);
-                if (!player) {
-                    player = { sprite: this.scene.add.image(state.x, state.y, state.skin + '-' + state.facing),
-                        shadow: this.scene.add.ellipse(state.x, state.y - 1, 19, 7, 0x172622, .48).setDepth(3),
-                        label: this.scene.add.text(state.x, state.y - 47, '', { fontFamily: 'system-ui, sans-serif',
-                            fontSize: '8px', color: '#a8e6dd', stroke: '#101719', strokeThickness: 2 }).setOrigin(.5, 1),
-                        distance: 0, motion: new RemoteMotion(), renderPosition: { x: state.x, y: state.y } };
-                    this.players.set(state.id, player);
-                }
-                const teleported = player.motion.push(state, Number(state.updatedAt) || serverTime);
-                if (teleported) { player.sprite.setPosition(state.x, state.y); player.renderPosition = { x: state.x, y: state.y }; player.distance = 0; }
-                const label = `${state.name} · N.${state.level}`;
-                if (player.label.text !== label) player.label.setText(label);
-            }
-            for (const [id, player] of this.players) {
-                if (!seen.has(id)) { this.remove(player); this.players.delete(id); }
-            }
-            this.notice.textContent = this.players.size ? `${this.players.size} joueur(s) à proximité` : 'Monde connecté';
+            this.hasLease = true;
+            if (!this.streaming) this.applySnapshot(snapshot);
             this.retry = false;
         } catch {
             if (!leave && !this.stopped) {
                 this.retry = true;
                 this.notice.textContent = 'Connexion interrompue · reconnexion…';
+                this.setOnlineCount(null);
             }
         } finally {
             clearTimeout(timeout);
+        }
+    }
+
+    applySnapshot(snapshot, realtime = false) {
+        const now = performance.now();
+        this.lastSnapshotAt = now;
+        const seen = new Set();
+        for (const state of snapshot.players) {
+            seen.add(state.id);
+            let player = this.players.get(state.id);
+            if (!player) {
+                player = { sprite: this.scene.add.image(state.x, state.y, state.skin + '-' + state.facing),
+                shadow: this.scene.add.ellipse(state.x, state.y - 1, 19, 7, 0x172622, .48).setDepth(3),
+                label: this.scene.add.text(state.x, state.y - 47, '', { fontFamily: 'system-ui, sans-serif',
+                    fontSize: '8px', color: '#a8e6dd', stroke: '#101719', strokeThickness: 2 }).setOrigin(.5, 1),
+                distance: 0, motion: new RemoteMotion(realtime ? 50 : 300), realtime, renderPosition: { x: state.x, y: state.y } };
+                this.players.set(state.id, player);
+            }
+            if (player.realtime !== realtime) { player.motion = new RemoteMotion(realtime ? 50 : 300); player.realtime = realtime; }
+            const teleported = player.motion.push(state, Number(state.updatedAt) || snapshot.serverTime, now + (this.serverOffset ?? 0));
+            if (teleported) { player.sprite.setPosition(state.x, state.y); player.renderPosition = { x: state.x, y: state.y }; player.distance = 0; }
+            const label = `${state.name} · N.${state.level}`;
+            if (player.label.text !== label) player.label.setText(label);
+        }
+        for (const [id, player] of this.players) {
+            if (!seen.has(id)) { this.remove(player); this.players.delete(id); }
+        }
+        this.setOnlineCount(snapshot.onlineCount);
+        const message = this.streamUrl && !realtime ? 'Présence disponible · temps réel en reconnexion…'
+            : this.players.size ? `${this.players.size} joueur(s) à proximité` : 'Monde connecté';
+        if (this.notice.textContent !== message) this.notice.textContent = message;
+    }
+
+    async connectStream() {
+        this.connecting = true;
+        this.authController = new AbortController();
+        const timeout = setTimeout(() => this.authController.abort(), 4000);
+        try {
+            const response = await fetch(this.streamUrl, { method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ _token: this.token, lease: this.lease }), signal: this.authController.signal });
+            if (!response.ok || this.stopped) throw new Error('Ticket indisponible');
+            const auth = await response.json();
+            if (this.stopped || !this.hasLease) return;
+            const at = performance.now();
+            this.refreshTicketAt = at + 20000;
+            if (this.socket?.readyState === WebSocket.OPEN) {
+                this.socket.send(JSON.stringify({ type: 'auth', token: auth.ticket, at }));
+                return;
+            }
+            const url = new URL(auth.url, location.href);
+            if (url.origin !== location.origin) throw new Error('Origine invalide');
+            url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const socket = this.socket = new WebSocket(url.href);
+            this.openDeadline = at + 5000;
+            socket.onopen = () => socket.send(JSON.stringify({ type: 'auth', token: auth.ticket, at: performance.now() }));
+            socket.onmessage = event => {
+                if (socket !== this.socket || this.stopped) return;
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'ready' && Number.isFinite(data.echo) && Number.isFinite(data.serverTime)) {
+                        const offset = data.serverTime - (data.echo + performance.now()) / 2;
+                        this.serverOffset = this.streaming ? this.serverOffset + Math.max(-5, Math.min(5, offset - this.serverOffset)) : offset;
+                        this.streaming = true;
+                    } else if (data.type === 'snapshot' && this.streaming && Array.isArray(data.players)
+                        && Number.isSafeInteger(data.onlineCount) && data.onlineCount >= 1) this.applySnapshot(data, true);
+                } catch { socket.close(); }
+            };
+            socket.onerror = () => socket.close();
+            socket.onclose = event => {
+                if (socket !== this.socket) return;
+                this.streaming = false;
+                this.socket = null;
+                this.nextConnect = performance.now() + (event.code === 4009 ? 12000 : 2000);
+                if (!this.stopped) this.notice.textContent = 'Temps réel interrompu · reconnexion…';
+            };
+        } catch {
+            this.nextConnect = performance.now() + 2000;
+            if (!this.stopped) this.notice.textContent = 'Temps réel indisponible · reconnexion…';
+        } finally {
+            clearTimeout(timeout);
+            this.connecting = false;
+        }
+    }
+
+    streamTick() {
+        if (!this.streamUrl || !this.hasLease || this.stopped) return;
+        const now = performance.now();
+        if (this.streaming && now - this.lastSnapshotAt > 3000) { this.socket?.close(); this.streaming = false; }
+        if (!this.connecting && now >= this.nextConnect && (!this.socket || this.streaming && now >= this.refreshTicketAt)) void this.connectStream();
+        if (this.socket && !this.streaming && now > this.openDeadline) this.socket.close();
+        if (this.streaming && this.socket?.readyState === WebSocket.OPEN && this.socket.bufferedAmount < 131072) {
+            const state = this.state();
+            state.sampleTime = now + this.serverOffset;
+            state.visuals = document.hidden ? { sprites: [], graphics: [[], []] } : captureVisuals(this.scene.combat, this.recordings);
+            this.socket.send(JSON.stringify({ type: 'state', state }));
         }
     }
 
@@ -124,7 +229,7 @@ export class WorldPresence {
             const startedAt = performance.now();
             this.pending = this.request().finally(() => {
                 this.pending = null;
-                this.nextPoll = this.retry ? performance.now() + 1500 : Math.max(startedAt + 300, performance.now());
+                this.nextPoll = this.retry ? performance.now() + 1500 : Math.max(startedAt + (this.streaming ? 5000 : 300), performance.now());
             });
         }
     }
@@ -139,6 +244,8 @@ export class WorldPresence {
         for (const player of this.players.values()) {
             const p = player.motion.sample(clock + (this.serverOffset ?? 0));
             const s = p.state;
+            if (s.visuals && !player.visuals) player.visuals = new CombatVisuals(this.scene);
+            player.visuals?.render(s.visuals, s.name);
             const moved = Math.hypot(p.x - player.renderPosition.x, p.y - player.renderPosition.y);
             player.renderPosition = { x: p.x, y: p.y };
             player.distance += moved;
@@ -178,12 +285,13 @@ export class WorldPresence {
             player.sprite.setFlipX(flip).setPosition(Math.round(p.x), Math.round(p.y)).setDepth(p.y)
                 .setAlpha(s.alive ? clock - this.lastSnapshotAt > 3000 ? .5 : 1 : .4);
             player.shadow.setPosition(p.x, p.y - 1);
-            if (this.scene.hunterArtReady) applyHunterArt(this.scene, player.sprite, s.skin, facing, walking, player.distance, attackFrame);
+            if (this.scene.hunterArtReady) applyHunterArt(this.scene, player.sprite, s.skin, facing, walking, player.distance, attackFrame, 'bow', false);
             player.label.setPosition(p.x, p.y - 47).setDepth(p.y + 1);
         }
     }
 
     remove(player) {
+        player.visuals?.destroy();
         player.sprite.destroy(); player.shadow.destroy(); player.label.destroy();
     }
 }

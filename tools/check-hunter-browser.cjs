@@ -31,8 +31,9 @@ const assert = require('node:assert/strict');
                     if (data.state) {
                         states.set(id, { ...data.state, id, name:'Arden '+id, skin:'hunter', level:1, updatedAt:now,
                             actions:data.state.actions.map(a => [a[0], now-a[1], ...a.slice(2)]) });
-                        return route.fulfill({ json:{ serverTime:now, players:[...states.values()].filter(s=>s.id!==id) } });
+                        return route.fulfill({ json:{ serverTime:now, onlineCount:states.size, players:[...states.values()].filter(s=>s.id!==id) } });
                     }
+                    if (url.pathname.includes('flux') || url.pathname.includes('stream')) return route.fulfill({ status:503, json:{error:'HTTP fallback test'} });
                     return route.fulfill({ json:{ success:true } });
                 }
                 if (url.pathname.includes('tchat')) return route.fulfill({ json:{messages:[],group:null} });

@@ -131,7 +131,7 @@ Voir le [front-end](FRONTEND.md) et le [back-end](BACKEND.md).
 
 Les compétences coûtent au moins 28 % de la réserve maximale avant réductions de talents, ou leur coût fixe si supérieur. La régénération reste liée à l’Esprit. La baguette utilise désormais 100 % des dégâts de base avant talents. Potions : 30 % de la réserve maximale, minimum 20 PV/15 ressource, recharge commune de 15 s.
 
-La présence des autres joueurs est disponible par requêtes Symfony fréquentes ; les combats restent locaux. Les PV/morts/récompenses communs, le budget XP de groupe et la densité/réapparition selon les joueurs actifs ne sont pas livrés.
+La présence des autres joueurs et les visuels de leurs combats sont diffusés par WebSocket ; les règles de combat restent locales. Les PV/morts/récompenses communs, le budget XP de groupe et la densité/réapparition selon les joueurs actifs ne sont pas livrés.
 
 ## Trappe d’apprivoisement du Chasseur
 
@@ -147,7 +147,7 @@ Quatre canaux : global, groupe sur invitation (5 personnages), chuchotement à u
 
 ## Synchronisation visuelle
 
-Cible validée : 2 à 10 joueurs dans une zone. Le joueur local répond à ses commandes immédiatement. Les autres personnages sont affichés depuis un historique réseau, avec un retard de lissage de 500–850 ms et une courte prédiction bornée. Une vraie téléportation reste immédiate. Les attaques distantes déroulent leurs poses complètes et leur annulation. Le tampon traite les retards habituels sans promettre l’absence de saccade en cas de coupure ou de surcharge ; il ne remplace pas le futur moteur de combats partagés.
+Cible validée : 2 à 10 joueurs dans une zone. Le joueur local répond à ses commandes immédiatement. Les autres personnages sont affichés depuis un historique réseau, avec un court tampon adapté au flux continu et une courte prédiction bornée (le repli HTTP historique conserve un tampon de 500–850 ms). Une vraie téléportation reste immédiate. Les attaques distantes déroulent leurs poses complètes et leur annulation. Le tampon traite les retards habituels sans promettre l’absence de saccade en cas de coupure ou de surcharge ; il ne remplace pas le futur moteur de combats partagés.
 
 L’initiation des nouveaux personnages comporte sept étapes : marcher dans le Bastion ; ouvrir le guide et lire l’ATH ; consulter la fiche ; consulter les talents sans dépenser de point au niveau 1 ; consulter le sac sans consommer de potion ; réussir une attaque de base sur un sanglier après ciblage ; retourner parler à Rakka. Les actions hors étape ne valident rien. Le suivi ne se relance pas une fois terminé dans le même navigateur.
 
@@ -158,3 +158,5 @@ Le joueur peut supprimer définitivement ses propres personnages après confirma
 ## Apparence du Chasseur
 
 Le Chasseur équipé de l'arc dispose de huit orientations de marche et de tir, avec poussière discrète, éclat de décoche et projectile. Cette mise à jour visuelle ne modifie ni portée, ni ressource, ni dégâts, ni progression. Voir [les limites du rendu distant](CHASSEUR_ART.md).
+
+Les spectateurs proches voient les combats en direct sur la carte, y compris les monstres blessés, leurs animations et leurs attaques, les sorts et les familiers. Cette visibilité ne modifie ni le calcul des dégâts, ni l’XP, ni le butin. Les règles de groupe seront traitées séparément. [Périmètre confirmé du 22 novembre 2026](VISIBILITE-COMBATS.md).

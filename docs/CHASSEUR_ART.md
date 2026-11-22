@@ -6,7 +6,7 @@ Les pieds sont ancrés au sol ; une hauteur de référence par direction conserv
 
 `public/game/hunter-art.js` charge les textures et partage les mêmes choix de poses entre le joueur local et `WorldPresence`. `hunter-frames.js` décrit les rectangles natifs et les ancrages. Les anciens fichiers restent disponibles pour les autres classes et le repli sans arc. La portée, les coûts, les dégâts et les temps de combat sont inchangés.
 
-Les effets de poussière et de décoche utilisent le pool existant de VFX, limité à 80 images visibles et filtré par le champ de la caméra. La flèche est libérée à la fin de la préparation, suit la cible avec la durée de vol existante puis produit un impact. Les autres joueurs montrent marche et décoche ; le protocole de présence ne transporte pas les cibles/projectiles de combat distants. La préférence de réduction des animations supprime les poussières et éclats sur le personnage.
+Les effets de poussière et de décoche utilisent le pool existant de VFX, limité à 80 images visibles et filtré par le champ de la caméra. La flèche est libérée à la fin de la préparation, suit la cible avec la durée de vol existante puis produit un impact. Le flux multijoueur transmet ces effets avec la texture autorisée `hunter-vfx` ; le rendu distant ne les génère pas une seconde fois et ne les réémet pas. Le repli HTTP conserve les poses mais ne transporte pas les effets de combat. La préférence de réduction des animations supprime les poussières et éclats sur le personnage local.
 
 ## Provenance et reconstruction
 

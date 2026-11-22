@@ -4,6 +4,13 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { hunterTextures, hunterPoses } from '../public/game/hunter-frames.js';
 import { hunterPose, applyHunterArt } from '../public/game/hunter-art.js';
+import { validVisuals } from '../public/game/combat-visuals.js';
+
+test('le relais multijoueur accepte les VFX du Chasseur sans autoriser de texture arbitraire', () => {
+    const sprite={id:'fx-0',texture:'hunter-vfx',frame:8,x:100,y:100,rotation:0,scaleX:.1,scaleY:.1,originY:.5,alpha:1,depth:100,tint:0xffffff};
+    assert.equal(validVisuals({sprites:[sprite],graphics:[[],[]]}),true);
+    assert.equal(validVisuals({sprites:[{...sprite,texture:'unknown'}],graphics:[[],[]]}),false);
+});
 
 test('huit orientations indépendantes contiennent chacune huit pas et huit poses de tir', () => {
     assert.equal(Object.keys(hunterPoses).length, 8);

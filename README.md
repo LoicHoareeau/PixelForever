@@ -99,7 +99,7 @@ Les comptes, personnages et niveau/XP sont en base. Le sac, les pièces équipé
 
 Déplacements : flèches, ZQSD ou WASD. `1` attaque de base, `2` compétence principale, `3`–`9` techniques disponibles selon la classe, `R` potion de vie, `F` potion de ressource, `P` fiche, `T` talents, `I` inventaire, `E` dialogue du PNJ à proximité. Les touches d’action utilisent les positions physiques de la rangée supérieure, sans Maj sur AZERTY. Le clic sélectionne un monstre.
 
-La présence passe par Symfony/PostgreSQL : personnages proches affichés avec leur apparence, orientation et poses, interpolation des déplacements, expiration après 12 secondes et bail par personnage. Ce lot ne synchronise pas les PV, les morts, les familiers ou les récompenses des monstres.
+Les joueurs proches et les visuels de leurs combats sont transmis en continu par WebSocket : mouvements interpolés, monstres animés et barres de vie, projectiles, zones et familiers. Symfony/PostgreSQL conserve le bail de présence et le tchat de proximité. Les dégâts, l’XP et le butin suivent les règles actuelles. [Fonctionnement et vérifications](docs/VISIBILITE-COMBATS.md)
 
 ## Périmètre restant
 
@@ -120,3 +120,5 @@ La synchronisation conserve une cadence cible de 300 ms et le navigateur interpo
 ATH personnalisable : Échap ouvre le menu 16 bits (Options, Modifier l’ATH, Guides). Taille de 70 à 130 %, opacité, cadres déplaçables et maintien du clic de 350 ms pour échanger deux cases de sorts. Une fenêtre de bienvenue et une initiation en sept étapes accompagnent les nouveaux personnages.
 
 Depuis « Mes personnages », le lien « Supprimer » ouvre une confirmation avant la suppression définitive du personnage et de sa progression.
+
+Un petit nombre en haut de l’écran indique le total des personnages actifs sur le serveur, toi compris, quelle que soit leur distance. Les présences expirent après 12 s sans nouvelles ; « — » indique une connexion indisponible.
