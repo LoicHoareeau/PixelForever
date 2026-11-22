@@ -155,4 +155,8 @@ Le guide reste accessible avec le ? rouge ou depuis Échap. Réorganiser les cas
 
 Le joueur peut supprimer définitivement ses propres personnages après confirmation depuis la liste. Aucun autre personnage du compte ni le compte lui-même ne sont supprimés.
 
+## Apparence du Chasseur
+
+Le Chasseur équipé de l'arc dispose de huit orientations de marche et de tir, avec poussière discrète, éclat de décoche et projectile. Cette mise à jour visuelle ne modifie ni portée, ni ressource, ni dégâts, ni progression. Voir [les limites du rendu distant](CHASSEUR_ART.md).
+
 Les spectateurs proches voient les combats en direct sur la carte, y compris les monstres blessés, leurs animations et leurs attaques, les sorts et les familiers. Cette visibilité ne modifie ni le calcul des dégâts, ni l’XP, ni le butin. Les règles de groupe seront traitées séparément. [Périmètre confirmé du 22 novembre 2026](VISIBILITE-COMBATS.md).

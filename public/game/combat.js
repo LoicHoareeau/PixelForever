@@ -1221,8 +1221,9 @@ export class TrainingCombat {
             return;
         }
         if (attack.projectile && attack.ranged) {
-            classEffect(this, attack.projectile === 'arrow' ? 'arrow_hit' : 'chaos',
-                { x: target.sprite.x, y: target.sprite.y - 13 }, now, attack.angle, .52, 380);
+            const hunterHit = attack.projectile === 'arrow' && this.scene.hunterArtReady;
+            classEffect(this, hunterHit ? 'hunter-release' : attack.projectile === 'arrow' ? 'arrow_hit' : 'chaos',
+                { x: target.sprite.x, y: target.sprite.y - 13 }, now, attack.angle, hunterHit ? .2 : .52, 380);
         }
         if (attack.special && attack.weaponStyle !== 'axe') {
             this.spellEffects?.push?.({

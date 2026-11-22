@@ -56,7 +56,7 @@ const { execFileSync } = require('node:child_process');
                 await route.fulfill({ contentType: 'text/javascript', body }); return;
             }
             const extension = path.extname(file);
-            const contentType = { '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg' }[extension];
+            const contentType = { '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' }[extension];
             await route.fulfill({ body: await readFile(file), contentType });
         } catch { await route.fulfill({ status: 404, body: 'Not found' }); }
     });

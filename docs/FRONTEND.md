@@ -139,6 +139,10 @@ Les URL des modules du jeu et des deux feuilles de style portent une empreinte d
 
 Déplacement au clavier : ↑ nord, ↓ sud, ← ouest, → est, sur AZERTY comme QWERTY. Deux flèches permettent une diagonale sans gain de vitesse ; le relâchement arrête le déplacement. Le jeu empêche le défilement de la page pendant ces commandes, mais laisse les flèches à la saisie du tchat et aux menus. Le guide accessible par le ? rouge explique ces directions.
 
+## Animations du Chasseur
+
+Les huit orientations du Chasseur à l'arc utilisent les atlas natifs `hunter-v2`, leurs ancrages dans `hunter-frames.js` et le rendu partagé `hunter-art.js`. Les pas et la décoche sont également visibles sur les joueurs distants. Voir [les ressources et leur reconstruction](CHASSEUR_ART.md).
+
 Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement `onlineCount` reçu par la synchronisation existante. Son nom accessible et son infobulle précisent « joueurs connectés sur le serveur ». Il inclut le personnage local et les joueurs éloignés. Chargement, erreur réseau ou conflit de bail affichent « — » pour éviter un ancien total trompeur.
 
 `WorldPresence` ouvre une connexion WebSocket sous la même origine et renouvelle son ticket toutes les 20 s. Les mouvements et les images de combat sont envoyés toutes les 50 ms. `RemoteMotion(50)` interpole les déplacements avec un tampon court adapté à la latence ; les tracés du combat restent ceux du moteur existant. Les enregistrements et objets distants sont libérés à l’arrêt de la scène. Une reconnexion conserve un état explicite. [Vérifications à deux sessions](VISIBILITE-COMBATS.md).
