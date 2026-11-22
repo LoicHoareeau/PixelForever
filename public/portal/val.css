@@ -250,6 +250,7 @@
 
 .val-portal .class-choice img {
     flex-shrink: 0;
+    object-fit: contain;
 }
 
 .val-roster-heading {
@@ -300,7 +301,7 @@
     place-items: center;
     position: relative;
     isolation: isolate;
-    min-height: 11.25rem;
+    min-height: 13rem;
     overflow: hidden;
     border-bottom: 1px solid var(--border);
     background: radial-gradient(ellipse at 50% 70%, var(--stage), #101d16 76%);
@@ -308,6 +309,11 @@
 
 .val-portrait img {
     position: relative;
+    width: auto;
+    height: 10.5rem;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: center bottom;
     filter: drop-shadow(.15rem .35rem .4rem #000a);
 }
 

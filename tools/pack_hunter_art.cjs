@@ -47,8 +47,8 @@ const sharp = require('sharp');
             poses[direction] = { height: textures[key].frames[action + '0'][3], frames };
         }
     }
-    if (character === 'rogue') {
-        const [left, top, width, height] = textures['rogue-v2-south'].frames['strike-0'];
+    {
+        const [left, top, width, height] = textures[character + '-v2-south'].frames[action + '0'];
         await sharp(sources.south).extract({left, top, width, height}).webp({lossless:true,effort:3})
             .toFile(path.join(out,'portrait.webp'));
     }

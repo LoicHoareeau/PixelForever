@@ -6,6 +6,8 @@ Pendant un déplacement, la marche et son orientation restent prioritaires même
 
 Les pieds sont ancrés au sol ; une hauteur de référence par direction conserve l'échelle entre les poses. Le personnage conserve une hauteur de 40 unités du monde. Les originaux haute définition restent à leur résolution native dans des atlas WebP sans perte, avec transparence. Le moteur applique le zoom et le filtrage pixel existants ; aucune moyenne de couleurs ni planche de marche obtenue en décalant un dessin immobile.
 
+Le portrait `hunter-v2/portrait.webp` est extrait sans redimensionnement de la pose frontale de repos et sert à la liste, la création et l'ATH. Le conditionnement des atlas régénère également ce portrait.
+
 `public/game/hunter-art.js` charge les textures et partage les mêmes choix de poses entre le joueur local et `WorldPresence`. `hunter-frames.js` décrit les rectangles natifs et les ancrages. Les anciens fichiers restent disponibles pour les autres classes et le repli sans arc. La portée, les coûts, les dégâts et les temps de combat sont inchangés.
 
 Les effets de poussière et de décoche utilisent le pool existant de VFX, limité à 80 images visibles et filtré par le champ de la caméra. La flèche est libérée à la fin de la préparation, suit la cible avec la durée de vol existante puis produit un impact. Le flux multijoueur transmet ces effets avec la texture autorisée `hunter-vfx` ; le rendu distant ne les génère pas une seconde fois et ne les réémet pas. Le repli HTTP conserve les poses mais ne transporte pas les effets de combat. La préférence de réduction des animations supprime les poussières et éclats sur le personnage local.
