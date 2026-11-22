@@ -83,3 +83,7 @@ Suppression : GET /personnages/{id}/suppression affiche la confirmation ; POST s
 Chaque réponse de présence réussie (hors départ) inclut `onlineCount` : le nombre de lignes de `world_presence` dont le bail a été rafraîchi depuis moins de 12 s, personnage appelant compris. Ce total est indépendant du rayon de 800 px et de la limite de 100 voisins. Il compte les personnages actifs en jeu, pas les comptes restés au menu ; aucune donnée personnelle supplémentaire n’est transmise.
 
 Depuis le 22 novembre 2026, `POST /personnages/{id}/temps-reel` vérifie propriétaire, CSRF et bail actif, puis émet un ticket HMAC de 45 s. `server/presence.mjs` relaie uniquement les états visuels validés, à 20 Hz et dans un rayon de 800 px. Le profil public provient du ticket signé. La présence HTTP est rafraîchie toutes les cinq secondes pour le tchat et les contrôles d’accès. [Contrat et limites](VISIBILITE-COMBATS.md).
+
+## Ressources visuelles du Voleur
+
+Le relais autorise la texture `rogue-vfx` dans les images de combat validées. Les effets restent cosmétiques et suivent les limites de taille et de fréquence existantes. Aucun nouveau champ de personnage ni migration. [Ressources et limites](VOLEUR_ART.md).

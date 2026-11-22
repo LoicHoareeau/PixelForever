@@ -5,8 +5,11 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 
 (async () => {
-    assert(process.env.PIXEL_HUNTER_HTML, 'Export PIXEL_HUNTER_HTML via tests/account_flow.php.');
-    const html = await fs.readFile(process.env.PIXEL_HUNTER_HTML, 'utf8');
+    const skin=process.env.PIXEL_CHARACTER||'hunter';
+    assert(['hunter','rogue'].includes(skin));
+    const fixture=process.env['PIXEL_'+skin.toUpperCase()+'_HTML'];
+    assert(fixture, 'Export the character fixture via tests/account_flow.php.');
+    const html = await fs.readFile(fixture, 'utf8');
     const browser = await chromium.launch({ headless: true, executablePath: process.env.PIXEL_BROWSER_PATH || undefined });
     const publicRoot = path.resolve(__dirname, '../public'), states = new Map(), errors = [], pages = [];
     try {
@@ -29,11 +32,11 @@ const assert = require('node:assert/strict');
                 if (req.method() === 'POST') {
                     const data = req.postDataJSON(), now = Date.now();
                     if (data.state) {
-                        states.set(id, { ...data.state, id, name:'Arden '+id, skin:'hunter', level:1, updatedAt:now,
+                        states.set(id, { ...data.state, id, name:skin+' '+id, skin, level:1, updatedAt:now,
                             actions:data.state.actions.map(a => [a[0], now-a[1], ...a.slice(2)]) });
                         return route.fulfill({ json:{ serverTime:now, onlineCount:states.size, players:[...states.values()].filter(s=>s.id!==id) } });
                     }
-                    if (url.pathname.includes('flux') || url.pathname.includes('stream')) return route.fulfill({ status:503, json:{error:'HTTP fallback test'} });
+                    if (url.pathname.endsWith('/temps-reel')) return route.fulfill({ status:503, json:{error:'HTTP fallback test'} });
                     return route.fulfill({ json:{ success:true } });
                 }
                 if (url.pathname.includes('tchat')) return route.fulfill({ json:{messages:[],group:null} });
@@ -51,10 +54,15 @@ const assert = require('node:assert/strict');
             });
             const guide = page.locator('#game-guide');
             if (await guide.evaluate(element=>element.open)) await guide.locator('form button').click();
+            if(skin==='rogue') {
+                assert((await page.locator('.hud-portrait').getAttribute('src')).includes('rogue-v2/portrait.webp'));
+                await page.waitForFunction(()=>document.querySelector('.hud-portrait').naturalWidth>0);
+            }
         }
         for (const page of pages) await page.waitForFunction(()=>window.__hunterGame.scene.getScenes(true)[0].presence.players.size===1, null, {timeout:10000});
-        const result = await pages[0].evaluate(async () => {
+        const result = await pages[0].evaluate(async (skin) => {
             const s = window.__hunterGame.scene.getScenes(true)[0]; s.scene.pause();
+            const windup=skin==='hunter'?180:140, weaponStyle=skin==='hunter'?'bow':'daggers';
             const directions=['east','south-east','south','south-west','west','north-west','north','north-east'];
             const result=[];
             for (const facing of directions) {
@@ -67,31 +75,42 @@ const assert = require('node:assert/strict');
                 for(let n=0;n<8;n++) {
                     const now=1000+n*20;
                     s.walkDistance=n*7;s.lastWalkAt=now;
-                    s.combat.attackVisual={facing,weaponStyle:'bow',ranged:true,start:1000,castMs:180,end:330+1000};
+                    s.combat.attackVisual={facing,weaponStyle,ranged:skin==='hunter',start:1000,castMs:windup,end:windup+1000};
                     s.renderAvatar(now);movingShots.add(s.avatar.frame.name);
                 }
                 const shots=new Set();s.lastWalkAt=-Infinity;
                 for(let n=0;n<9;n++) {
-                    s.combat.attackVisual={facing,weaponStyle:'bow',ranged:true,start:0,castMs:180,end:330};
-                    s.renderAvatar(n<4?n*45:180+(n-4)*42);
+                    s.combat.attackVisual={facing,weaponStyle,ranged:skin==='hunter',start:0,castMs:windup,end:windup};
+                    s.renderAvatar(n<4?n*windup/4:windup+(n-4)*42);
                     shots.add(s.avatar.frame.name);
                 }
                 result.push({facing,steps:steps.size,movingShots:[...movingShots],shots:shots.size,textures:[...textures],flip:s.avatar.flipX,scale:s.avatar.scaleX,
                     foot:s.avatar.y,origin:s.avatar.originY});
             }
             s.combat.attackVisual=null;s.lastWalkAt=-Infinity;s.facing='south-east';s.renderAvatar(1000);
+            const vfx=[];
+            if(skin==='rogue') for(const progress of [0,.26,.51,.99]) {
+                s.combat.vfx.begin();
+                ['rogue-slash','rogue-flurry','rogue-venom','rogue-shadow'].forEach((kind,i)=>
+                    s.combat.vfx.play(kind,s.position.x+(i-1.5)*24,s.position.y-18,progress,.3));
+                vfx.push(s.combat.vfx.images().map(image=>({texture:image.texture.key,frame:Number(image.frame.name)})));
+            }
             const remote=s.presence.players.values().next().value;
-            return {poses:result,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
+            return {poses:result,vfx,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
                 maxTexture: s.game.renderer.gl?.getParameter(s.game.renderer.gl.MAX_TEXTURE_SIZE)};
-        });
-        assert.equal(result.skin,'hunter'); assert.equal(result.failed,0);
+        },skin);
+        assert.equal(result.skin,skin); assert.equal(result.failed,0);
         for(const pose of result.poses) {
             assert.equal(pose.steps,8);assert.equal(pose.shots,8);assert.equal(pose.flip,false);assert.equal(pose.origin,1);
             assert.deepEqual(pose.movingShots,Array.from({length:8},(_,i)=>'walk-'+i));
-            assert(pose.textures.every(t=>t.startsWith('hunter-v2-')));assert(pose.scale>0&&pose.scale<1);
+            assert(pose.textures.every(t=>t.startsWith(skin+'-v2-')));assert(pose.scale>0&&pose.scale<1);
         }
-        assert(result.remoteTexture.startsWith('hunter-v2-'));
-        await pages[0].screenshot({path:process.env.PIXEL_HUNTER_SCREENSHOT||process.env.PIXEL_HUNTER_HTML+'.png'});
+        assert(result.remoteTexture.startsWith(skin+'-v2-'));
+        if(skin==='rogue') for(const [phase,effects] of result.vfx.entries()) {
+            assert.equal(effects.length,4);
+            effects.forEach((effect,row)=>{assert.equal(effect.texture,'rogue-vfx');assert.equal(effect.frame,row*4+phase);});
+        }
+        await pages[0].screenshot({path:process.env.PIXEL_HUNTER_SCREENSHOT||fixture+'.png'});
         assert.deepEqual(errors,[]);
         console.log(JSON.stringify({result,errors,twoSessions:true},null,2));
     } finally { await browser.close(); }

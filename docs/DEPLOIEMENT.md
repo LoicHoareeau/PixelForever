@@ -85,3 +85,7 @@ Contrôler le compteur numérique en haut au centre avec deux personnages : 1 se
 Le conteneur inclut désormais Node 22 et la dépendance WebSocket verrouillée par `package-lock.json` ; aucun service Render supplémentaire ni migration n’est requis pour la visibilité des combats. `docker/start.sh` lance le relais local sur 8081 et Apache sur 8080, avec le même `APP_SECRET`, et arrête les deux processus si l’un termine. Apache relaie `/monde-socket` sous la même origine. Vérifier l’upgrade HTTP 101, deux sessions actives plus de 45 s (renouvellement du ticket), un combat vu depuis l’autre session, le compteur et le tchat de proximité. [Procédure et limites](VISIBILITE-COMBATS.md).
 
 La construction Docker utilisée par Render comporte une étape `checks` obligatoire : suite Node, parcours PHP avec base temporaire, manifeste des ressources, syntaxe Twig et script Bash. Une commande en échec interrompt la construction. Les fichiers de test restent dans cette étape ; l’image finale repart du runtime, puis récupère uniquement le témoin de réussite.
+
+## Déploiement des animations du Voleur
+
+Déployer ensemble `rogue-art.js`, `rogue-frames.js`, le dossier `public/game/val-des-saules/rogue-v2/`, les templates de portrait et le relais acceptant `rogue-vfx`. Les fichiers générés sont déjà inclus : aucune génération d'images ni migration à lancer sur Render. [Vérifications et préparation](VOLEUR_ART.md).

@@ -5,6 +5,7 @@ import { WorldPresence } from './world-presence.js';
 import { vfxFrameSize } from './combat-vfx.js';
 import { equippedWeaponStyles } from './equipped-art.js';
 import { loadHunterArt, createHunterArt, applyHunterArt } from './hunter-art.js';
+import { loadRogueArt, createRogueArt, applyRogueArt } from './rogue-art.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -78,6 +79,7 @@ import { petKeys } from './pet-rules.js';
             this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);
             loadHunterArt(this);
+            loadRogueArt(this);
             this.load.json('terrain', 'terrain.json');
             this.load.image('starter-town', 'bastion-de-braise.png');
             this.load.spritesheet('town-residents', 'bastion-habitants.png', { frameWidth: 48, frameHeight: 48 });
@@ -150,6 +152,7 @@ import { petKeys } from './pet-rules.js';
             }).setOrigin(.5, 1).setDepth(height + 10).setInteractive({ useHandCursor: true });
 
             createHunterArt(this);
+            createRogueArt(this);
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
             const { x, y, facing } = starterSpawn;
@@ -737,11 +740,16 @@ import { petKeys } from './pet-rules.js';
                 frame = gesture ? row * 9 + gesture.frame : walking ? row * 8 + Math.floor(this.walkDistance / pixelsPerWalkFrame) % 8 : row;
                 origin = 56 / 64;
             }
-            if ((!this.hunterArtReady || this.skin !== 'hunter' || this.combat.weaponStyle !== 'bow')
+            const customArt = (this.hunterArtReady && this.skin === 'hunter' && this.combat.weaponStyle === 'bow')
+                || (this.rogueArtReady && this.skin === 'rogue' && this.combat.weaponStyle === 'daggers');
+            if (!customArt
                 && (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame)) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
             if (this.hunterArtReady) applyHunterArt(this, this.avatar, this.skin, walking ? this.facing : gesture?.attack.facing ?? this.facing,
                 walking, this.walkDistance, gesture?.frame ?? -1, this.combat.weaponStyle);
+            if (this.rogueArtReady && this.skin === 'rogue') applyRogueArt(this.avatar,
+                walking ? this.facing : gesture?.attack.facing ?? this.facing, walking, this.walkDistance,
+                gesture?.frame ?? -1, this.combat.weaponStyle);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
             if (this.weaponSprite) {
                 if (integratedWeapon) {

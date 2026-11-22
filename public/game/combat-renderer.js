@@ -21,18 +21,25 @@ export function drawEffectsView(combat, now) {
     combat.vfx?.begin();
     combat.rageEffect?.clear();
     const darkAura = warlockAuraState(combat,now);
+    const rogueVenom = combat.classKey === 'rogue' && combat.scene.rogueArtReady && combat.health > 0
+        && now < (combat.rogueVenomUntil ?? 0);
     const enemyAttacking = combat.monsters.some((monster) => monster.isAlive && (
         (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
         || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
     ));
     combat.spellEffects = (combat.spellEffects ?? []).filter((fx) => now - fx.start < fx.duration);
-    if (!combat.pending && !combat.recovery && combat.impacts.length === 0 && combat.spellEffects.length === 0 && !enemyAttacking && !darkAura) {
+    if (!combat.pending && !combat.recovery && combat.impacts.length === 0 && combat.spellEffects.length === 0 && !enemyAttacking && !darkAura && !rogueVenom) {
         combat.effect.clear();
         return;
     }
 
     combat.effect.clear();
     if (darkAura) drawWarlockAura(combat,darkAura,now);
+    if (rogueVenom) {
+        const { x, y } = combat.scene.position;
+        const progress = combat.scene.motionPreference.matches ? .4 : (now % 400) / 400;
+        combat.vfx?.play('rogue-venom', x, y - 11, progress, .24, 0, .75);
+    }
     combat.drawMonsterAttacks(now);
     combat.drawSpellEffects(now);
     combat.impacts = combat.impacts.filter((hit) => now - hit.start < impactMs);
@@ -471,9 +478,10 @@ export function drawMeleeView(combat, attack, progress, windingUp) {
     const y = combat.scene.position.y - 17;
     const blade = attack.armed && !attack.staff;
     if (!windingUp && ['axe', 'daggers'].includes(attack.weaponStyle)) {
-        combat.vfx?.play(attack.weaponStyle === 'axe' ? 'axe_swing' : 'dagger', x, y,
+        const rogue = attack.weaponStyle === 'daggers' && combat.scene.rogueArtReady;
+        combat.vfx?.play(rogue ? 'rogue-slash' : attack.weaponStyle === 'axe' ? 'axe_swing' : 'dagger', x, y,
             combat.scene.motionPreference.matches ? .42 : Math.min(.999, .17 + progress * .83),
-            attack.special ? .98 : .69, attack.angle, 1 - progress * .35);
+            rogue ? .35 : attack.special ? .98 : .69, attack.angle, 1 - progress * .35);
         return;
     }
     if (windingUp && (!blade || !attack.special || progress < .34)) return;

@@ -2,7 +2,7 @@
 const graphicsMethods = { fillStyle: 2, lineStyle: 3, fillRect: 4, strokeRect: 4, fillEllipse: 5,
     strokeEllipse: 5, fillCircle: 3, strokeCircle: 3, lineBetween: 4, beginPath: 0, closePath: 0,
     moveTo: 2, lineTo: 2, arc: 6, fillPath: 0, strokePath: 0 };
-const textures = /^(?:boar|skeleton|dragon|imp|hound|fiend|breach_lord)-motion$|^malakor-(?:rage|actions|rage-actions)$|^(?:class-familiars|class-vfx|combat-vfx|hunter-vfx)$/;
+const textures = /^(?:boar|skeleton|dragon|imp|hound|fiend|breach_lord)-motion$|^malakor-(?:rage|actions|rage-actions)$|^(?:class-familiars|class-vfx|combat-vfx|hunter-vfx|rogue-vfx)$/;
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 
 function validCommand(c) {
