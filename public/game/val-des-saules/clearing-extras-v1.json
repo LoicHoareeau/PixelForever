@@ -1,0 +1,51 @@
+{
+    "frames": {
+        "lantern": {
+            "frame": {
+                "x": 4,
+                "y": 4,
+                "w": 46,
+                "h": 76
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 46,
+                "h": 76
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 46,
+                "h": 76
+            }
+        },
+        "reeds": {
+            "frame": {
+                "x": 54,
+                "y": 8,
+                "w": 96,
+                "h": 72
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 96,
+                "h": 72
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 96,
+                "h": 72
+            }
+        }
+    },
+    "meta": {
+        "image": "clearing-extras-v1.webp",
+        "size": {
+            "w": 154,
+            "h": 84
+        }
+    }
+}

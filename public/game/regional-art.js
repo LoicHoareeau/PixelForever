@@ -298,7 +298,8 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
 export function createScorchedCliff(scene) {
     const cliff = scene.textures.createCanvas('scorched-cliff', 64, 64);
     const context = cliff.getContext();
-    context.drawImage(scene.textures.get('coastal-cliff').getSourceImage(), 0, 0);
+    context.imageSmoothingEnabled = true;
+    context.drawImage(scene.textures.get('coastal-cliff').getSourceImage(), 0, 0, 64, 64);
     const pixels = context.getImageData(0, 0, 64, 64);
     for (let i = 0; i < pixels.data.length; i += 4) {
         const [r, g, b] = pixels.data.subarray(i, i + 3);

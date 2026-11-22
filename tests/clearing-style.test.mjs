@@ -13,6 +13,16 @@ for(const [x,y] of clearingGlades)assert(inClearingGlade(x*16,y*16));
 assert(clearingScenery().filter(p=>p.collision).length<=3);
 const atlas=JSON.parse(readFileSync(new URL('../public/game/val-des-saules/clearing-props-v2.json',import.meta.url)));
 assert.deepEqual(Object.keys(atlas.frames),['oak','willow','fir','rock','log','sign','cliff','flowers']);
+const extras=JSON.parse(readFileSync(new URL('../public/game/val-des-saules/clearing-extras-v1.json',import.meta.url)));
+assert.deepEqual(Object.keys(extras.frames),['lantern','reeds']);
+const groundV5=readFileSync(new URL('../public/game/val-des-saules/clearing-ground-v5.webp',import.meta.url));
+assert.equal(groundV5.toString('ascii',0,4),'RIFF');
+assert.equal(groundV5.toString('ascii',8,12),'WEBP');
+if(groundV5.toString('ascii',12,16)==='VP8L'){
+    const bits=groundV5.readUInt32LE(21);
+    const gw=(bits&0x3fff)+1,gh=((bits>>>14)&0x3fff)+1;
+    assert.deepEqual([gw,gh],[768,384]);
+}
 });
 
 test('la bordure visuelle du chemin reste opaque au centre et jointive entre tuiles de route',()=>{

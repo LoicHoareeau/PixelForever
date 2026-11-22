@@ -86,7 +86,8 @@ import { petKeys } from './pet-rules.js';
             this.load.image('environment-detailed', 'environment-detailed.png');
             this.load.image('ground-detailed', 'ground-detailed.png');
             this.load.atlas('clearing-props-v2', 'clearing-props-v2.webp', 'clearing-props-v2.json');
-            this.load.image('clearing-ground-v4', 'clearing-ground-v4.webp');
+            this.load.atlas('clearing-extras-v1', 'clearing-extras-v1.webp', 'clearing-extras-v1.json');
+            this.load.image('clearing-ground-v5', 'clearing-ground-v5.webp');
             for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
                 this.load.image(atlas, atlas + '.png');
             }
