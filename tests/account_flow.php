@@ -187,6 +187,7 @@ try {
         if ($class === 'hunter' && ($previewPath = getenv('PIXEL_HUNTER_HTML'))) {
             file_put_contents($previewPath, $game->getContent());
         }
+        if ($class === 'hunter') check(str_contains(htmlValue($game, '//img[contains(@class, "hud-portrait")]/@src'), 'hunter-v2/portrait.webp'), 'Le portrait du Chasseur doit utiliser son nouveau dessin.');
         if ($class === 'rogue' && ($previewPath = getenv('PIXEL_ROGUE_HTML'))) {
             file_put_contents($previewPath, $game->getContent());
         }
@@ -202,7 +203,9 @@ try {
         if ($class === 'warlock') check($rules['specialCastMs'] === 750 && $rules['range'] == 5.0, 'Le Démoniste incante Corruption à 5 cases.');
         if ($class === 'warlock') check($rules['weaponName'] === 'Essence de cendres' && !str_contains(strtolower($game->getContent()), 'grimoire'), 'Le Démoniste utilise une focalisation d’ombre sans grimoire affiché.');
     }
-
+    if ($previewPath = getenv('PIXEL_ROSTER_HTML')) {
+        file_put_contents($previewPath, visit($bob, 'GET', '/personnages', 200)->getContent());
+    }
 
     $presenceDb = new PDO('sqlite:'.$database);
     $leaseAlice = '11111111-1111-4111-8111-111111111111';

@@ -151,6 +151,8 @@ Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement
 
 Le Voleur à deux dagues utilise huit orientations dessinées et quatre effets animés dans les atlas `rogue-v2`. Sa marche reste prioritaire en déplacement et son portrait utilise le même dessin. [Préparation, détails et vérifications](VOLEUR_ART.md).
 
+Dans « Tes personnages », les portraits ont une hauteur commune et une largeur automatique pour conserver les proportions naturelles ; le cadre laisse davantage d'espace en hauteur. Les choix de classe utilisent `object-fit: contain`. Le Chasseur utilise sa nouvelle vue de face dans la liste, la création et l'ATH, comme le Voleur.
+
 ## Clairière jouable : décors et lumière
 
 `clearing-layout.js` définit un sentier et trois espaces dégagés : les arbres restent hors de ces espaces. Sept petits décors ponctuent les abords, dont trois avec collision. Le terrain et les obstacles restent ceux du monde Phaser, avec tri des arbres et accessoires par leurs pieds.

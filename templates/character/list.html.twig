@@ -35,7 +35,7 @@
                     <li class="val-character {{ class.value }}{% if active %} val-character-active{% endif %}">
                         <div class="val-portrait" aria-hidden="true">
                             <span class="val-pedestal"></span>
-                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.skin == 'rogue' ? 'rogue-v2/portrait.webp' : (class.value == 'warrior' ? 'warrior' : class.skin) ~ '/south.png' }}"
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.skin in ['hunter', 'rogue'] ? class.skin ~ '-v2/portrait.webp' : (class.value == 'warrior' ? 'warrior' : class.skin) ~ '/south.png' }}"
                                  width="144" height="144" alt="">
                         </div>
                         <div class="val-character-info">
