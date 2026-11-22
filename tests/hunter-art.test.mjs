@@ -22,9 +22,20 @@ test('huit orientations indépendantes contiennent chacune huit pas et huit pose
             shot.add(hunterPose(direction, false, 0, frame).frame);
         }
         assert.equal(walk.size, 8); assert.equal(shot.size, 8);
-        assert.equal(hunterPose(direction, true, 0, 8).frame, 'shot-7');
+        assert.equal(hunterPose(direction, false, 0, 8).frame, 'shot-7');
         assert.equal(hunterPose(direction, false, 0).frame, 'shot-0');
         assert.ok(art.height > 100);
+    }
+});
+
+test('le Chasseur continue ses huit pas pendant un tir puis reprend sa pose de tir à l’arrêt', () => {
+    for (const direction of Object.keys(hunterPoses)) {
+        for (let attack = 0; attack < 9; attack++) {
+            for (let step = 0; step < 8; step++) {
+                assert.equal(hunterPose(direction, true, step * 7, attack).frame, 'walk-' + step);
+            }
+            assert.equal(hunterPose(direction, false, 0, attack).frame, 'shot-' + Math.min(7, attack));
+        }
     }
 });
 
