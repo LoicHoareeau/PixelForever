@@ -63,13 +63,20 @@ const assert = require('node:assert/strict');
                     s.combat.attackVisual=null;s.walkDistance=n*7;s.lastWalkAt=100;s.renderAvatar(100);
                     steps.add(s.avatar.frame.name); textures.add(s.avatar.texture.key);
                 }
-                const shots=new Set();
+                const movingShots=new Set();
+                for(let n=0;n<8;n++) {
+                    const now=1000+n*20;
+                    s.walkDistance=n*7;s.lastWalkAt=now;
+                    s.combat.attackVisual={facing,weaponStyle:'bow',ranged:true,start:1000,castMs:180,end:330+1000};
+                    s.renderAvatar(now);movingShots.add(s.avatar.frame.name);
+                }
+                const shots=new Set();s.lastWalkAt=-Infinity;
                 for(let n=0;n<9;n++) {
                     s.combat.attackVisual={facing,weaponStyle:'bow',ranged:true,start:0,castMs:180,end:330};
                     s.renderAvatar(n<4?n*45:180+(n-4)*42);
                     shots.add(s.avatar.frame.name);
                 }
-                result.push({facing,steps:steps.size,shots:shots.size,textures:[...textures],flip:s.avatar.flipX,scale:s.avatar.scaleX,
+                result.push({facing,steps:steps.size,movingShots:[...movingShots],shots:shots.size,textures:[...textures],flip:s.avatar.flipX,scale:s.avatar.scaleX,
                     foot:s.avatar.y,origin:s.avatar.originY});
             }
             s.combat.attackVisual=null;s.lastWalkAt=-Infinity;s.facing='south-east';s.renderAvatar(1000);
@@ -80,6 +87,7 @@ const assert = require('node:assert/strict');
         assert.equal(result.skin,'hunter'); assert.equal(result.failed,0);
         for(const pose of result.poses) {
             assert.equal(pose.steps,8);assert.equal(pose.shots,8);assert.equal(pose.flip,false);assert.equal(pose.origin,1);
+            assert.deepEqual(pose.movingShots,Array.from({length:8},(_,i)=>'walk-'+i));
             assert(pose.textures.every(t=>t.startsWith('hunter-v2-')));assert(pose.scale>0&&pose.scale<1);
         }
         assert(result.remoteTexture.startsWith('hunter-v2-'));

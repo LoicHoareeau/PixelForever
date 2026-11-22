@@ -57,8 +57,9 @@ export class WorldPresence {
         const s = this.scene;
         this.captureActions();
         const gesture = document.hidden ? null : s.combat.attackPose(s.time.now);
-        return { x: s.position.x, y: s.position.y, facing: gesture?.attack.facing ?? s.facing,
-            walking: !document.hidden && s.time.now - s.lastWalkAt < 90, alive: s.combat.health > 0,
+        const walking = !document.hidden && s.time.now - s.lastWalkAt < 90;
+        return { x: s.position.x, y: s.position.y, facing: s.skin === 'hunter' && walking ? s.facing : gesture?.attack.facing ?? s.facing,
+            walking, alive: s.combat.health > 0,
             attackFrame: gesture?.frame ?? -1, ranged: Boolean(gesture?.attack.ranged), actions: this.actions.map(action => [action.id,
                 Math.max(0, Math.round(s.time.now - action.start)), action.windup, action.end, action.ranged, action.facing]) };
     }
@@ -285,7 +286,7 @@ export class WorldPresence {
             player.sprite.setFlipX(flip).setPosition(Math.round(p.x), Math.round(p.y)).setDepth(p.y)
                 .setAlpha(s.alive ? clock - this.lastSnapshotAt > 3000 ? .5 : 1 : .4);
             player.shadow.setPosition(p.x, p.y - 1);
-            if (this.scene.hunterArtReady) applyHunterArt(this.scene, player.sprite, s.skin, facing, walking, player.distance, attackFrame, 'bow', false);
+            if (this.scene.hunterArtReady) applyHunterArt(this.scene, player.sprite, s.skin, walking ? s.facing : facing, walking, player.distance, attackFrame, 'bow', false);
             player.label.setPosition(p.x, p.y - 47).setDepth(p.y + 1);
         }
     }

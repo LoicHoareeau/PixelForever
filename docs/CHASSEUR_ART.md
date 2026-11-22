@@ -2,6 +2,8 @@
 
 État jouable : huit orientations indépendantes (est, sud-est, sud, sud-ouest, ouest, nord-ouest, nord et nord-est), chacune comprenant huit dessins de marche et huit dessins de tir. Les directions ne sont pas des copies retournées. La neuvième étape temporelle du combat réutilise la dernière pose de retour au repos. Le repos utilise la première pose du tir.
 
+Pendant un déplacement, la marche et son orientation restent prioritaires même si une attaque est en cours : la pose de tir aux jambes fixes ne remplace plus les pas. Les projectiles et VFX continuent avec leur chronologie et direction propres. À l'arrêt, la pose du tir en cours reprend. Il ne s'agit pas d'une animation combinant un buste de tir et des jambes de marche ; les sorts canalisés gardent leur interruption habituelle au déplacement.
+
 Les pieds sont ancrés au sol ; une hauteur de référence par direction conserve l'échelle entre les poses. Le personnage conserve une hauteur de 40 unités du monde. Les originaux haute définition restent à leur résolution native dans des atlas WebP sans perte, avec transparence. Le moteur applique le zoom et le filtrage pixel existants ; aucune moyenne de couleurs ni planche de marche obtenue en décalant un dessin immobile.
 
 `public/game/hunter-art.js` charge les textures et partage les mêmes choix de poses entre le joueur local et `WorldPresence`. `hunter-frames.js` décrit les rectangles natifs et les ancrages. Les anciens fichiers restent disponibles pour les autres classes et le repli sans arc. La portée, les coûts, les dégâts et les temps de combat sont inchangés.

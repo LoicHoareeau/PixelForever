@@ -740,7 +740,7 @@ import { petKeys } from './pet-rules.js';
             if ((!this.hunterArtReady || this.skin !== 'hunter' || this.combat.weaponStyle !== 'bow')
                 && (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame)) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
-            if (this.hunterArtReady) applyHunterArt(this, this.avatar, this.skin, gesture?.attack.facing ?? this.facing,
+            if (this.hunterArtReady) applyHunterArt(this, this.avatar, this.skin, walking ? this.facing : gesture?.attack.facing ?? this.facing,
                 walking, this.walkDistance, gesture?.frame ?? -1, this.combat.weaponStyle);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
             if (this.weaponSprite) {

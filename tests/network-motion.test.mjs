@@ -3,6 +3,20 @@ import test from 'node:test';
 import { WorldPresence } from '../public/game/world-presence.js';
 import { RemoteMotion } from '../public/game/remote-motion.js';
 
+test('la présence garde la direction de marche du Chasseur pendant un tir', t => {
+    const before = globalThis.document;
+    globalThis.document = { hidden:false };
+    t.after(() => { if (before === undefined) delete globalThis.document; else globalThis.document = before; });
+    const presence = Object.create(WorldPresence.prototype);
+    Object.assign(presence, { captureActions() {}, actions:[], scene:{skin:'hunter',position:{x:10,y:20},
+        facing:'north',time:{now:100},lastWalkAt:100,combat:{health:40,attackPose:()=>({frame:4,attack:{facing:'east',ranged:true}})}} });
+    assert.equal(presence.state().facing,'north');
+    assert.equal(presence.state().attackFrame,4);
+    assert.equal(presence.state().walking,true);
+    presence.scene.lastWalkAt=-Infinity;
+    assert.equal(presence.state().facing,'east');
+});
+
 test('50 ms de réponse ne doivent pas diviser la cadence réseau par deux', async t => {
     let now = 0, resolve;
     t.mock.method(performance, 'now', () => now);
