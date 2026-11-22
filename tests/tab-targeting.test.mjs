@@ -194,6 +194,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
         createWorldLighting: () => ({ update() {}, destroy() {} }),
         createPoseSheet: () => 'sheet',
         createHunterArt: () => {},
+        createRogueArt: () => {},
         createStarterTown: () => ({ occupants: [], lights: [], animate() {} }),
         nearestTownResident: () => null,
         starterSpawn: { x: 184, y: 190, facing: 'south-east' },

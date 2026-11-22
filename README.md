@@ -8,6 +8,8 @@ Le Chasseur porte son arc verticalement au repos et le tend à deux mains pour t
 
 Le Chasseur équipé de son arc utilise désormais huit orientations dessinées séparément, avec huit poses de marche et huit poses de tir par orientation. Poussière, décoche, flèche et impact accompagnent ces animations, visibles également sur les personnages distants. [Ressources du Chasseur](docs/CHASSEUR_ART.md)
 
+Le Voleur utilise également huit orientations de marche et de frappe, avec les dagues tenues dans les mains, un portrait assorti et des VFX animés d'entaille, de Rafale, de venin et de Pas de l'ombre. [Ressources du Voleur](docs/VOLEUR_ART.md)
+
 ## Aperçu
 
 ### Accueil du Val-des-Saules

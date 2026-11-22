@@ -9,6 +9,14 @@ const familiars = {
 };
 
 export function classEffect(combat, row, point, now, angle = 0, size = .8, duration = 510) {
+    if (combat.classKey === 'rogue' && combat.scene.rogueArtReady) {
+        if (row === 'venom') {
+            combat.rogueVenomUntil = Math.max(combat.rogueVenomUntil ?? 0, now + 900);
+            row = 'rogue-venom'; size *= .5;
+        } else if (row === 'dagger') {
+            row = 'rogue-flurry'; size *= .55; duration = 320;
+        }
+    }
     combat.spellEffects?.push({ kind: 'class_vfx', row, x: point.x, y: point.y, angle, size, start: now, duration });
 }
 
@@ -63,6 +71,11 @@ export function applyTechnique(combat, technique, target, damage, name, now, ang
         const step = 5 / (Math.hypot(dx, dy) || 1);
         point = { x: origin.x, y: origin.y };
         for (let i = 0; i < 8; i++) combat.scene.move(dx * step, dy * step, now);
+        if (combat.classKey === 'rogue' && combat.scene.rogueArtReady) {
+            for (const part of [0, .5, 1]) classEffect(combat, 'rogue-shadow',
+                { x: point.x + (origin.x - point.x) * part, y: point.y + (origin.y - point.y) * part - 18 },
+                now, 0, .4, 400);
+        }
     }
     if (technique.guard) {
         combat.guard = { until: now + technique.guard, oneHit: !!target };
@@ -114,6 +127,7 @@ export function applyTechnique(combat, technique, target, damage, name, now, ang
         if (technique.dot && !technique.power) monster.pursue();
     }
     if (!technique.channel) {
+        if (technique.retreat && combat.classKey === 'rogue' && combat.scene.rogueArtReady) return;
         classEffect(combat, technique.vfx === 'fireball_burst' ? 'imp_flare' : technique.vfx,
             { x: point.x, y: point.y - (technique.summon ? 10 : 14) }, now, angle, technique.radius ? 1.05 : .88,
             technique.summon ? 890 : 550);

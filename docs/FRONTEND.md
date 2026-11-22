@@ -146,3 +146,7 @@ Les huit orientations du Chasseur à l'arc utilisent les atlas natifs `hunter-v2
 Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement `onlineCount` reçu par la synchronisation existante. Son nom accessible et son infobulle précisent « joueurs connectés sur le serveur ». Il inclut le personnage local et les joueurs éloignés. Chargement, erreur réseau ou conflit de bail affichent « — » pour éviter un ancien total trompeur.
 
 `WorldPresence` ouvre une connexion WebSocket sous la même origine et renouvelle son ticket toutes les 20 s. Les mouvements et les images de combat sont envoyés toutes les 50 ms. `RemoteMotion(50)` interpole les déplacements avec un tampon court adapté à la latence ; les tracés du combat restent ceux du moteur existant. Les enregistrements et objets distants sont libérés à l’arrêt de la scène. Une reconnexion conserve un état explicite. [Vérifications à deux sessions](VISIBILITE-COMBATS.md).
+
+## Voleur : animation et effets
+
+Le Voleur à deux dagues utilise huit orientations dessinées et quatre effets animés dans les atlas `rogue-v2`. Sa marche reste prioritaire en déplacement et son portrait utilise le même dessin. [Préparation, détails et vérifications](VOLEUR_ART.md).

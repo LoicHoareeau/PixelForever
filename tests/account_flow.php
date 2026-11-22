@@ -187,6 +187,10 @@ try {
         if ($class === 'hunter' && ($previewPath = getenv('PIXEL_HUNTER_HTML'))) {
             file_put_contents($previewPath, $game->getContent());
         }
+        if ($class === 'rogue' && ($previewPath = getenv('PIXEL_ROGUE_HTML'))) {
+            file_put_contents($previewPath, $game->getContent());
+        }
+        if ($class === 'rogue') check(str_contains(htmlValue($game, '//img[contains(@class, "hud-portrait")]/@src'), 'rogue-v2/portrait.webp'), 'Le portrait du Voleur doit utiliser le nouveau dessin.');
         $rules = json_decode(htmlValue($game, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
         check($class === $rules['classKey'] && $class === htmlValue($game, '//div[@id="world"]/@data-skin'), 'La nouvelle classe doit accéder à son apparence.');
         check(array_sum(array_column($rules['loot'], 'chance')) === 100, 'Les nouvelles classes conservent un butin valide.');

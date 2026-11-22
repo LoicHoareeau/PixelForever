@@ -1,6 +1,7 @@
 export const vfxFrameSize = 128;
 export const vfxFrames = 16;
 const hunterRows = ['hunter-dust', 'hunter-release', 'hunter-arrow'];
+const rogueRows = ['rogue-slash', 'rogue-flurry', 'rogue-venom', 'rogue-shadow'];
 
 const rows = [
     'firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst',
@@ -114,15 +115,18 @@ export function createCombatVfx(scene, depth) {
             if (x + margin < view.x || x - margin > view.right
                 || y + margin < view.y || y - margin > view.bottom || used >= 80) return;
             const hunter = hunterRows.indexOf(kind);
-            const frame = hunter < 0 ? vfxFrame(kind, progress)
-                : hunter * 4 + Math.max(0, Math.min(3, Math.floor(progress * 4)));
+            const rogue = rogueRows.indexOf(kind);
+            const nativeRow = hunter >= 0 ? hunter : rogue;
+            const frame = nativeRow < 0 ? vfxFrame(kind, progress)
+                : nativeRow * 4 + Math.max(0, Math.min(3, Math.floor(progress * 4)));
             if (frame < 0) return;
-            const texture = hunter >= 0 ? 'hunter-vfx' : classRows.includes(kind) ? 'class-vfx' : 'combat-vfx';
+            const texture = hunter >= 0 ? 'hunter-vfx' : rogue >= 0 ? 'rogue-vfx'
+                : classRows.includes(kind) ? 'class-vfx' : 'combat-vfx';
             if (used === pool.length) pool.push(scene.add.image(x, y, texture).setDepth(depth));
             const sprite = pool[used++];
             if (sprite.texture.key !== texture) sprite.setTexture(texture, frame);
             else sprite.setFrame(frame);
-            const nativeScale = hunter >= 0 ? scale * 128 / sprite.frame.width : scale;
+            const nativeScale = nativeRow >= 0 ? scale * 128 / sprite.frame.width : scale;
             sprite.setVisible(true).setPosition(Math.round(x), Math.round(y))
                 .setScale(nativeScale * stretch, nativeScale).setRotation(angle).setAlpha(Math.max(0, Math.min(1, alpha)));
         },

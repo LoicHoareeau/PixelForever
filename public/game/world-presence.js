@@ -1,6 +1,7 @@
 import { CombatVisuals, captureVisuals, recordGraphics } from './combat-visuals.js';
 import { RemoteMotion } from './remote-motion.js';
 import { applyHunterArt } from './hunter-art.js';
+import { applyRogueArt } from './rogue-art.js';
 const directions = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 const equipped = ['hunter', 'rogue', 'warlock'];
 
@@ -58,7 +59,7 @@ export class WorldPresence {
         this.captureActions();
         const gesture = document.hidden ? null : s.combat.attackPose(s.time.now);
         const walking = !document.hidden && s.time.now - s.lastWalkAt < 90;
-        return { x: s.position.x, y: s.position.y, facing: s.skin === 'hunter' && walking ? s.facing : gesture?.attack.facing ?? s.facing,
+        return { x: s.position.x, y: s.position.y, facing: ['hunter', 'rogue'].includes(s.skin) && walking ? s.facing : gesture?.attack.facing ?? s.facing,
             walking, alive: s.combat.health > 0,
             attackFrame: gesture?.frame ?? -1, ranged: Boolean(gesture?.attack.ranged), actions: this.actions.map(action => [action.id,
                 Math.max(0, Math.round(s.time.now - action.start)), action.windup, action.end, action.ranged, action.facing]) };
@@ -287,6 +288,8 @@ export class WorldPresence {
                 .setAlpha(s.alive ? clock - this.lastSnapshotAt > 3000 ? .5 : 1 : .4);
             player.shadow.setPosition(p.x, p.y - 1);
             if (this.scene.hunterArtReady) applyHunterArt(this.scene, player.sprite, s.skin, walking ? s.facing : facing, walking, player.distance, attackFrame, 'bow', false);
+            if (this.scene.rogueArtReady && s.skin === 'rogue') applyRogueArt(player.sprite,
+                walking ? s.facing : facing, walking, player.distance, attackFrame);
             player.label.setPosition(p.x, p.y - 47).setDepth(p.y + 1);
         }
     }
