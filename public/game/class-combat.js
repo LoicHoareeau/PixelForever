@@ -180,6 +180,7 @@ export function updateClassCombat(combat, now, delta) {
     const dy = y - (pet.y ?? actor.y);
     const dist = Math.hypot(dx, dy);
     const reach = engaged ? profile.range : 2;
+    const previousX = pet.x ?? actor.x, previousY = pet.y ?? actor.y;
     const step = Math.min(Math.max(dist - reach, 0), Math.min(delta, 100) * .082);
     const nextX = (pet.x ?? actor.x) + dx * step / (dist || 1);
     const nextY = (pet.y ?? actor.y) + dy * step / (dist || 1);
@@ -196,8 +197,13 @@ export function updateClassCombat(combat, now, delta) {
     }
     const pose = step > 0 ? Math.floor(now / 100) % 4 : Math.floor(now / 180) % 2;
     const striking = now < (pet.strikeUntil ?? 0);
-    const direction = Math.round(Math.atan2(dy, dx) / (Math.PI / 4) + 8) % 8;
-    const frame = kind === 'beast' ? direction * profile.frames + (striking ? profile.walkFrames + 1 : step > 0 ? 1 + Math.floor(now / 45) % profile.walkFrames : 0)
+    const moved = Math.hypot(pet.x - previousX, pet.y - previousY);
+    pet.walkDistance = (pet.walkDistance ?? 0) + (moved <= step + .01 ? moved : 0);
+    const direction = dist > .1 ? Math.round(Math.atan2(dy, dx) / (Math.PI / 4) + 8) % 8 : (pet.direction ?? 0);
+    pet.direction = direction;
+    const attackPose = Math.min(2, Math.max(0, Math.floor((320 - (pet.strikeUntil - now)) / 320 * 3)));
+    const frame = kind === 'beast' ? direction * profile.frames + (striking ? profile.walkFrames + 1 + attackPose
+        : moved > .01 && moved <= step + .01 ? 1 + Math.floor(pet.walkDistance / profile.art.stride * profile.walkFrames) % profile.walkFrames : 0)
         : profile.row * 6 + (striking ? 4 + (pet.strikeUntil - now > 170 ? 0 : 1) : pose);
     actor.setFrame(frame)
         .setFlipX(kind === 'beast' ? false : dx < -1 || (dx <= 1 && actor.flipX)).setPosition(Math.round(pet.x ?? actor.x), Math.round(pet.y ?? actor.y)).setDepth(pet.y ?? actor.y);

@@ -5,7 +5,7 @@ const hash=(x,y)=>{
 };
 
 export function createClearingGround(scene) {
-    return scene.textures.get('clearing-ground-v3').getSourceImage();
+    return scene.textures.get('clearing-ground-v4').getSourceImage();
 }
 
 export function clearingRoadMask(terrain,column,row,size=16) {

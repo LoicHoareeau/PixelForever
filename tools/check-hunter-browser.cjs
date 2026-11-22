@@ -114,6 +114,24 @@ const assert = require('node:assert/strict');
                 clearing={blocked,steps,glades:clearingGlades.map(([x,y])=>s.canStand((x+.5)*16,(y+.5)*16)),
                     obstacles:clearingScenery().filter(p=>p.collision).map(p=>!s.canStand(p.x,p.y)),
                     atlas:s.textures.get('clearing-props-v2').getFrameNames().length};
+                const boar=s.combat.monsters.find(monster=>monster.species==='boar');
+                const oldFacing=boar.facing;const frames=new Set();
+                for(let direction=0;direction<8;direction++){
+                    boar.facing=direction;
+                    for(let phase=0;phase<36;phase++){
+                        boar.walkDistance=(phase+.1)*boar.art.stride/36;boar.renderPose(0,true);
+                        frames.add(boar.sprite.frame.name);
+                    }
+                }
+                boar.facing=oldFacing;boar.renderPose(0,false);
+                s.combat.selectMonster(boar);
+                clearing.boar={frames:frames.size,portrait:boar.portraitArt,texture:boar.sprite.texture.key};
+                const {summonFamiliar}=await import('/game/class-combat.js');
+                const captured=s.combat.progress.capturedPet;
+                s.combat.progress.capturedPet={species:'boar',healthFraction:1};
+                summonFamiliar(s.combat,'beast',0);
+                clearing.boar.petTexture=s.combat.familiar.actor.texture.key;
+                s.combat.familiar.recalled=true;s.combat.progress.capturedPet=captured;
             }
             return {poses:result,vfx,clearing,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
                 maxTexture: s.game.renderer.gl?.getParameter(s.game.renderer.gl.MAX_TEXTURE_SIZE)};
@@ -132,8 +150,12 @@ const assert = require('node:assert/strict');
         if(checkClearing){
             assert.equal(result.clearing.blocked,0);assert(result.clearing.steps>200&&result.clearing.steps<2500);
             assert(result.clearing.glades.every(Boolean));assert(result.clearing.obstacles.every(Boolean));assert.equal(result.clearing.atlas,8);
+            assert.deepEqual(result.clearing.boar,{frames:288,portrait:'boar-v2',texture:'boar-motion',petTexture:'boar-motion'});
             for(const [label,x,y] of [['clairiere',400,430],['clairiere-lumiere',620,500],['clairiere-falaises',448,880]]){
-                await pages[0].evaluate(({x,y})=>{const s=window.__mapTestScene;s.scene.resume();s.position.set(x,y);s.cameras.main.centerOn(x,y);},{x,y});
+                await pages[0].evaluate(({x,y})=>{
+                    const s=window.__mapTestScene;s.scene.resume();s.position.set(x,y);s.cameras.main.centerOn(x,y);
+                    const pet=s.combat.familiar;if(pet){pet.x=x-22;pet.y=y+8;pet.actor.setPosition(pet.x,pet.y);}
+                },{x,y});
                 await pages[0].waitForTimeout(400);
                 await pages[0].screenshot({path:require('node:path').join(require('node:path').dirname(fixture),label+'.png')});
             }
