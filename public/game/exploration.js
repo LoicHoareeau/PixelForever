@@ -1,3 +1,5 @@
+import { paintClearingTrail } from './clearing-layout.js';
+
 export const tileSize = 16;
 export const columns = 256;
 export const rows = 252;
@@ -117,6 +119,8 @@ export function buildTerrain(clearing) {
         { left: 210, top: 214, right: 212, bottom: 239 },
     ];
     for (const { left, top, right, bottom } of frontierRoads) road(left, top, right, bottom);
+
+    paintClearingTrail(terrain);
 
     const protectedAreas = [
         ...Object.values(zones),

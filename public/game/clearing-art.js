@@ -3,6 +3,9 @@ import { biomeWeights } from './biome-gradient.js';
 import { addCoastalProps, animateCoast, drawCoastalFloor } from './coast-art.js';
 import { addCemeteryMist, addRegionalScenery, createScorchedCliff, drawRegionalGround } from './regional-art.js';
 import { isInStarterTown } from './starter-town.js';
+import { clearingScenery, inClearingGlade } from './clearing-layout.js';
+import { createClearingGround, clearingRoadMask, createClearingSceneryTextures } from './clearing-style.js';
+import { createClearingAtmosphere } from './clearing-atmosphere.js';
 
 const frameSize = 48;
 // Positions are the feet of the tree trunks, so the canopy sorts with actors.
@@ -85,6 +88,8 @@ export function treePositions(terrain) {
         }
     }
     return positions.filter(([x, y]) => {
+        if (inZone(zones.boar, x, y) && inClearingGlade(x, y)) return false;
+        if (inZone(zones.boar, x, y) && (Math.floor(x / 16) * 17 + Math.floor(y / 16) * 29) % 4 === 0) return false;
         const tx = Math.floor(x / 16);
         const ty = Math.floor(y / 16);
         const tile = terrain[ty]?.[tx];
@@ -159,7 +164,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         drawFrame(context, frame, x * tileSize, y * tileSize);
     }));
     const ground = scene.textures.get('ground-detailed').getSourceImage();
-    const groundCell = ground.width / 2;
+    const cleanGround = createClearingGround(scene);
     const pathMask = document.createElement('canvas');
     pathMask.width = pathMask.height = tileSize;
     const maskContext = pathMask.getContext('2d', { willReadFrequently: true });
@@ -171,22 +176,26 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     context.imageSmoothingEnabled = false;
     terrain.forEach((row, y) => row.forEach((tile, x) => {
         if (tile < 16 || tile === 34 || tile === cliffTile || tile === seaTile) return;
-        const column = tile === 32 ? 1 : 0;
-        context.drawImage(ground,
+        const clean = biomeWeights(x * tileSize + 8, y * tileSize + 8, tileSize).clearing > .75;
+        const pattern = clean ? cleanGround : ground;
+        const groundCell = pattern.width / 2;
+        const column = tile === 32 && !clean ? 1 : 0;
+        context.drawImage(pattern,
             column * groundCell + (x % 16) * groundCell / 16,
             (y % 16) * groundCell / 16,
             groundCell / 16, groundCell / 16, x * tileSize, y * tileSize, tileSize, tileSize);
-        if (tile < 32) {
+        if (tile < 32 || (clean && tile === 32)) {
             maskContext.clearRect(0, 0, tileSize, tileSize);
-            drawFrame(maskContext, scene.textures.getFrame('chemin-herbe', tile % 16), 0, 0);
+            if (tile < 32) drawFrame(maskContext, scene.textures.getFrame('chemin-herbe', tile % 16), 0, 0);
             const mask = maskContext.getImageData(0, 0, tileSize, tileSize);
-            for (let i = 0; i < mask.data.length; i += 4) {
+            if (tile === 32) mask.data.set(clearingRoadMask(terrain, x, y, tileSize));
+            else for (let i = 0; i < mask.data.length; i += 4) {
                 mask.data[i + 3] = mask.data[i] > mask.data[i + 1] * 1.1 ? 255 : 0;
             }
             maskContext.putImageData(mask, 0, 0);
             patchContext.clearRect(0, 0, tileSize, tileSize);
             patchContext.globalCompositeOperation = 'source-over';
-            patchContext.drawImage(ground, groundCell + (x % 16) * groundCell / 16,
+            patchContext.drawImage(pattern, groundCell + (x % 16) * groundCell / 16,
                 (y % 16) * groundCell / 16, groundCell / 16, groundCell / 16, 0, 0, tileSize, tileSize);
             patchContext.globalCompositeOperation = 'destination-in';
             patchContext.drawImage(pathMask, 0, 0);
@@ -253,6 +262,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     sceneryTexture('mountain-rock', 1, 0, 80);
     sceneryTexture('ranger-cabin', 0, 1, 96);
     sceneryTexture('coastal-cliff', 1, 1, 64);
+    createClearingSceneryTextures(scene);
     createScorchedCliff(scene);
     addCoastalProps(scene, terrain, tileSize, seaDistance);
     const lantern = scene.textures.createCanvas('lantern', 16, 14);
@@ -267,8 +277,8 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     scene.add.image(140, 160, 'ranger-cabin').setOrigin(.5, 1).setDepth(160);
     scene.obstacles.push(new Phaser.Geom.Rectangle(112, 130, 56, 26));
     treePositions(terrain).forEach(([x, y], index) => {
-        shadows.fillRect(x - 7, y - 3, 16, 5);
-        scene.add.image(x, y, 'willow-' + index % 2).setOrigin(.5, 1).setDepth(y);
+        shadows.fillEllipse(x + 4, y - 2, 26, 9);
+        scene.add.image(x, y, 'willow-' + index % 3).setOrigin(.5, 1).setDepth(y);
         scene.obstacles.push(new Phaser.Geom.Rectangle(x - 2, y - 4, 4, 5));
     });
     lamps.forEach(([x, y]) => {
@@ -285,6 +295,14 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         scene.obstacles.push(new Phaser.Geom.Rectangle(x - 20, y - 7, 40, 8));
     });
     addRegionalScenery(scene, shadows, tileSize);
+    for (const prop of clearingScenery(tileSize)) {
+        scene.add.image(prop.x, prop.y, 'clearing-' + prop.kind).setOrigin(.5, 1)
+            .setDisplaySize(prop.width, prop.height).setDepth(prop.y);
+        if (prop.collision) {
+            const [dx,dy,w,h] = prop.collision;
+            scene.obstacles.push(new Phaser.Geom.Rectangle(prop.x+dx, prop.y+dy, w, h));
+        }
+    }
     const mist = addCemeteryMist(scene, tileSize);
     for (const [text, column, row] of [
         ['↑ Clairière · N.1–5', 100, 32],
@@ -332,8 +350,10 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     }
 
     const ambience = scene.add.graphics().setDepth(2);
+    const daylight = createClearingAtmosphere(scene);
     let previousFrame = -1;
     const animate = (time, still) => {
+        daylight(time, still);
         const frame = still ? 0 : Math.floor(time / 200);
         if (frame === previousFrame) return;
         previousFrame = frame;

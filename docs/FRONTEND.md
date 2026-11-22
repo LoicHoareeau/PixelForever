@@ -150,3 +150,13 @@ Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement
 ## Voleur : animation et effets
 
 Le Voleur à deux dagues utilise huit orientations dessinées et quatre effets animés dans les atlas `rogue-v2`. Sa marche reste prioritaire en déplacement et son portrait utilise le même dessin. [Préparation, détails et vérifications](VOLEUR_ART.md).
+
+## Clairière jouable : décors et lumière
+
+`clearing-layout.js` définit un sentier et trois espaces dégagés : les arbres restent hors de ces espaces. Sept petits décors ponctuent les abords, dont trois avec collision. Le terrain et les obstacles restent ceux du monde Phaser, avec tri des arbres et accessoires par leurs pieds.
+
+`clearing-style.js` dessine l'herbe et la terre par petits motifs pixel, sans filtre lissant. L'atlas `clearing-props-v2` fournit huit accessoires détourés, dont trois arbres, des rochers et des falaises. `node tools/pack_clearing_props.cjs <image-source>` reconstruit cet atlas depuis une planche transparente de quatre colonnes et deux lignes ; aucune image de paysage ne remplace le terrain.
+
+`clearing-atmosphere.js` ajoute trois rayons chauds translucides et au maximum neuf grains de pollen. Le dessin est borné à la vue et actualisé au plus toutes les 80 ms. La préférence de réduction des animations fige les rayons et supprime ce pollen. Les coefficients de lumière et positions sont modifiables dans ce module ; l'ambiance générale est dans `zone-ambience.js`.
+
+Vérifications : `tests/clearing-style.test.mjs`, parcours des trois espaces dans `tests/exploration.test.mjs`, puis `PIXEL_CLEARING_CHECK=1` avec le banc navigateur `tools/check-hunter-browser.cjs`. Ce dernier traverse réellement le sentier par `move`, vérifie les trois collisions et produit trois captures. Ses deux sessions utilisent une présence HTTP simulée ; elles ne certifient pas le réseau Render.

@@ -89,3 +89,6 @@ La construction Docker utilisée par Render comporte une étape `checks` obligat
 ## Déploiement des animations du Voleur
 
 Déployer ensemble `rogue-art.js`, `rogue-frames.js`, le dossier `public/game/val-des-saules/rogue-v2/`, les templates de portrait et le relais acceptant `rogue-vfx`. Les fichiers générés sont déjà inclus : aucune génération d'images ni migration à lancer sur Render. [Vérifications et préparation](VOLEUR_ART.md).
+## Ressources de la clairière
+
+La refonte jouable de la clairière utilise `clearing-props-v2.webp` et son atlas JSON dans `public/game/val-des-saules`, ainsi que les modules `clearing-layout.js`, `clearing-style.js` et `clearing-atmosphere.js`. Publier ces fichiers avec `world.js` et `clearing-art.js` ; aucune migration de base n'est nécessaire pour cette modification graphique. La validation locale ne déclenche pas un déploiement Render.

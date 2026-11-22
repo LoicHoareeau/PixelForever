@@ -19,6 +19,7 @@ import {
 } from '../public/game/exploration.js';
 import { isInStarterTown, nearestTownResident, questNpc, starterSpawn, townObstacles, townResidents } from '../public/game/starter-town.js';
 import { treePositions } from '../public/game/clearing-art.js';
+import { clearingScenery, clearingGlades } from '../public/game/clearing-layout.js';
 import { regionalScenery } from '../public/game/regional-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
 import { monsterArt, monsterAtlasColumns, monsterFrames, monsterWalkFrames } from '../public/game/monster-art.js';
@@ -27,6 +28,9 @@ import { TrainingCombat } from '../public/game/combat.js';
 const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/terrain.json', import.meta.url)));
 const terrain = buildTerrain(clearing);
 const obstacles = [
+    ...clearingScenery(tileSize).filter(prop=>prop.collision).map(prop=>{
+        const [x,y,w,h]=prop.collision;return [prop.x+x,prop.y+y,w,h];
+    }),
     [112, 130, 56, 26],
     ...townObstacles,
     ...treePositions(terrain).map(([x, y]) => [x - 2, y - 4, 4, 5]),
@@ -99,6 +103,7 @@ test('le départ, les belvédères côtiers et les patrouilles sont accessibles 
             }
         }
     }
+    for (const [x,y] of clearingGlades) assert.ok(visited.has([x,y].join(',')), `Clairière ouverte inaccessible en ${x},${y}`);
     for (const resident of townResidents) {
         assert.ok(queue.some(([x, y]) => nearestTownResident({ x: (x + .5) * tileSize, y: (y + .5) * tileSize }) === resident),
             `${resident.name} inaccessible`);

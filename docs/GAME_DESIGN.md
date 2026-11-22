@@ -164,3 +164,6 @@ Les spectateurs proches voient les combats en direct sur la carte, y compris les
 ## Apparence du Voleur
 
 Le Voleur dispose de nouvelles poses de marche et de frappe dans les huit orientations. Entaille, Rafale, venin et Pas de l'ombre ont des effets animés distincts, sans changer les coûts, portées, dégâts ni recharges. [Détails visuels](VOLEUR_ART.md).
+## Clairière : lisibilité du terrain
+
+La clairière dispose d'un sentier continu et de trois espaces sans arbres pour circuler et combattre. Les décors restent ponctuels sur les abords ; les zones de combat ne sont pas remplies d'accessoires. Les trois accessoires solides ajoutés ont une collision au sol. Une lumière chaude et un pollen discret accompagnent l'exploration, sans masquer les personnages ni changer le combat ou l'expérience.
