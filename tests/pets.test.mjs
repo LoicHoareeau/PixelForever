@@ -8,6 +8,24 @@ import { applyTechnique, updateClassCombat } from '../public/game/class-combat.j
 import { TrainingCombat } from '../public/game/combat.js';
 import { createInitialProgress, getUnlockedActiveSpells, getUnlockedPetSpells, loadProgress } from '../public/game/progression.js';
 
+test('le sanglier familier anime ses vrais déplacements et les trois poses de frappe', () => {
+    const {combat}=fixture();combat.progress.capturedPet={species:'boar',healthFraction:1};
+    petAction(combat,1,0);
+    const pet=combat.familiar;pet.recalled=true;pet.nextHit=Infinity;
+    combat.scene.position.x=100;
+    updateClassCombat(combat,1000,100);
+    assert(pet.walkDistance>0);
+    combat.scene.canStand=()=>false;
+    updateClassCombat(combat,1100,100);
+    assert.equal(pet.actor.frame%40,0,'pas de marche sur place contre un obstacle');
+    combat.scene.canStand=()=>true;
+    combat.scene.position={x:pet.x+21,y:pet.y-8};
+    pet.strikeUntil=2320;
+    const frames=[];
+    for(const now of [2000,2110,2220]){updateClassCombat(combat,now,0);frames.push(pet.actor.frame%40);}
+    assert.deepEqual(frames,[37,38,39]);
+});
+
 function fixture() {
     const images = [];
     const makeActor = (x, y) => ({

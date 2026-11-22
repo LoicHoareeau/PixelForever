@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 
 (async () => {
     const skin=process.env.PIXEL_CHARACTER||'hunter';
+    const checkClearing=process.env.PIXEL_CLEARING_CHECK==='1';
     assert(['hunter','rogue'].includes(skin));
     const fixture=process.env['PIXEL_'+skin.toUpperCase()+'_HTML'];
     assert(fixture, 'Export the character fixture via tests/account_flow.php.');
@@ -60,8 +61,9 @@ const assert = require('node:assert/strict');
             }
         }
         for (const page of pages) await page.waitForFunction(()=>window.__hunterGame.scene.getScenes(true)[0].presence.players.size===1, null, {timeout:10000});
-        const result = await pages[0].evaluate(async (skin) => {
+        const result = await pages[0].evaluate(async ({skin,checkClearing}) => {
             const s = window.__hunterGame.scene.getScenes(true)[0]; s.scene.pause();
+            window.__mapTestScene=s;
             const windup=skin==='hunter'?180:140, weaponStyle=skin==='hunter'?'bow':'daggers';
             const directions=['east','south-east','south','south-west','west','north-west','north','north-east'];
             const result=[];
@@ -96,9 +98,44 @@ const assert = require('node:assert/strict');
                 vfx.push(s.combat.vfx.images().map(image=>({texture:image.texture.key,frame:Number(image.frame.name)})));
             }
             const remote=s.presence.players.values().next().value;
-            return {poses:result,vfx,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
+            let clearing=null;
+            if(checkClearing){
+                const {clearingTrail,clearingGlades,clearingScenery}=await import('/game/clearing-layout.js');
+                const [firstX,firstY]=clearingTrail[0];s.position.set((firstX+.5)*16,(firstY+.5)*16);
+                let blocked=0,steps=0;
+                for(const [tx,ty] of clearingTrail.slice(1)){
+                    const target={x:(tx+.5)*16,y:(ty+.5)*16};
+                    while(Math.hypot(target.x-s.position.x,target.y-s.position.y)>.1&&steps<2500){
+                        const dx=target.x-s.position.x,dy=target.y-s.position.y,d=Math.hypot(dx,dy),length=Math.min(2,d);
+                        const old={x:s.position.x,y:s.position.y};s.move(dx/d*length,dy/d*length,s.time.now);steps++;
+                        if(Math.hypot(s.position.x-old.x,s.position.y-old.y)<.1){blocked++;break;}
+                    }
+                }
+                clearing={blocked,steps,glades:clearingGlades.map(([x,y])=>s.canStand((x+.5)*16,(y+.5)*16)),
+                    obstacles:clearingScenery().filter(p=>p.collision).map(p=>!s.canStand(p.x,p.y)),
+                    atlas:s.textures.get('clearing-props-v2').getFrameNames().length};
+                const boar=s.combat.monsters.find(monster=>monster.species==='boar');
+                const oldFacing=boar.facing;const frames=new Set();
+                for(let direction=0;direction<8;direction++){
+                    boar.facing=direction;
+                    for(let phase=0;phase<36;phase++){
+                        boar.walkDistance=(phase+.1)*boar.art.stride/36;boar.renderPose(0,true);
+                        frames.add(boar.sprite.frame.name);
+                    }
+                }
+                boar.facing=oldFacing;boar.renderPose(0,false);
+                s.combat.selectMonster(boar);
+                clearing.boar={frames:frames.size,portrait:boar.portraitArt,texture:boar.sprite.texture.key};
+                const {summonFamiliar}=await import('/game/class-combat.js');
+                const captured=s.combat.progress.capturedPet;
+                s.combat.progress.capturedPet={species:'boar',healthFraction:1};
+                summonFamiliar(s.combat,'beast',0);
+                clearing.boar.petTexture=s.combat.familiar.actor.texture.key;
+                s.combat.familiar.recalled=true;s.combat.progress.capturedPet=captured;
+            }
+            return {poses:result,vfx,clearing,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
                 maxTexture: s.game.renderer.gl?.getParameter(s.game.renderer.gl.MAX_TEXTURE_SIZE)};
-        },skin);
+        },{skin,checkClearing});
         assert.equal(result.skin,skin); assert.equal(result.failed,0);
         for(const pose of result.poses) {
             assert.equal(pose.steps,8);assert.equal(pose.shots,8);assert.equal(pose.flip,false);assert.equal(pose.origin,1);
@@ -109,6 +146,19 @@ const assert = require('node:assert/strict');
         if(skin==='rogue') for(const [phase,effects] of result.vfx.entries()) {
             assert.equal(effects.length,4);
             effects.forEach((effect,row)=>{assert.equal(effect.texture,'rogue-vfx');assert.equal(effect.frame,row*4+phase);});
+        }
+        if(checkClearing){
+            assert.equal(result.clearing.blocked,0);assert(result.clearing.steps>200&&result.clearing.steps<2500);
+            assert(result.clearing.glades.every(Boolean));assert(result.clearing.obstacles.every(Boolean));assert.equal(result.clearing.atlas,8);
+            assert.deepEqual(result.clearing.boar,{frames:288,portrait:'boar-v2',texture:'boar-motion',petTexture:'boar-motion'});
+            for(const [label,x,y] of [['clairiere',400,430],['clairiere-lumiere',620,500],['clairiere-falaises',448,880]]){
+                await pages[0].evaluate(({x,y})=>{
+                    const s=window.__mapTestScene;s.scene.resume();s.position.set(x,y);s.cameras.main.centerOn(x,y);
+                    const pet=s.combat.familiar;if(pet){pet.x=x-22;pet.y=y+8;pet.actor.setPosition(pet.x,pet.y);}
+                },{x,y});
+                await pages[0].waitForTimeout(400);
+                await pages[0].screenshot({path:require('node:path').join(require('node:path').dirname(fixture),label+'.png')});
+            }
         }
         await pages[0].screenshot({path:process.env.PIXEL_HUNTER_SCREENSHOT||fixture+'.png'});
         assert.deepEqual(errors,[]);

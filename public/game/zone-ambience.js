@@ -4,7 +4,7 @@ import { isCoastBorderTile } from './exploration.js';
 
 const spacing = 112;
 const profiles = [
-    { kind: 'pollen', density: .42, alpha: .63, scale: 1, drift: 13, lift: 8, cycle: 5300 },
+    { kind: 'pollen', density: .18, alpha: .28, scale: .65, drift: 5, lift: 5, cycle: 8500 },
     { kind: 'mist', density: .84, alpha: .86, scale: 1.19, drift: 28, lift: 2, cycle: 6100 },
     { kind: 'snow', density: .69, alpha: .81, scale: 1.12, drift: 37, lift: 13, cycle: 2850 },
     { kind: 'cinders', density: .73, alpha: .76, scale: .97, drift: 11, lift: 15, cycle: 2700 },

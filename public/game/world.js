@@ -85,11 +85,13 @@ import { petKeys } from './pet-rules.js';
             this.load.spritesheet('town-residents', 'bastion-habitants.png', { frameWidth: 48, frameHeight: 48 });
             this.load.image('environment-detailed', 'environment-detailed.png');
             this.load.image('ground-detailed', 'ground-detailed.png');
+            this.load.atlas('clearing-props-v2', 'clearing-props-v2.webp', 'clearing-props-v2.json');
+            this.load.image('clearing-ground-v4', 'clearing-ground-v4.webp');
             for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
                 this.load.image(atlas, atlas + '.png');
             }
-            for (const [species, { frame }] of Object.entries(monsterArt)) {
-                this.load.spritesheet(species + '-motion', 'monsters/' + species + '.png', { frameWidth: frame, frameHeight: frame });
+            for (const [species, { frame, file }] of Object.entries(monsterArt)) {
+                this.load.spritesheet(species + '-motion', 'monsters/' + (file ?? species + '.png'), { frameWidth: frame, frameHeight: frame });
             }
             for (const atlas of ['malakor-actions', 'malakor-rage', 'malakor-rage-actions']) {
                 this.load.spritesheet(atlas, 'monsters/' + atlas + '.png', { frameWidth: malakorFrameSize, frameHeight: malakorFrameSize });
