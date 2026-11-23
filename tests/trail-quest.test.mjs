@@ -56,7 +56,7 @@ test('la vraie défaite d’un sanglier crédite la quête une fois, même si le
     combat.defeatMonster(monster, 100);
     combat.defeatMonster(monster, 101);
     assert.equal(progress.trailQuest.defeated, 1);
-    assert.equal(progress.xp, 42);
+    assert.equal(progress.xp, 60);
     assert.equal(progress.items.health, 3);
 });
 

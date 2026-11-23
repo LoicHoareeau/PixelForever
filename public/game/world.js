@@ -1,4 +1,12 @@
+import { GameChat } from './chat.js';
+import { TutorialQuest } from './tutorial.js';
+import { HudControls } from './hud-controls.js';
+import { WorldPresence } from './world-presence.js';
 import { vfxFrameSize } from './combat-vfx.js';
+import { equippedWeaponStyles } from './equipped-art.js';
+import { loadHunterArt, createHunterArt, applyHunterArt } from './hunter-art.js';
+import { loadRogueArt, createRogueArt, applyRogueArt } from './rogue-art.js';
+import { loadMageArt, createMageArt, applyMageArt } from './mage-art.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -12,6 +20,8 @@ import { createWorldLighting } from './world-lighting.js';
 import { CameraFeel } from './camera-feel.js';
 import { acceptTrailQuest, completeTrailQuest, requiredBoars, trailQuestMarker, trailQuestStatus } from './trail-quest.js';
 import { saveProgress } from './progression.js';
+import { petAction } from './pet-controls.js';
+import { petKeys } from './pet-rules.js';
 
 (() => {
     const world = document.getElementById('world');
@@ -69,16 +79,22 @@ import { saveProgress } from './progression.js';
             this.walkSheet = this.skin + '-walk';
             this.attackSheet = this.skin + '-attack';
             this.load.setPath(assetPath);
+            loadHunterArt(this);
+            loadRogueArt(this);
+            loadMageArt(this);
             this.load.json('terrain', 'terrain.json');
             this.load.image('starter-town', 'bastion-de-braise.png');
             this.load.spritesheet('town-residents', 'bastion-habitants.png', { frameWidth: 48, frameHeight: 48 });
             this.load.image('environment-detailed', 'environment-detailed.png');
             this.load.image('ground-detailed', 'ground-detailed.png');
+            this.load.atlas('clearing-props-v2', 'clearing-props-v2.webp', 'clearing-props-v2.json');
+            this.load.atlas('clearing-extras-v1', 'clearing-extras-v1.webp', 'clearing-extras-v1.json');
+            this.load.image('clearing-ground-v5', 'clearing-ground-v5.webp');
             for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
                 this.load.image(atlas, atlas + '.png');
             }
-            for (const [species, { frame }] of Object.entries(monsterArt)) {
-                this.load.spritesheet(species + '-motion', 'monsters/' + species + '.png', { frameWidth: frame, frameHeight: frame });
+            for (const [species, { frame, file }] of Object.entries(monsterArt)) {
+                this.load.spritesheet(species + '-motion', 'monsters/' + (file ?? species + '.png'), { frameWidth: frame, frameHeight: frame });
             }
             for (const atlas of ['malakor-actions', 'malakor-rage', 'malakor-rage-actions']) {
                 this.load.spritesheet(atlas, 'monsters/' + atlas + '.png', { frameWidth: malakorFrameSize, frameHeight: malakorFrameSize });
@@ -92,6 +108,21 @@ import { saveProgress } from './progression.js';
             this.load.spritesheet(this.walkSheet, art + '/walk.png', { frameWidth: 48, frameHeight: 48 });
             const attackSize = this.skin === 'noe' ? 68 : 64;
             this.load.spritesheet(this.attackSheet, art + '/attack.png', { frameWidth: attackSize, frameHeight: attackSize });
+            if (equippedWeaponStyles[this.skin]) {
+                for (const pose of ['idle', 'walk', 'attack']) {
+                    this.load.spritesheet(this.skin + '-' + pose + '-equipped', art + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
+                }
+            }
+            for (const skin of ['lina', 'noe', 'hunter', 'rogue', 'warlock'].filter(skin => skin !== this.skin)) {
+                const directory = skin === 'lina' ? 'warrior' : skin;
+                directions.forEach(direction => this.load.image(skin + '-' + direction, directory + '/' + direction + '.png'));
+                this.load.spritesheet(skin + '-walk', directory + '/walk.png', { frameWidth: 48, frameHeight: 48 });
+                const size = skin === 'noe' ? 68 : 64;
+                this.load.spritesheet(skin + '-attack', directory + '/attack.png', { frameWidth: size, frameHeight: size });
+                if (equippedWeaponStyles[skin]) for (const pose of ['idle', 'walk', 'attack']) {
+                    this.load.spritesheet(skin + '-' + pose + '-equipped', directory + '/' + pose + '-equipped.png', { frameWidth: 64, frameHeight: 64 });
+                }
+            }
             this.load.spritesheet('class-gear', 'class-gear.png', { frameWidth: 40, frameHeight: 32 });
             this.load.spritesheet('class-familiars', 'class-familiars.png', { frameWidth: 32, frameHeight: 32 });
             this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
@@ -119,11 +150,15 @@ import { saveProgress } from './progression.js';
             this.animateZoneAmbience = createZoneAmbience(this, tileSize);
             this.lighting = createWorldLighting(this, width, height, tileSize, [...clearing.lights, ...town.lights]);
             this.poseSheet = createPoseSheet(this, this.skin, directions);
+            if (this.skin !== 'noe') createPoseSheet(this, 'noe', directions);
             this.questMarker = this.add.text(questNpc.x, questNpc.y - 47, '!', {
                 fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold',
                 color: '#f0c781', stroke: '#19272e', strokeThickness: 3,
             }).setOrigin(.5, 1).setDepth(height + 10).setInteractive({ useHandCursor: true });
 
+            createHunterArt(this);
+            createRogueArt(this);
+            createMageArt(this);
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
             const { x, y, facing } = starterSpawn;
@@ -178,8 +213,11 @@ import { saveProgress } from './progression.js';
             ];
 
             this.cameraFeel = new CameraFeel();
-            this.combat = new TrainingCombat(this, monsters, JSON.parse(world.dataset.combat), tileSize);
+            const rules = JSON.parse(world.dataset.combat);
+            this.combat = new TrainingCombat(this, monsters, rules, tileSize);
             this.renderAvatar(this.time.now);
+            if (rules.chatUrl) this.chat = new GameChat(this, rules);
+            if (rules.worldUrl) this.presence = new WorldPresence(this, rules);
 
             this.updateCameraZoom(this.scale.width, this.scale.height);
             this.cameras.main.centerOn(x, y);
@@ -198,6 +236,9 @@ import { saveProgress } from './progression.js';
             window.addEventListener('online', flushProgress, { signal: keyboard.signal });
             this.time.addEvent({ delay: 5000, loop: true, callback: flushProgress });
             const inventory = document.getElementById('inventory');
+            const guide = document.getElementById('game-guide');
+            const guideButton = document.getElementById('guide-open');
+            const gameMenu = document.getElementById('game-menu');
             const inventoryButton = document.getElementById('inventory-open');
             const inventoryStatus = document.getElementById('inventory-status');
             const characterSheet = document.getElementById('character-sheet');
@@ -213,7 +254,7 @@ import { saveProgress } from './progression.js';
 
             const closeOthers = (except) => {
                 switchingDialog = true;
-                [inventory, characterSheet, talentDialog, questDialog].forEach((dlg) => {
+                [inventory, characterSheet, talentDialog, questDialog, guide, gameMenu].forEach((dlg) => {
                     if (dlg && dlg !== except && dlg.open) {
                         dlg.close();
                     }
@@ -278,6 +319,7 @@ import { saveProgress } from './progression.js';
                     this.combat.tell('Approche-toi de Rakka pour lui parler (E).');
                     return;
                 }
+                this.tutorial?.record('return');
                 closeOthers(questDialog);
                 releaseKeys();
                 this.renderQuestDialog();
@@ -313,6 +355,15 @@ import { saveProgress } from './progression.js';
             }, { signal: keyboard.signal });
 
             inventoryButton.addEventListener('click', toggleInventory, { signal: keyboard.signal });
+            guideButton.addEventListener('click', () => {
+                closeOthers(guide);
+                releaseKeys();
+                guide.showModal();
+                this.tutorial?.record('guide');
+            }, { signal: keyboard.signal });
+            guide.addEventListener('close', () => {
+                if (!switchingDialog) guideButton.focus({ preventScroll: true });
+            }, { signal: keyboard.signal });
             inventory.addEventListener('close', () => {
                 if (!switchingDialog) inventoryButton.focus({ preventScroll: true });
             }, { signal: keyboard.signal });
@@ -385,11 +436,12 @@ import { saveProgress } from './progression.js';
                 const target = event.target;
                 const isEditable = target
                     && typeof target.matches === 'function'
-                    && (target.isContentEditable || target.matches('input, select, textarea'));
+                    && (target.closest?.('#game-chat') || target.isContentEditable || target.matches('input, select, textarea'));
                 if (isEditable) {
                     return;
                 }
 
+                if (guide.open || this.hud?.blocksInput || document.querySelector('dialog[open]')) return;
                 // Réserver exclusivement Tab au jeu et bloquer la navigation de focus dans la fenêtre.
                 event.preventDefault();
                 event.stopPropagation();
@@ -418,11 +470,12 @@ import { saveProgress } from './progression.js';
             }, { capture: true, signal: keyboard.signal });
 
             window.addEventListener('keydown', (event) => {
+                if (guide.open || this.hud?.blocksInput) return;
                 if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
                     return;
                 }
                 const target = event.target;
-                if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, select, textarea'))) {
+                if (target instanceof HTMLElement && (target.closest?.('#game-chat') || target.isContentEditable || target.matches('input, select, textarea'))) {
                     return;
                 }
                 if (event.code === 'KeyI' && !event.repeat) {
@@ -430,7 +483,7 @@ import { saveProgress } from './progression.js';
                     toggleInventory();
                     return;
                 }
-                if (event.code === 'KeyC' && !event.repeat) {
+                if (event.code === 'KeyP' && !event.repeat) {
                     event.preventDefault();
                     toggleCharacterSheet();
                     return;
@@ -449,7 +502,13 @@ import { saveProgress } from './progression.js';
                     return;
                 }
                 const movement = Object.hasOwn(bindings, event.code);
-                const attack = attacks[event.code];
+                const petCommand = petKeys[event.code];
+                if (petCommand !== undefined && ['hunter', 'warlock'].includes(this.combat.classKey)) {
+                    event.preventDefault();
+                    if (!event.repeat) petAction(this.combat, petCommand, this.time.now);
+                    return;
+                }
+                const attack = this.hud ? this.hud.attackForCode(event.code) : attacks[event.code];
                 const potion = potions[event.code];
                 if (!movement && !attack && !potion) {
                     return;
@@ -481,7 +540,12 @@ import { saveProgress } from './progression.js';
                 });
             }
             this.combat.buttons.forEach(button => {
-                button.addEventListener('click', () => this.combat.attack(button.dataset.attack, this.time.now), { signal: keyboard.signal });
+                button.addEventListener('click', () => {
+                    if (!this.hud?.blocksInput) this.combat.attack(button.dataset.attack, this.time.now);
+                }, { signal: keyboard.signal });
+            });
+            this.combat.petButtons.forEach(button => {
+                button.addEventListener('click', () => petAction(this.combat, Number(button.dataset.petAction), this.time.now), { signal: keyboard.signal });
             });
             this.combat.resetButton.addEventListener('click', () => {
                 releaseKeys();
@@ -505,6 +569,13 @@ import { saveProgress } from './progression.js';
             if (status) status.hidden = true;
             if (controls) controls.hidden = false;
             this.refreshQuest();
+            const welcome = guide.dataset.welcome === 'true';
+            this.tutorial = new TutorialQuest(this, welcome);
+            this.hud = new HudControls(this, { signal: keyboard.signal, releaseKeys, closeOthers, guide });
+            if (welcome) {
+                releaseKeys();
+                guide.showModal();
+            }
         }
 
         canTalkToNpc() {
@@ -561,8 +632,10 @@ import { saveProgress } from './progression.js';
                 this.combat.targetHud.hidden = true;
             }
             this.combat.update(time, delta);
+            this.tutorial?.update();
             this.refreshQuest();
             this.renderAvatar(time);
+            this.presence?.update();
             this.animateClearing(time, this.motionPreference.matches);
             this.animateTown(time, this.motionPreference.matches);
             this.animateZoneAmbience(time, this.motionPreference.matches);
@@ -662,10 +735,38 @@ import { saveProgress } from './progression.js';
                     : step % walkFrames;
                 frame = directions.indexOf(this.facing) * walkFrames + walkFrame;
             }
-            if (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
+            const integratedWeapon = equippedWeaponStyles[this.skin];
+            const equippedPose = integratedWeapon && this.combat.weaponStyle === integratedWeapon
+                && (!gesture || gesture.attack.weaponStyle === integratedWeapon);
+            if (equippedPose) {
+                const facing = gesture?.attack.facing ?? this.facing;
+                const row = directions.indexOf(facing);
+                const pose = gesture ? 'attack' : walking ? 'walk' : 'idle';
+                texture = this.skin + '-' + pose + '-equipped';
+                frame = gesture ? row * 9 + gesture.frame : walking ? row * 8 + Math.floor(this.walkDistance / pixelsPerWalkFrame) % 8 : row;
+                origin = 56 / 64;
+            }
+            const customArt = (this.hunterArtReady && this.skin === 'hunter' && this.combat.weaponStyle === 'bow')
+                || (this.rogueArtReady && this.skin === 'rogue' && this.combat.weaponStyle === 'daggers')
+                || (this.mageArtReady && this.skin === 'noe');
+            if (!customArt
+                && (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame)) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
+            if (this.hunterArtReady) applyHunterArt(this, this.avatar, this.skin, walking ? this.facing : gesture?.attack.facing ?? this.facing,
+                walking, this.walkDistance, gesture?.frame ?? -1, this.combat.weaponStyle);
+            if (this.rogueArtReady && this.skin === 'rogue') applyRogueArt(this.avatar,
+                walking ? this.facing : gesture?.attack.facing ?? this.facing, walking, this.walkDistance,
+                gesture?.frame ?? -1, this.combat.weaponStyle);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
-            if (this.weaponSprite) this.renderArmament(gesture, walking, time);
+            if(this.mageArtReady && this.skin==='noe')applyMageArt(this.avatar,
+                walking?this.facing:gesture?.attack.facing??this.facing,walking,this.walkDistance,
+                gesture?.frame??-1,this.combat.progress.weapon==='rare',gesture?.attack.ranged??true);
+            if (this.weaponSprite) {
+                if (integratedWeapon || (this.mageArtReady && this.skin==='noe')) {
+                    this.weaponSprite.setVisible(false);
+                    this.offHandSprite.setVisible(false);
+                } else this.renderArmament(gesture, walking, time);
+            }
         }
 
         renderArmament(gesture, walking, time) {

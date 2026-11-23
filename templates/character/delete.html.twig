@@ -1,0 +1,15 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Supprimer un personnage{% endblock %}
+
+{% block body %}
+    <section aria-labelledby="heading">
+        <h1 id="heading">Supprimer {{ character.name }} ?</h1>
+        <p>Ce personnage de niveau {{ character.level }} et toute sa progression seront définitivement supprimés. Cette action est irréversible.</p>
+        <form method="post" action="{{ path('character_delete', {id: character.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('delete_character_' ~ character.id) }}">
+            <button type="submit">Supprimer définitivement {{ character.name }}</button>
+            <a class="button quiet" href="{{ path('character_list') }}">Annuler</a>
+        </form>
+    </section>
+{% endblock %}

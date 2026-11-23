@@ -1,3 +1,4 @@
+import { ordinaryStats } from './balance.js';
 import { malakorActions, malakorActionFrames, malakorFrameSize, malakorIgnitionMs, malakorRageProgress, malakorThresholds } from './malakor.js';
 // Espèces, patrouilles et combat des monstres.
 import { inZone, zones } from './exploration.js';
@@ -184,6 +185,12 @@ export const monsterTemplates = {
     },
 };
 
+for (const template of Object.values(monsterTemplates)) {
+    if (template.isBoss) continue;
+    const original = template.statsForLevel;
+    template.statsForLevel = (level) => ({ ...original(level), ...ordinaryStats(level) });
+}
+
 function randomInt(min, max) {
     return min + Math.floor(Math.random() * (max - min + 1));
 }
@@ -197,6 +204,7 @@ export class Monster {
         const artSpecies = this.template.art ?? species;
         this.motionTexture = artSpecies + '-motion';
         this.art = monsterArt[artSpecies];
+        this.portraitArt = this.art.file?.replace(/\.png$/, '') ?? artSpecies;
         this.specials = Object.keys(this.template.specials ?? {});
         this.tileSize = tileSize;
         this.columns = scene.terrain[0].length;
@@ -263,6 +271,7 @@ export class Monster {
 
         this.respawnAt = Infinity;
         this.stunUntil = 0;
+        this.trappedUntil = 0;
         this.slowUntil = 0;
         this.counterAt = Infinity;
         this.attackEndsAt = 0;
@@ -317,6 +326,7 @@ export class Monster {
         this.nextRouteAt = 0;
         this.destination = null;
         this.stunUntil = 0;
+        this.trappedUntil = 0;
         this.slowUntil = 0;
         this.counterAt = Infinity;
 
@@ -338,6 +348,7 @@ export class Monster {
     }
 
     hide() {
+        this.trappedUntil = 0;
         this.cancelAttack();
         this.echo = this.trial = null;
         this.alert = false;
@@ -383,6 +394,7 @@ export class Monster {
         this.phase++;
         this.attackCounter = 0;
         this.stunUntil = 0;
+        this.trappedUntil = 0;
         this.slowUntil = 0;
         return true;
     }
@@ -597,7 +609,7 @@ export class Monster {
             return;
         }
 
-        if (now < this.stunUntil) {
+        if (now < this.stunUntil || now < this.trappedUntil) {
             this.sprite.setTint(0x9be0de);
             this.syncOverlays();
             return;

@@ -35,7 +35,7 @@
                     <li class="val-character {{ class.value }}{% if active %} val-character-active{% endif %}">
                         <div class="val-portrait" aria-hidden="true">
                             <span class="val-pedestal"></span>
-                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.value == 'warrior' ? 'warrior' : class.skin }}/south.png"
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class.value in ['hunter', 'rogue', 'mage'] ? class.value ~ '-v2/portrait.webp' : (class.value == 'warrior' ? 'warrior' : class.skin) ~ '/south.png' }}"
                                  width="144" height="144" alt="">
                         </div>
                         <div class="val-character-info">
@@ -57,6 +57,7 @@
                                 <input type="hidden" name="_token" value="{{ csrf_token('select_character') }}">
                                 <button type="submit" aria-label="Jouer avec {{ character.name }}">Jouer <span aria-hidden="true">→</span></button>
                             </form>
+                            <a href="{{ path('character_delete', {id: character.id}) }}" aria-label="Supprimer {{ character.name }}">Supprimer</a>
                         </div>
                     </li>
                 {% endfor %}

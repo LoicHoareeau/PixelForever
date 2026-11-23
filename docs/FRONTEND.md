@@ -4,6 +4,8 @@
 
 ## Accueil et choix du personnage
 
+`#level-up-banner` annonce les montées de niveau avec `role="status"`, sans bloquer les commandes. `combat-ui.js` met les annonces en file et utilise l’horloge Phaser pour afficher chacune pendant trois secondes, avec une pause de 150 ms entre elles.
+
 Twig rend l’accueil public du Val-des-Saules, la connexion, l’inscription et les écrans de personnage. `public/portal/val.css` adapte leur mise en page aux petits écrans. Le diorama 3D de l’accueil et de la connexion est une illustration JPEG. Les cartes des personnages mettent les sprites de jeu sur des socles éclairés et indiquent la classe, le niveau et les caractéristiques de base. **Actif** indique le personnage sélectionné en session.
 
 ## Carte et ressources visuelles
@@ -30,7 +32,13 @@ Les lanternes, la cabane et les fissures fournissent les sources fixes. Le perso
 
 ## Combat, équipement et animations
 
-L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 1,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 7,5 cases avant bonus, sans mana et à demi-puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
+Pour `hunter` et `rogue`, `idle-equipped.png`, `walk-equipped.png` et `attack-equipped.png` intègrent l’arme au personnage. Les fichiers de `warlock` contiennent désormais le corps sans livre. Cellules de 64 × 64 px : repos 512 × 64, marche 512 × 512, attaque 576 × 512. Les pieds sont alignés à y=54 et l’origine Phaser vaut 56/64 ; passer du repos à la marche ou au tir ne fait pas sauter le personnage. À mains nues, les planches originales sont utilisées et aucun ancien sprite d’arme séparé n’est dessiné pour ces trois classes.
+
+Le style du Démoniste est `shadow`. `warlock-vfx.js` calcule l’enveloppe de son aura depuis `attackVisual`, y compris sa dissipation après résolution lorsque `pending` est vide. `combat-renderer.js` maintient ce rendu pendant la queue visuelle sans toucher au calcul des dégâts ou de la ressource. Le mouvement réduit fixe la pose des textures et supprime les fragments. `php tests/warlock_art.php` vérifie que les huit poses au repos correspondent pixel par pixel au corps d’origine sans objet ajouté.
+
+`tools/build_equipped_sprites.php` compose les neuf planches à partir des corps existants, sans réécrire ces sources. Après régénération des corps via `tools/build_class_sprites.php`, lancer `php tools/build_equipped_sprites.php`. `php tools/build_equipped_sprites.php --check` vérifie leur reproductibilité pixel par pixel, la préservation du visage et des cheveux et l’absence d’arme coupée sur les bords. `equipped-art.js` donne la prise de l’arc au combat et aux VFX pour éviter un décalage entre la corde et le projectile.
+
+L’épée, le croc, la hache, les dagues, le Bâton des saules et les poings frappent à 2,5 case. La Baguette de braise et le Sceptre de Saphyr tirent en mouvement à 5 cases avant bonus, sans mana et à pleine puissance avant les talents propres à la baguette. Boule de feu, Mur de feu et Tourbillon de feu demandent une seconde d’incantation. La barre `#cast-bar` affiche le temps restant. Un déplacement annule l’incantation et rembourse le mana.
 
 L’attaque mémorise sa portée et son type au départ : changer d’équipement ne transforme pas un projectile déjà lancé en coup de mêlée. L’ATH, les dégâts et la portée de la fiche reflètent l’auto-attaque équipée. Les talents de baguette ne renforcent que ses tirs.
 
@@ -41,6 +49,8 @@ Le Mage utilise des poses orientées pour le tir et l’incantation. Le bâton p
 Les deux atlas de VFX partagent un pool de sprites. Les effets au sol suivent les coordonnées du combat, tandis que les animations des personnages suivent la direction et l’équipement. [Catalogue, génération et vérifications des VFX](VFX.md)
 
 ## Monstres et PNJ
+
+`pet-rules.js` valide les créatures apprivoisables et calcule les statistiques héritées ; `pet-controls.js` gère la canalisation, la sauvegarde locale de la créature et les trois commandes ; `class-combat.js` gère les sprites, déplacements et attaques du familier. `getUnlockedPetSpells` sépare les invocations des techniques de la barre principale. La barre `data-pet-action` utilise les touches physiques KeyZ/KeyX/KeyC ; la fiche est déplacée sur KeyP. La créature et sa fraction de PV sont normalisées à la reprise du profil local du Chasseur.
 
 Les 59 créatures peuplant la carte se répartissent sur des secteurs élargis : 7 sangliers N.1–5 dans la clairière, 6 squelettes N.5–10 au cimetière, 5 dragons N.10–20 dans les montagnes, 16 démons (6 diablotins, 5 molosses et 5 gardes N.21–35) dans les trois secteurs des Terres dévastées, le Boss de palier niveau 40 **Malakor, Seigneur de la Brèche** au Trône d’Obsidienne (`128 × 128 px`, trois phases télégraphiées et jauge avec seuils de phase) et huit créatures dans chacun des trois secteurs N.41–60. Les variantes teintent les atlases du molosse et du garde et emploient les mêmes télégraphies circulaires et linéaires que Malakor. Chaque espèce standard dispose d’au moins 10 points de patrouille.
 
@@ -67,7 +77,8 @@ La fiche joueur est en haut à gauche, la cible en haut au centre, les accès ra
 | Attaque de base / compétence principale | `1` / `2` |
 | Techniques disponibles | `3` à `6`, jusqu’à `8` pour le Guerrier et `9` pour le Démoniste |
 | Potions de vie / ressource | `R` / `F` |
-| Fiche / talents / inventaire | `C` / `T` / `I` |
+| Fiche / talents / inventaire | `P` / `T` / `I` |
+| Familier (Chasseur/Démoniste) | `W` / `X` / `C` AZERTY ; `Z` / `X` / `C` QWERTY |
 | Parler au PNJ à proximité | `E` ou clic |
 
 Les commandes utilisent `KeyboardEvent.code`. Sur AZERTY, les touches physiques de la rangée des chiffres activent les actions sans Maj. Les raccourcis sont suspendus pendant la saisie et lorsque les dialogues l’exigent.
@@ -85,3 +96,77 @@ Les victoires donnent l’XP du monstre et un tirage : vie 47 %, ressource 30 %,
 Vérifier en navigateur la portée des attaques avec l’arme équipée, le coût et la recharge des techniques, les déplacements, la quête et la reconnexion. [Scénarios VFX](VFX.md#vérifications) · [Parcours après déploiement](DEPLOIEMENT.md#vérifications-après-déploiement)
 
 Voir le [game design](GAME_DESIGN.md) et le [back-end](BACKEND.md).
+
+## XP et présence
+
+`balance.js` centralise seuils, récompenses, écarts de niveau et coûts. `progression.js` convertit une fois les sauvegardes non versionnées vers `xpVersion: 2` en conservant le niveau et la fraction d’XP. `progress-sync.js` envoie cette version ; une page ancienne doit être rechargée. Les potions ont une recharge commune de 15 s affichée dans les deux cases et restaurent 30 % du maximum avec un plancher fixe.
+
+`world-presence.js` envoie position/orientation/pose et reçoit les personnages voisins. Les textures des cinq classes sont préchargées. Les déplacements sont interpolés, avec une interpolation fonctionnelle du mouvement des acteurs. La présence continue quand le rendu Phaser est suspendu en arrière-plan ; les requêtes en échec sont espacées et les acteurs distants retirés. Un autre onglet du même personnage affiche un conflit de présence et réessaie après expiration du bail. Cela ne valide pas les combats locaux. Le flux continu relaie aussi les images de combat et les tracés existants via `combat-visuals.js`. Les objets distants sont exclusivement visuels, avec le nom du joueur observé.
+
+### Trappe du Chasseur
+
+`starterTalents.hunter` expose `taming_trap` dès le N.1. `pet-rules.js` réutilise les conditions de capture ; `class-combat.js` neutralise la cible pour 6 s sans dégâts et rappelle le familier. `trappedUntil` bloque l’IA de déplacement et le compteur d’attaque, puis est retiré aux dégâts, à la réapparition ou au masquage. L’atlas existant `trap` fournit un indicateur fixe aux pieds de la cible tant que le contrôle dure, y compris en mouvement réduit. Cinq cases de technique sont prévues pour conserver la trappe et les quatre talents actifs du Chasseur. Raccourcis : `3` trappe, puis W/Z physique pour apprivoiser.
+
+## Lisibilité des sorts et tchat
+
+`spell-state.js` calcule coût effectif, recharge et indisponibilité à partir des règles du combat. Les auto-attaques n’exigent pas de ressource. Les cases affichent la durée restante, une mention de mana/énergie insuffisant(e), un gris sur l’illustration et un nom accessible décrivant l’état. Le masque radial utilise directement le pourcentage CSS ; les invocations W/X/C partagent le compteur de la barre dédiée. Les illustrations sont des ressources locales, sans modification des personnages.
+
+`game/_chat.html.twig` fournit le panneau repliable ; `chat.js` envoie les commandes à l’API Symfony et sonde toutes les 1,5 s sans requêtes concurrentes. Les erreurs conservent le texte et le nonce pour réessayer ; le DOM et l’anti-doublon sont bornés. Les messages sont insérés par nœuds texte, jamais par HTML. Le journal indique heure, canal et personnages. Suggestions de noms avec identifiant, liste des membres et acceptation/refus des invitations sont intégrées.
+
+Entrée depuis le canevas ouvre la saisie, Échap remet le focus sur la carte. Entrer dans le panneau relâche les déplacements ; ses événements ne déclenchent pas les raccourcis du combat. Tab reste natif dans le panneau. Le journal conserve le défilement de lecture ; l’utilisateur peut replier le tchat et voir le nombre de messages reçus. Le panneau est limité en hauteur sur petits écrans. Les tests Node couvrent les états de ressource, compteurs, couverture d’icônes et insertion sûre des textes. Le contrôle réel à deux fenêtres reste à réaliser : accès HTTP local toujours indisponible pendant le développement.
+
+Les nouvelles illustrations de sorts sont regroupées dans `public/game/spell-icons-atlas.png` (8 colonnes × 6 lignes). `spell-icons.js` associe les 42 visuels utilisés aux cellules, sans découpe des fichiers ni changement des sprites. La grille conserve six cases utilitaires non utilisées par cette interface. Le propriétaire a demandé de remplacer uniquement les illustrations des sorts et a validé la nouvelle direction. Les anciens pictogrammes vectoriels d’essai ont été retirés. L’actualisation des compteurs est limitée à environ 12 fois/s, avec mise à jour immédiate lors d’un changement de ressource ou de PV.
+
+## Lissage du réseau — cible 2 à 10 joueurs
+
+En repli HTTP, `remote-motion.js` garde douze positions horodatées par acteur. Le rendu interpole dans un tampon de 500 ms, ajusté progressivement jusqu’à 850 ms selon la cadence et la gigue observées. Une prédiction de 150 ms maximum à vitesse bornée évite les petits trous ; elle cesse ensuite de déplacer l’acteur. Une correction réseau est rattrapée progressivement, tandis qu’un déplacement de plus de 160 px réinitialise le tampon comme une vraie téléportation. Les phases de marche suivent la distance effectivement affichée.
+
+`world-presence.js` ancre la prochaine requête sur son départ, afin qu’un temps de réponse de 50 ms ne fasse plus sauter un créneau de 300 ms. Une seule requête reste active. Le délai de reprise après échec reste 1,5 s ; les acteurs sont conservés jusqu’à 12 s sans instantané, avec indication atténuée après 3 s. Les textures ne sont réinitialisées que quand la pose change. Les horloges de rendu réseau ne dépendent pas des pauses de la scène Phaser.
+
+Le client conserve jusqu’à six événements d’animation récents, avec identifiants distincts du bail, âge, préparation, fin/annulation, portée visuelle et orientation. Le serveur stabilise leur heure de début ; le navigateur déroule les neuf poses à la fréquence d’affichage. Les courtes attaques ne sont donc plus représentées par deux seules images espacées. En arrière-plan, le personnage cesse d’annoncer une marche ou une nouvelle attaque. Le mode ancien à `attackFrame` reste accepté pour les onglets non rechargés ; aucune animation décorative n’est ajoutée.
+
+`node --test tests/network-motion.test.mjs` couvre cadence, dix acteurs, gigue, perte/reprise, limites de prédiction, téléportation, annulation, neuf poses, expiration et texture stable. `node tools/simulate-network.mjs` rejoue 30 s et 1 800 images pour dix acteurs : zéro arrêt sur le parcours constant, pas maximal environ 1,533 px. Le temps CPU affiché mesure uniquement le lissage, sans moteur graphique ni HTTP. Ce résultat ne certifie pas les FPS du jeu ou la capacité Render.
+
+L’ATH utilise `game/hud.css` et `HudControls` : cadres bois/métal, portraits du personnage et du monstre sélectionné, cinq icônes utilitaires reprises dans l’atlas illustré existant. Les images de sorts et les sprites de personnages sont conservés.
+
+Échap ouvre un dialogue natif. L’édition permet de déplacer les blocs à la souris ou avec les flèches sur leur poignée, régler la taille (70–130 %), enregistrer, annuler ou réinitialiser. Les cadres sont bornés à l’écran et réduits pour tenir sur les petits écrans. Un maintien de 350 ms puis glissement échange deux boutons existants sans recréer leurs événements : les numéros des cases deviennent leurs raccourcis. En édition, Entrée sur la source puis la destination offre une alternative clavier. Les références de combat, les recharges et les coûts restent attachés au sort.
+
+Les onglets du tchat choisissent le canal d’envoi ; l’historique conserve ses messages étiquetés. Le menu ne suspend pas le monde multijoueur.
+
+Chaque personnage dispose du lien « Supprimer ». Une page dédiée rappelle le nom, le niveau et la perte définitive de progression ; « Annuler » revient à la liste. Le GET ne supprime rien et le formulaire POST fonctionne sans JavaScript.
+
+Les URL des modules du jeu et des deux feuilles de style portent une empreinte de leur contenu. Une import map native applique aussi ces URL aux imports relatifs : versionner uniquement `world.js` laisserait ses dépendances en ancien cache. Des positions CSS de secours évitent la superposition des cadres avant l’initialisation. Les positions calculées tiennent compte de la taille réelle des blocs et du zoom : la barre reste centrée et les accès rapides passent sous les cadres lorsque la largeur manque. Le tchat est plus compact et les informations de groupe sont rangées dans « Groupe et destinataire ».
+
+Déplacement au clavier : ↑ nord, ↓ sud, ← ouest, → est, sur AZERTY comme QWERTY. Deux flèches permettent une diagonale sans gain de vitesse ; le relâchement arrête le déplacement. Le jeu empêche le défilement de la page pendant ces commandes, mais laisse les flèches à la saisie du tchat et aux menus. Le guide accessible par le ? rouge explique ces directions.
+
+## Animations du Chasseur
+
+Les huit orientations du Chasseur à l'arc utilisent les atlas natifs `hunter-v2`, leurs ancrages dans `hunter-frames.js` et le rendu partagé `hunter-art.js`. Les pas et la décoche sont également visibles sur les joueurs distants. Voir [les ressources et leur reconstruction](CHASSEUR_ART.md).
+
+Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement `onlineCount` reçu par la synchronisation existante. Son nom accessible et son infobulle précisent « joueurs connectés sur le serveur ». Il inclut le personnage local et les joueurs éloignés. Chargement, erreur réseau ou conflit de bail affichent « — » pour éviter un ancien total trompeur.
+
+`WorldPresence` ouvre une connexion WebSocket sous la même origine et renouvelle son ticket toutes les 20 s. Les mouvements et les images de combat sont envoyés toutes les 50 ms. `RemoteMotion(50)` interpole les déplacements avec un tampon court adapté à la latence ; les tracés du combat restent ceux du moteur existant. Les enregistrements et objets distants sont libérés à l’arrêt de la scène. Une reconnexion conserve un état explicite. [Vérifications à deux sessions](VISIBILITE-COMBATS.md).
+
+## Mage : animations et effets
+
+Le Mage utilise désormais `mage-art.js`, `mage-frames.js` et les atlas `mage-v2` pour ses huit orientations, ses deux armes et ses six VFX. La marche reste prioritaire en mouvement ; ses portraits sont actualisés sans toucher aux icônes de sorts. [Détails et reconstruction](MAGE_ART.md).
+
+## Voleur : animation et effets
+
+Le Voleur à deux dagues utilise huit orientations dessinées et quatre effets animés dans les atlas `rogue-v2`. Sa marche reste prioritaire en déplacement et son portrait utilise le même dessin. [Préparation, détails et vérifications](VOLEUR_ART.md).
+
+Dans « Tes personnages », les portraits ont une hauteur commune et une largeur automatique pour conserver les proportions naturelles ; le cadre laisse davantage d'espace en hauteur. Les choix de classe utilisent `object-fit: contain`. Le Chasseur utilise sa nouvelle vue de face dans la liste, la création et l'ATH, comme le Voleur.
+
+## Clairière jouable : décors et lumière
+
+`clearing-layout.js` définit un sentier et trois espaces dégagés : les arbres restent hors de ces espaces. Sept petits décors ponctuent les abords, dont trois avec collision. Le terrain et les obstacles restent ceux du monde Phaser, avec tri des arbres et accessoires par leurs pieds.
+
+`clearing-style.js` échantillonne les deux matériaux HD sans lissage (`clearing-ground-v5.webp`, 768 × 384 px : herbe texturée à gauche, terre ocre fissurée à droite). `clearing-art.js` génère un calque HD 2× (`clearing-hd-floor`) couvrant la clairière avec champ de distance continu, bordures de route sculptées organiques, berge de mare adoucie et fondu progressif vers les biomes voisins. L'atlas `clearing-props-v2` fournit les huit accessoires détourés à résolution 2× (arbres pleins sans perforation, rochers, falaises), complété par `clearing-extras-v1` (`lantern`, `reeds`) et la cabane haute définition issue d'`environment-detailed.png`. `node tools/pack_clearing_props.cjs <image-source>` reconstruit `clearing-props-v2` depuis une planche transparente de quatre colonnes et deux lignes ; `node tools/pack_clearing_ground.cjs <image-source>` convertit sans perte la planche de deux carrés de terrain.
+
+Le sanglier utilise `monsters/boar-v2.png`, y compris son portrait de cible et sa forme apprivoisée. La planche imagegen comporte huit directions, huit poses de marche réellement dessinées par direction et trois poses d'attaque. `node tools/pack_boar_art.cjs <image-source>` les ancre aux pieds et conserve la cadence historique de 36 phases en répartissant les huit dessins sur ces phases, sans fabriquer des poses intermédiaires. Les dimensions, collisions et statistiques restent identiques. La marche des familiers suit leur distance réelle ; les trois poses de frappe se succèdent sur 320 ms. Le familier bloqué reste au repos.
+
+Les textures ont été créées avec l'outil intégré imagegen à partir des accessoires comme référence de style. Consigne : « deux matériaux de terrain répétés, herbe courte et terre ocre, même palette et détail pixel 16 bits que les arbres et rochers, ombres vertes, lumière chaude, sans perspective, personnages, interface ni grands objets ». Les fichiers WebP publiés sont autonomes ; les sources PNG de génération ne sont pas nécessaires à l'exécution.
+
+`clearing-atmosphere.js` ajoute trois rayons chauds translucides et au maximum neuf grains de pollen. Le dessin est borné à la vue et actualisé au plus toutes les 80 ms. La préférence de réduction des animations fige les rayons et supprime ce pollen. Les coefficients de lumière et positions sont modifiables dans ce module ; l'ambiance générale est dans `zone-ambience.js`.
+
+Vérifications : `tests/clearing-style.test.mjs`, parcours des trois espaces dans `tests/exploration.test.mjs`, puis `PIXEL_CLEARING_CHECK=1` avec le banc navigateur `tools/check-hunter-browser.cjs`. Ce dernier traverse réellement le sentier par `move`, vérifie les trois collisions et produit trois captures. Ses deux sessions utilisent une présence HTTP simulée ; elles ne certifient pas le réseau Render.

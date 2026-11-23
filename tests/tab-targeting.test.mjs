@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import { TrainingCombat, selectNextTarget } from '../public/game/combat.js';
 import { CameraFeel } from '../public/game/camera-feel.js';
 import { frontierSpecies } from '../public/game/exploration.js';
+import { petKeys } from '../public/game/pet-rules.js';
+import { equippedWeaponStyles } from '../public/game/equipped-art.js';
 
 function fakeMonster(name, x, y, alive = true) {
     return {
@@ -87,6 +89,7 @@ test('TrainingCombat.cycleTarget met à jour la sélection, le HUD et le journal
 });
 
 test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM dans la fenêtre', () => {
+    class MockHTMLElement {}
     const windowListeners = [];
     const canvas = {
         tabIndex: -1,
@@ -114,6 +117,7 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     };
 
     const cycled = [];
+    const petCommands = [];
     class MockTrainingCombat {
         constructor() {
             this.progressSync = { flush() {} };
@@ -122,6 +126,8 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
             this.spellButtons = [];
             this.potionButtons = [];
             this.weaponButtons = [];
+            this.petButtons = [];
+            this.classKey = 'hunter';
             this.buttons = [{ focus() {}, addEventListener() {} }];
             this.resetButton = { addEventListener() {} };
         }
@@ -176,12 +182,20 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     vm.runInNewContext(source, {
         window: win,
         document: doc,
-        HTMLElement: class {},
+        HTMLElement: MockHTMLElement,
         TrainingCombat: MockTrainingCombat,
+        TutorialQuest: class { record() {} },
+        HudControls: class { attackForCode() {} },
+        petKeys,
+        equippedWeaponStyles,
+        petAction: (_combat, index) => petCommands.push(index),
         buildClearing: () => ({ animate() {}, lights: [] }),
         createZoneAmbience: () => () => {},
         createWorldLighting: () => ({ update() {}, destroy() {} }),
         createPoseSheet: () => 'sheet',
+        createHunterArt: () => {},
+        createRogueArt: () => {},
+        createMageArt: () => {},
         createStarterTown: () => ({ occupants: [], lights: [], animate() {} }),
         nearestTownResident: () => null,
         starterSpawn: { x: 184, y: 190, facing: 'south-east' },
@@ -280,4 +294,52 @@ test('Tab est réservé au jeu en phase de capture et empêche la navigation DOM
     // Alt+Tab ou Ctrl+Tab restent libres pour le système/navigateur
     const altTab = dispatch({ altKey: true });
     assert.equal(altTab.prevented, false);
+
+    const gameListener = windowListeners.find(l => l.type === 'keydown' && !l.capture);
+    const chatControl = new MockHTMLElement();
+    chatControl.matches = () => false;
+    chatControl.closest = selector => selector === '#game-chat' ? {} : null;
+    const chatTab = dispatch({ target: chatControl });
+    assert.equal(chatTab.prevented, false, 'Tab doit rester natif dans le panneau de tchat');
+    for (const code of ['KeyW', 'Digit1', 'KeyT', 'KeyZ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+        const event = { code, target: chatControl, preventDefault() { this.prevented = true; } };
+        gameListener.fn(event);
+        assert.equal(event.prevented, undefined, code + ' ne doit pas déclencher le jeu depuis le tchat');
+    }
+    assert.equal(scene.heldKeys.size, 0);
+    assert.deepEqual(petCommands, []);
+
+    for (const code of ['KeyZ', 'KeyX', 'KeyC']) {
+        const event = { code, target: canvas, preventDefault() { this.prevented = true; } };
+        gameListener.fn(event);
+        assert.equal(event.prevented, true);
+    }
+    assert.deepEqual(petCommands, [0, 1, 2], 'W/X/C AZERTY utilise les mêmes positions que Z/X/C QWERTY');
+    const keyUpListener = windowListeners.find(l => l.type === 'keyup');
+    const movements = [];
+    scene.move = (x, y) => movements.push([x, y]);
+    scene.heldKeys.clear();
+    for (const [code, direction] of [['ArrowUp', [0, -1]], ['ArrowDown', [0, 1]], ['ArrowLeft', [-1, 0]], ['ArrowRight', [1, 0]]]) {
+        const event = { code, target: canvas, preventDefault() { this.prevented = true; } };
+        gameListener.fn(event);
+        assert.equal(event.prevented, true, 'La flèche doit empêcher le défilement de la page.');
+        scene.moveFromKeys(100, 40);
+        const [x, y] = movements.at(-1);
+        assert.equal(Math.sign(x), direction[0]);
+        assert.equal(Math.sign(y), direction[1]);
+        keyUpListener.fn({ code });
+        assert.equal(scene.heldKeys.size, 0, 'Relâcher la flèche doit arrêter le déplacement.');
+    }
+    scene.heldKeys.add('ArrowUp'); scene.heldKeys.add('ArrowRight');
+    scene.moveFromKeys(100, 40);
+    assert.ok(Math.abs(Math.hypot(...movements.at(-1)) - 92 * .04) < .00001, 'La diagonale ne doit pas accélérer le personnage.');
+    scene.heldKeys.clear();
+    gameListener.fn({ code: 'KeyW', target: canvas, preventDefault() {} });
+    assert.equal(scene.heldKeys.has('KeyW'), true, 'la touche physique de déplacement reste disponible');
+    dialog.open = true;
+    gameListener.fn({ code: 'KeyZ', target: canvas, preventDefault() {} });
+    assert.deepEqual(petCommands, [0, 1, 2], 'les commandes ne traversent pas une modale ouverte');
+    scene.heldKeys.clear();
+    for (const code of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) gameListener.fn({ code, target: canvas, preventDefault() {} });
+    assert.equal(scene.heldKeys.size, 0, 'Les flèches ne doivent pas déplacer le personnage pendant un menu.');
 });

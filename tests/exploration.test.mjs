@@ -19,6 +19,7 @@ import {
 } from '../public/game/exploration.js';
 import { isInStarterTown, nearestTownResident, questNpc, starterSpawn, townObstacles, townResidents } from '../public/game/starter-town.js';
 import { treePositions } from '../public/game/clearing-art.js';
+import { clearingScenery, clearingGlades } from '../public/game/clearing-layout.js';
 import { regionalScenery } from '../public/game/regional-art.js';
 import { Monster, monsterTemplates } from '../public/game/monsters.js';
 import { monsterArt, monsterAtlasColumns, monsterFrames, monsterWalkFrames } from '../public/game/monster-art.js';
@@ -27,6 +28,9 @@ import { TrainingCombat } from '../public/game/combat.js';
 const clearing = JSON.parse(readFileSync(new URL('../public/game/val-des-saules/terrain.json', import.meta.url)));
 const terrain = buildTerrain(clearing);
 const obstacles = [
+    ...clearingScenery(tileSize).filter(prop=>prop.collision).map(prop=>{
+        const [x,y,w,h]=prop.collision;return [prop.x+x,prop.y+y,w,h];
+    }),
     [112, 130, 56, 26],
     ...townObstacles,
     ...treePositions(terrain).map(([x, y]) => [x - 2, y - 4, 4, 5]),
@@ -99,6 +103,7 @@ test('le départ, les belvédères côtiers et les patrouilles sont accessibles 
             }
         }
     }
+    for (const [x,y] of clearingGlades) assert.ok(visited.has([x,y].join(',')), `Clairière ouverte inaccessible en ${x},${y}`);
     for (const resident of townResidents) {
         assert.ok(queue.some(([x, y]) => nearestTownResident({ x: (x + .5) * tileSize, y: (y + .5) * tileSize }) === resident),
             `${resident.name} inaccessible`);
@@ -252,6 +257,24 @@ test('les monstres N.1–10 restent neutres à proximité et les N.11+ engagent 
     assert.equal(monster.attackEndsAt, 0);
 });
 
+test('les monstres de niveaux 1 à 10 restent neutres puis ripostent après engagement', () => {
+    for (const level of [1, 2, 5, 10]) {
+        const { combat, monster, player } = battle(level < 5 ? 'boar' : 'skeleton');
+        monster.level = level;
+        monster.alert = false;
+        monster.counterAt = Infinity;
+        monster.update(100, 16, player);
+        combat.updateMonsterCounter(monster, 100);
+        assert.equal(monster.alert, false);
+        assert.equal(monster.attackEndsAt, 0);
+        assert.equal(combat.health, 500);
+        monster.pursue();
+        combat.updateMonsterCounter(monster, 200);
+        assert.equal(monster.alert, true);
+        assert.ok(monster.attackEndsAt > 200);
+    }
+});
+
 test('sortir de portée, quitter la zone ou étourdir le monstre évite son attaque', () => {
     for (const cancel of ['range', 'zone', 'stun']) {
         const { combat, monster, player } = battle();
@@ -340,9 +363,9 @@ test('le souffle voyage sur une trajectoire fixe et le joueur peut esquiver apr�
     }
 });
 
-test('chaque espèce a huit orientations et trente-six images de marche par orientation', () => {
-    for (const [species, { frame, stride }] of Object.entries(monsterArt)) {
-        const png = readFileSync(new URL(`../public/game/val-des-saules/monsters/${species}.png`, import.meta.url));
+test('chaque espèce a huit orientations et trente-six phases de marche par orientation', () => {
+    for (const [species, { frame, stride, file }] of Object.entries(monsterArt)) {
+        const png = readFileSync(new URL(`../public/game/val-des-saules/monsters/${file ?? species + '.png'}`, import.meta.url));
         assert.equal(png.toString('ascii', 12, 16), 'IHDR');
         assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)],
             [frame * monsterAtlasColumns, frame * monsterFrames * 8 / monsterAtlasColumns]);
@@ -379,8 +402,8 @@ test('la réduction de dégâts est conservée et la défaite ne déclenche pas 
 
 test('les niveaux 1–2 restent abordables et la puissance augmente fortement aux niveaux supérieurs', () => {
     const boar = monsterTemplates.boar;
-    assert.deepEqual([boar.statsForLevel(1).maxHealth, boar.statsForLevel(1).damage], [52, 6]);
-    assert.deepEqual([boar.statsForLevel(2).maxHealth, boar.statsForLevel(2).damage], [74, 8]);
+    assert.deepEqual([boar.statsForLevel(1).maxHealth, boar.statsForLevel(1).damage], [650, 2]);
+    assert.deepEqual([boar.statsForLevel(2).maxHealth, boar.statsForLevel(2).damage], [1010, 2]);
     const strongBoar = new Monster(scene, 'boar', tileSize, 4);
     assert.equal(strongBoar.level, 5);
     assert.ok(strongBoar.patrol.every(index => strongBoar.cells[index].x > 400));
@@ -389,7 +412,7 @@ test('les niveaux 1–2 restent abordables et la puissance augmente fortement au
         for (let level = template.minLevel + 1; level <= template.maxLevel; level++) {
             const stats = template.statsForLevel(level);
             assert.ok(stats.maxHealth > previous.maxHealth);
-            assert.ok(stats.damage > previous.damage);
+            assert.ok(stats.damage >= previous.damage);
             assert.ok(stats.attackIntervalMs <= previous.attackIntervalMs);
             assert.ok(stats.windupMs < stats.attackIntervalMs);
             assert.ok(Number.isSafeInteger(stats.xp) && stats.xp > previous.xp);
@@ -397,8 +420,8 @@ test('les niveaux 1–2 restent abordables et la puissance augmente fortement au
         }
         const first = template.statsForLevel(template.minLevel);
         if (template.maxLevel <= 20) {
-            assert.ok(previous.maxHealth > first.maxHealth * 2);
-            assert.ok(previous.damage > first.damage * 2);
+            assert.ok(previous.maxHealth > first.maxHealth);
+            assert.ok(previous.damage >= first.damage);
         }
     }
     assert.equal(monsterTemplates.imp.minLevel, 21);

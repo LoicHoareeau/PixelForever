@@ -1,5 +1,8 @@
 export const vfxFrameSize = 128;
 export const vfxFrames = 16;
+const hunterRows = ['hunter-dust', 'hunter-release', 'hunter-arrow'];
+const rogueRows = ['rogue-slash', 'rogue-flurry', 'rogue-venom', 'rogue-shadow'];
+const mageRows = ['mage-firebolt','mage-fire-wall','mage-fire-whirl','mage-arcane','mage-frost-nova','mage-ice-armor'];
 
 const rows = [
     'firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst',
@@ -102,6 +105,7 @@ export function createCombatVfx(scene, depth) {
     const pool = [];
     let used = 0;
     return {
+        images() { return pool.slice(0, used).filter(sprite => sprite.visible); },
         begin() {
             for (let index = 0; index < used; index++) pool[index].setVisible(false);
             used = 0;
@@ -111,15 +115,23 @@ export function createCombatVfx(scene, depth) {
             const margin = vfxFrameSize * scale * Math.max(1, stretch) / 2;
             if (x + margin < view.x || x - margin > view.right
                 || y + margin < view.y || y - margin > view.bottom || used >= 80) return;
-            const frame = vfxFrame(kind, progress);
+            const hunter = hunterRows.indexOf(kind);
+            const rogue = rogueRows.indexOf(kind);
+            const mage = mageRows.indexOf(kind);
+            const nativeRow = hunter >= 0 ? hunter : rogue >=0 ? rogue : mage;
+            const count = mage>=0?6:4;
+            const frame = nativeRow < 0 ? vfxFrame(kind, progress)
+                : nativeRow * count + Math.max(0, Math.min(count-1, Math.floor(progress * count)));
             if (frame < 0) return;
-            const texture = classRows.includes(kind) ? 'class-vfx' : 'combat-vfx';
+            const texture = hunter >= 0 ? 'hunter-vfx' : rogue >= 0 ? 'rogue-vfx' : mage>=0?'mage-vfx'
+                : classRows.includes(kind) ? 'class-vfx' : 'combat-vfx';
             if (used === pool.length) pool.push(scene.add.image(x, y, texture).setDepth(depth));
             const sprite = pool[used++];
             if (sprite.texture.key !== texture) sprite.setTexture(texture, frame);
             else sprite.setFrame(frame);
+            const nativeScale = nativeRow >= 0 ? scale * 128 / sprite.frame.width : scale;
             sprite.setVisible(true).setPosition(Math.round(x), Math.round(y))
-                .setScale(scale * stretch, scale).setRotation(angle).setAlpha(Math.max(0, Math.min(1, alpha)));
+                .setScale(nativeScale * stretch, nativeScale).setRotation(angle).setAlpha(Math.max(0, Math.min(1, alpha)));
         },
     };
 }

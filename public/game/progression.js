@@ -1,13 +1,13 @@
+import { xpRequired, xpVersion, migrateXp } from './balance.js';
+export { xpRequired } from './balance.js';
 import { armorBonuses, armorItems, armorSlots } from './armor.js';
 import { classTalents, protectionTalents, starterTalents } from './class-talents.js';
 // Barèmes d'expérience, de caractéristiques, de sorts et de régénération
 import { normalizeTrailQuest } from './trail-quest.js';
+import { normalizeCapturedPet } from './pet-rules.js';
 
 export const victoryXp = 50;
 
-export const xpRequired = (level) => {
-    return 100 + (level - 1) * 50;
-};
 
 const coreStats = ['strength', 'intelligence', 'vitality', 'spirit'];
 const dexterityClasses = ['rogue', 'hunter'];
@@ -418,6 +418,7 @@ export const specializationProfiles = {
 export function createInitialProgress(startingLevel = 1) {
     return {
         level: startingLevel,
+        xpVersion,
         xp: 0,
         items: {
             health: 2,
@@ -430,6 +431,7 @@ export function createInitialProgress(startingLevel = 1) {
         weapon: 'starter',
         armor: { head: null, hands: null },
         specialization: null,
+        capturedPet: null,
         statPoints: Math.max(0, startingLevel - 1) * statPointsPerLevel,
         spellPoints: Math.max(0, startingLevel - 1) * spellPointsPerLevel,
         allocatedStats: {
@@ -446,6 +448,7 @@ export function createInitialProgress(startingLevel = 1) {
         },
         talents: {},
         trailQuest: normalizeTrailQuest(),
+        tutorialStep: null,
     };
 }
 
@@ -508,12 +511,14 @@ function normalizeProgress(saved, classKey) {
         items,
         armor,
         specialization: validSpec,
+        capturedPet: normalizeCapturedPet(saved.capturedPet, classKey),
         statPoints: statBudget - spentStats,
         spellPoints: spellBudget - spentSpells,
         allocatedStats,
         spells,
         talents,
         trailQuest: normalizeTrailQuest(saved.trailQuest),
+        tutorialStep: Number.isInteger(saved.tutorialStep) && saved.tutorialStep >= 0 && saved.tutorialStep <= 7 ? saved.tutorialStep : null,
     };
 }
 
@@ -524,7 +529,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null, clas
     let progress = createInitialProgress(Math.max(1, startingLevel));
 
     try {
-        const saved = JSON.parse(localStorage.getItem(key));
+        const saved = migrateXp(JSON.parse(localStorage.getItem(key)));
         const hasValidBase = saved
             && Number.isSafeInteger(saved.level)
             && saved.level >= 1
@@ -552,6 +557,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null, clas
         // Conserve la partie jouable si le stockage du navigateur est indisponible.
     }
 
+    serverProgress = migrateXp(serverProgress);
     if (serverProgress && Number.isSafeInteger(serverProgress.level) && serverProgress.level >= 1
         && serverProgress.level <= 9999 && Number.isSafeInteger(serverProgress.xp) && serverProgress.xp >= 0
         && serverProgress.xp < xpRequired(serverProgress.level)
@@ -565,6 +571,7 @@ export function loadProgress(key, startingLevel = 1, serverProgress = null, clas
  * Garde le cache local et déclenche l’enregistrement du niveau et de l’XP en base.
  */
 export function saveProgress(key, progress) {
+    progress.xpVersion = xpVersion;
     try {
         localStorage.setItem(key, JSON.stringify(progress));
     } catch {
@@ -754,7 +761,7 @@ export function resetTalents(progress) {
 /**
  * Retourne la liste des sorts actifs débloqués par les talents pour la barre de sorts.
  */
-export function getUnlockedActiveSpells(progress, classKey) {
+function unlockedSpells(progress, classKey) {
     const tree = talentTrees[classKey];
     if (!tree) return [];
     const unlocked = [...(starterTalents[classKey] ?? [])];
@@ -766,6 +773,14 @@ export function getUnlockedActiveSpells(progress, classKey) {
         }
     }
     return unlocked;
+}
+
+export function getUnlockedActiveSpells(progress, classKey) {
+    return unlockedSpells(progress, classKey).filter(talent => !talent.technique?.summon);
+}
+
+export function getUnlockedPetSpells(progress, classKey) {
+    return unlockedSpells(progress, classKey).filter(talent => talent.technique?.summon);
 }
 
 // Les armes changent l'auto-attaque sans changer la classe ni la portée des sorts.
@@ -798,8 +813,8 @@ export function computeCharacterStats(rules, progress, weaponBonus = 0) {
     const spec = classKey === 'warrior' && level >= 10 && specializationProfiles[progress.specialization]
         ? specializationProfiles[progress.specialization]
         : null;
-    const earlyLevels = spec ? Math.min(8, levelsGained) : levelsGained;
-    const specLevels = spec ? Math.max(0, levelsGained - 8) : 0;
+    const earlyLevels = spec ? Math.min(9, levelsGained) : levelsGained;
+    const specLevels = spec ? Math.max(0, levelsGained - 9) : 0;
 
     const attributes = {};
     for (const key of statKeys) {

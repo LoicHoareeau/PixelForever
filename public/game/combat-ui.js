@@ -1,3 +1,5 @@
+import { spellState, cooldownLabel, setSpellIcon } from './spell-state.js';
+import { skillCost, potionRestore, potionCooldownMs } from './balance.js';
 import { armorItems, armorSlots } from './armor.js';
 import {
     canInvestTalent,
@@ -28,28 +30,45 @@ function el(tag, className, text) {
     return node;
 }
 
-export function showLevelUpBannerUi(combat, now = 0) {
+export function showLevelUpBannerUi(combat, now = 0, count = 1) {
     const banner = combat.levelUpBanner ?? (typeof document !== 'undefined' ? document.getElementById('level-up-banner') : null);
-    combat.levelUpBannerUntil = now + 3800;
     if (!banner) return;
+    combat.levelUpBanner = banner;
+    combat.levelNotifications = (combat.levelNotifications ?? 0) + count;
+    if (combat.levelUpBannerUntil !== undefined) return;
+    combat.levelNotifications--;
+    combat.levelUpBannerUntil = now + 3000;
     banner.textContent = 'Vous avez prit un niveau';
     banner.hidden = false;
 }
 
 export function updateLevelUpBannerUi(combat, now) {
     const banner = combat.levelUpBanner;
-    if (!banner || banner.hidden) return;
+    if (!banner || combat.levelUpBannerUntil === undefined) return;
     if (now >= (combat.levelUpBannerUntil ?? 0)) {
-        banner.hidden = true;
+        if (!banner.hidden) {
+            banner.hidden = true;
+            combat.levelUpBannerUntil = now + 150;
+        } else {
+            combat.levelUpBannerUntil = undefined;
+            if (combat.levelNotifications > 0) showLevelUpBannerUi(combat, now, 0);
+        }
     }
 }
 
 export function updateCooldownsUi(combat, now) {
+    if (now < (combat.cooldownUiNext ?? 0) && combat.cooldownUiMana === combat.mana && combat.cooldownUiHealth === combat.health) return;
+    combat.cooldownUiNext = now + 80;
+    combat.cooldownUiMana = combat.mana; combat.cooldownUiHealth = combat.health;
     const slotMap = {
         basic: combat.buttons[0],
         special: combat.buttons[1],
     };
+    for (const button of combat.potionButtons ?? []) {
+        if (button.classList.contains('action-slot')) slotMap['potion-' + button.dataset.potion] = button;
+    }
     const unlocked = getUnlockedActiveSpells(combat.progress, combat.classKey);
+    const talents = new Map(unlocked.map(talent => [talent.slot, talent]));
     combat.talentSlotButtons.forEach((btn, idx) => {
         const talent = unlocked[idx];
         if (talent) {
@@ -63,14 +82,24 @@ export function updateCooldownsUi(combat, now) {
 
     for (const [key, btn] of Object.entries(slotMap)) {
         if (!btn) continue;
-        const info = combat.spellCooldowns.get(key);
-        const remaining = info ? Math.max(0, info.end - now) : 0;
-        const total = info ? Math.max(1, info.end - info.start) : 1;
-        const percent = remaining > 0 ? Math.ceil((100 * remaining) / total) : 0;
+        const info = key.startsWith('potion-')
+            ? { end: combat.potionReadyAt ?? 0, start: (combat.potionReadyAt ?? 0) - potionCooldownMs }
+            : combat.spellCooldowns.get(key);
+        const state = spellState(combat, key, now, talents.get(key));
+        const remaining = state.remaining;
+        btn.dataset.noResource = String(state.noResource);
+        btn.disabled = combat.scene?.hud?.editing ? false : state.unavailable;
+        const label = btn.querySelector('.slot-name')?.textContent ?? key;
+        btn.setAttribute('aria-label', label + (remaining ? ' · Recharge ' + cooldownLabel(remaining) : state.noResource ? ' · ' + combat.rules.resourceName + ' insuffisant(e), coût ' + state.cost : state.blocked || combat.health <= 0 ? ' · Action indisponible' : ' · Disponible'));
+        let unavailable = btn.querySelector('.slot-unavailable');
+        if (!unavailable) { unavailable = el('small', 'slot-unavailable'); btn.append(unavailable); }
+        unavailable.textContent = state.noResource ? combat.rules.resourceName + ' insuffisant(e)' : state.blocked ? 'Action en cours' : '';
+        const total = info ? Math.max(1, info.end - info.start) : Math.max(1, (combat.readyAt ?? 0) - (combat.cooldownStart ?? 0));
+        const percent = remaining > 0 ? Math.min(100, Math.ceil((100 * remaining) / total)) : 0;
         btn.style.setProperty('--cooldown', percent + '%');
         const cdBadge = btn.querySelector('.slot-cd');
         if (cdBadge) {
-            cdBadge.textContent = remaining > 0 ? (remaining / 1000).toFixed(1) + 's' : '';
+            cdBadge.textContent = remaining > 0 ? cooldownLabel(remaining) : '';
         }
     }
 }
@@ -91,6 +120,9 @@ export function refreshCastBarUi(combat, now) {
 }
 
 export function refreshActionSlotsUi(combat) {
+    const basicIcon = combat.progress.weapon === null ? 'unarmed_basic' : combat.classKey === 'mage' && combat.progress.weapon === 'rare' ? 'mage_staff' : combat.classKey === 'warrior' && combat.progress.weapon === 'axe' ? 'warrior_axe' : combat.classKey + '_basic';
+    setSpellIcon(combat.buttons[0].querySelector('.action-icon'), basicIcon);
+    setSpellIcon(combat.buttons[1].querySelector('.action-icon'), combat.classKey + '_special');
     const unlocked = getUnlockedActiveSpells(combat.progress, combat.classKey);
     combat.talentSlotButtons.forEach((button, index) => {
         const talent = unlocked[index];
@@ -101,15 +133,15 @@ export function refreshActionSlotsUi(combat) {
         if (!talent) {
             button.dataset.unlocked = 'false';
             button.title = `Emplacement ${index + 3} · Débloquer un sort dans l’arbre de talents (T)`;
-            if (iconEl) iconEl.className = 'action-icon icon-locked';
+            if (iconEl) { iconEl.className = 'action-icon icon-locked'; iconEl.style.backgroundImage = ''; iconEl.style.backgroundPosition = ''; delete iconEl.dataset.spellIcon; }
             if (nameEl) nameEl.textContent = 'Verrouillé';
             if (metaEl) metaEl.textContent = 'Talent (T)';
             return;
         }
         button.dataset.unlocked = 'true';
-        const cost = Math.max(1, Math.round((talent.manaCost ?? 6) * (1 - (combat.stats?.manaCostReduction ?? 0))));
+        const cost = skillCost(talent.manaCost ?? 6, combat.stats.maxMana, combat.stats.manaCostReduction);
         button.title = `${talent.name} · ${cost} ${combat.rules.resourceName.toLowerCase()} · ${talent.description}`;
-        if (iconEl) iconEl.className = `action-icon ${talent.icon}`;
+        if (iconEl) { iconEl.className = `action-icon ${talent.icon}`; setSpellIcon(iconEl, talent.slot); }
         if (nameEl) nameEl.textContent = talent.name;
         if (metaEl) metaEl.textContent = `${cost} ${combat.rules.resourceName.toLowerCase()}`;
     });
@@ -122,6 +154,9 @@ export function refreshInventoryUi(combat) {
 
     combat.potionButtons.forEach((button) => {
         button.disabled = combat.health === 0;
+        const type = button.dataset.potion;
+        const maximum = type === 'health' ? combat.stats.maxHealth : combat.stats.maxMana;
+        button.title = `Rend ${potionRestore(combat.rules[type + 'Restore'], maximum)} ${type === 'health' ? 'PV' : combat.rules.resourceName.toLowerCase()} · recharge partagée 15 s`;
     });
 
     combat.weaponButtons.forEach((button) => {
@@ -174,6 +209,8 @@ export function refreshInventoryUi(combat) {
     if (icon) {
         const style = combat.weaponStyle;
         icon.className = 'action-icon icon-' + (['axe', 'daggers', 'bow', 'grimoire'].includes(style) ? style : combat.rules.basicIcon ?? 'sword');
+        const key = combat.progress.weapon === null ? 'unarmed_basic' : style === 'axe' ? 'warrior_axe' : combat.classKey === 'mage' && combat.progress.weapon === 'rare' ? 'mage_staff' : combat.classKey + '_basic';
+        setSpellIcon(icon, key);
     }
     combat.buttons[0].title = combat.basicName
         + ' · ' + combat.basicWeapon.damage + ' dégâts'
@@ -312,6 +349,7 @@ export function renderTalentTreeUi(combat) {
 
             const kindSpan = el('span', 'talent-kind', talent.type === 'active' ? 'SORT' : 'PASSIF');
             const iconSpan = el('span', `action-icon ${talent.icon}`);
+            if (talent.type === 'active') setSpellIcon(iconSpan, talent.slot);
             iconSpan.setAttribute('aria-hidden', 'true');
             const rankSpan = el('span', 'talent-rank', `${rank}/${talent.maxRank}`);
             node.append(kindSpan, iconSpan, rankSpan);
@@ -350,6 +388,11 @@ export function renderTalentTreeUi(combat) {
 export function refreshTargetHudUi(combat) {
     if (!combat.targetHud) return;
     const target = combat.selectedMonster;
+    const portrait = combat.targetHud.querySelector?.('.target-portrait');
+    if (portrait && target?.portraitArt && portrait.dataset.art !== target.portraitArt) {
+        portrait.dataset.art = target.portraitArt;
+        portrait.style.backgroundImage = `url("${new URL('./val-des-saules/monsters/' + target.portraitArt + '.png', import.meta.url).href}")`;
+    }
     if (!target || !target.isAlive) {
         combat.targetHud.hidden = true;
         combat.targetHud.dataset.boss = 'false';

@@ -8,6 +8,7 @@ use App\Entity\PlayerCharacter;
 use App\Entity\User;
 use App\Game\Character;
 use App\Game\CharacterClass;
+use App\Game\GameAssets;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -83,6 +84,9 @@ final class CharacterController extends AbstractController
             $entities->persist($character);
             $entities->flush();
             $request->getSession()->set(self::SELECTED_CHARACTER, $character->getId());
+            $pending = $request->getSession()->get('tutorial_pending', []);
+            $pending[] = $character->getId();
+            $request->getSession()->set('tutorial_pending', $pending);
             $this->addFlash('success', 'Ton personnage est créé.');
 
             return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
@@ -111,8 +115,40 @@ final class CharacterController extends AbstractController
         return $this->redirectToRoute('game_play', status: Response::HTTP_SEE_OTHER);
     }
 
+    #[Route('/{id}/suppression', name: 'character_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    public function delete(int $id, Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    {
+        $character = $entities->getRepository(PlayerCharacter::class)->findOneBy(['id' => $id, 'owner' => $owner]);
+        if (!$character) {
+            throw $this->createNotFoundException();
+        }
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('delete_character_'.$id, $request->request->getString('_token'))) {
+                throw new AccessDeniedHttpException('Le formulaire a expiré.');
+            }
+
+            // SQLite désactive les cascades par défaut, contrairement à PostgreSQL sur Render.
+            $connection = $entities->getConnection();
+            if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SQLitePlatform) {
+                $connection->executeStatement('PRAGMA foreign_keys = ON');
+            }
+            $entities->remove($character);
+            $entities->flush();
+            $request->getSession()->set('tutorial_pending', array_values(array_diff($request->getSession()->get('tutorial_pending', []), [$id])));
+            if ($request->getSession()->get(self::SELECTED_CHARACTER) === $id) {
+                $request->getSession()->remove(self::SELECTED_CHARACTER);
+            }
+            $this->addFlash('success', 'Ton personnage a été supprimé.');
+
+            return $this->redirectToRoute('character_list', status: Response::HTTP_SEE_OTHER);
+        }
+
+        return $this->render('character/delete.html.twig', ['character' => $character]);
+    }
+
     #[Route('/jeu', name: 'game_play', methods: ['GET'])]
-    public function play(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities): Response
+    public function play(Request $request, #[CurrentUser] User $owner, EntityManagerInterface $entities, GameAssets $assets): Response
     {
         $session = $request->getSession();
         $selectedId = $session->get(self::SELECTED_CHARACTER);
@@ -131,12 +167,18 @@ final class CharacterController extends AbstractController
         [$basic, $special, $weapon, $basicIcon, $specialIcon, $rareName, $epicName, $rareIcon, $epicIcon, $usage] = match ($class) {
             CharacterClass::Warrior => ['Coup d’épée', 'Attaque chargée', 'Épée de fer', 'sword', 'charge', 'Lame des saules', 'Croc de Saphyr', 'blade', 'fang', 'Corps à corps'],
             CharacterClass::Mage => ['Trait arcanique', 'Boule de feu', 'Baguette de braise', 'bolt', 'fire', 'Bâton des saules', 'Sceptre de Saphyr', 'staff', 'wand', 'Corps à corps'],
-            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Grimoire de cendres', 'bolt', 'rune', 'Codex des saules', 'Codex de Saphyr', 'grimoire', 'grimoire', 'Grimoire · à distance'],
+            CharacterClass::Warlock => ['Trait d’ombre', 'Corruption', 'Essence de cendres', 'bolt', 'rune', 'Sceau des saules', 'Sceau de Saphyr', 'shadow-focus', 'shadow-focus', 'Focalisation d’ombre · à distance'],
             CharacterClass::Rogue => ['Coup de dague', 'Entaille venimeuse', 'Dagues de fer', 'sword', 'charge', 'Dagues des saules', 'Dagues de Saphyr', 'daggers', 'daggers', 'Dagues · corps à corps'],
             CharacterClass::Hunter => ['Flèche rapide', 'Tir perforant', 'Arc de frêne', 'bolt', 'charge', 'Arc des saules', 'Arc de Saphyr', 'bow', 'bow', 'Arc · à distance'],
         };
 
+        $pending = $session->get('tutorial_pending', []);
+        $showTutorial = in_array($character->getId(), $pending, true);
+        $session->set('tutorial_pending', array_values(array_diff($pending, [$character->getId()])));
+
         return $this->render('game/play.html.twig', [
+            ...$assets->forGame($request->getBasePath()),
+            'showTutorial' => $showTutorial,
             'character' => $character,
             'combat' => [
                 'classKey' => $class->value,
@@ -145,8 +187,8 @@ final class CharacterController extends AbstractController
                 'resourceName' => $class->resourceName(),
                 'range' => $class->attackRange(),
                 'specialRange' => $class === CharacterClass::Mage ? 15.0 : $class->attackRange(),
-                'wandDamageMultiplier' => 0.5,
-                'ranged' => $class->attackRange() > 1.5,
+                'wandDamageMultiplier' => 1.0,
+                'ranged' => !in_array($class, [CharacterClass::Warrior, CharacterClass::Rogue], true),
                 'basicDamage' => $class->damage(false),
                 'specialDamage' => $class->damage(true),
                 'basicName' => $basic,
@@ -161,7 +203,11 @@ final class CharacterController extends AbstractController
                 'manaRestore' => Character::MANA_POTION_RESTORE,
                 'weaponBonus' => Character::EQUIPPED_ATTACK_BONUS,
                 'level' => $character->getLevel(),
-                'progress' => ['level' => max(1, $character->getLevel()), 'xp' => $character->getExperience()],
+                'progress' => ['level' => max(1, $character->getLevel()), 'xp' => $character->getExperience(), 'xpVersion' => 2],
+                'characterId' => $character->getId(),
+                'chatUrl' => $this->generateUrl('character_chat', ['id' => $character->getId()]),
+                'worldUrl' => $this->generateUrl('character_world', ['id' => $character->getId()]),
+                'worldStreamUrl' => $this->generateUrl('character_realtime', ['id' => $character->getId()]),
                 'progressUrl' => $this->generateUrl('character_progress', ['id' => $character->getId()]),
                 'progressToken' => $this->container->get('security.csrf.token_manager')->getToken('character_progress_'.$character->getId())->getValue(),
                 'baseStats' => $class->baseStats(),
@@ -226,9 +272,10 @@ final class CharacterController extends AbstractController
         if (!is_string($data['_token'] ?? null) || !$this->isCsrfTokenValid('character_progress_'.$id, $data['_token'])) {
             return $this->json(['error' => 'Session de sauvegarde invalide.'], 403);
         }
+        if (($data['xpVersion'] ?? null) !== 2) return $this->json(['error' => 'Recharge le jeu pour actualiser le barème XP.'], 409);
         $level = $data['level'] ?? null;
         $xp = $data['xp'] ?? null;
-        if (!is_int($level) || $level < 1 || $level > 9999 || !is_int($xp) || $xp < 0 || $xp >= 100 + ($level - 1) * 50) {
+        if (!is_int($level) || $level < 1 || $level > 9999 || !is_int($xp) || $xp < 0 || $xp >= \App\Game\Balance::xpRequired($level)) {
             return $this->json(['error' => 'Niveau ou expérience invalide.'], 400);
         }
 
@@ -238,6 +285,6 @@ final class CharacterController extends AbstractController
             ->setParameters(['level' => $level, 'xp' => $xp, 'id' => $id, 'owner' => $owner])->execute();
         $entities->refresh($character);
 
-        return $this->json(['level' => $character->getLevel(), 'xp' => $character->getExperience()]);
+        return $this->json(['level' => $character->getLevel(), 'xp' => $character->getExperience(), 'xpVersion' => 2]);
     }
 }

@@ -23,7 +23,10 @@ const shield = 'icon-shield';
 
 const imp = active('summon_imp', 'Invoquer le diablotin', rune, 10, 4500,
     'Invoque un diablotin lanceur de flammes (incantation 1,2 s). Remplace ton familier actif.', { summon: 'imp', castMs: 1200, vfx: 'summon' });
-export const starterTalents = { warlock: [imp] };
+const tamingTrap = active('taming_trap', 'Trappe d’apprivoisement', 'icon-cold', 6, 20000,
+    'Neutralise une créature apprivoisable à 30 % de PV ou moins pendant 6 s. Les dégâts la libèrent. Puis W pour apprivoiser.',
+    { range: 7, tamingTrap: 6000, vfx: 'trap' });
+export const starterTalents = { warlock: [imp], hunter: [tamingTrap] };
 
 export const classTalents = {
     warlock: { branches: [
@@ -71,11 +74,11 @@ export const classTalents = {
             passive('h_forage', 'Instinct du pisteur', '+5 PV par rang.', 'icon-health'),
             active('spike_trap', 'Piège à pointes', 'icon-cold', 9, 7200, 'Des pointes jaillissent sous les ennemis proches de ta cible et les ralentissent.',
                 { range: 7, radius: 35, power: .67, slow: 2800, vfx: 'trap' })),
-        branch('falconry', 'Fauconnerie', 'Piqué & Marquage', '#c49772',
-            passive('h_bond', 'Lien du fauconnier', '+10 % de dégâts du faucon par rang.', arrow),
-            active('summon_hawk', 'Appel du faucon', arrow, 8, 4500, 'Appelle un faucon qui pique automatiquement sur les ennemis que tu engages.',
-                { summon: 'hawk', vfx: 'arrow_volley' }),
-            active('prey_mark', 'Marque de proie', arrow, 7, 7600, 'Ordonne un piqué et augmente les dégâts du faucon sur cette cible pendant six secondes.',
+        branch('falconry', 'Dompteur', 'Lien & Marquage', '#c49772',
+            passive('h_bond', 'Lien du dompteur', '+10 % de dégâts du familier apprivoisé par rang.', arrow),
+            active('summon_hawk', 'Soin du familier', 'icon-health', 8, 12000, 'Rend 30 % de ses PV au familier actif.',
+                { healPet: true, vfx: 'arrow_volley' }),
+            active('prey_mark', 'Marque de proie', arrow, 7, 7600, 'Augmente les dégâts du familier sur cette cible pendant six secondes.',
                 { range: 8, mark: true, power: .62, vfx: 'arrow_hit' })),
     ] },
 };

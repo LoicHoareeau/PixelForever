@@ -1,14 +1,22 @@
 # PixelForever — refonte des classes, de la progression et du monde partagé
 
-Cadrage du 20 novembre 2026, validé par l’utilisateur. La caméra ×2 est livrée ; les autres sections décrivent le travail restant. Le dépôt examiné est le checkout Expernet, `main`, commit `2ca4a10`. Les valeurs ci-dessous sont un point de départ de test, pas un équilibrage déjà démontré.
+Cadrage du 20 novembre 2026, validé par l’utilisateur. Livrés sur la branche de refonte : caméra ×2, neutralité des monstres N.1–10 et notification de niveau. Les autres sections décrivent le travail restant. Le dépôt examiné est le checkout Expernet, `main`, commit `2ca4a10`. Les valeurs ci-dessous sont un point de départ de test, pas un équilibrage déjà démontré.
 
 ## Résultat attendu
+
+État de reprise après intégration du lot `871d508` de `main` : portées d’auto-attaque 2,5/5/7, six caractéristiques, croissance priorisée, choix Rempart/Berserker au N.10, suppression des rangs de base avec remboursement et régénération par Esprit sont maintenant présents. Les identifiants internes sont `bulwark` (Rempart) et `berserker`. Les règles jouables figurent dans `GAME_DESIGN.md` ; les chiffres proposés ci-dessous ne remplacent pas ces règles.
+
+Le lot suivant ajoute l’apprivoisement, l’héritage des statistiques des familiers, la barre W/X/C et la fiche P. La créature apprivoisée est sauvegardée localement ; sa persistance serveur reste liée au futur profil complet.
+
+Le lot armes remplace les objets séparés des nouvelles classes. À la demande de révision visuelle, l’arc se porte verticalement au repos, les dagues sont raccourcies et le livre du Démoniste est supprimé. Sa magie est représentée par une aura sombre et violette, des volutes et une libération d’énergie. Les visages, cheveux et apparences sources sont conservés. Le départ de la flèche reste synchronisé à la poignée et à la décoche.
+
+Restent notamment : calibration des monstres, des ressources et des familiers, validation du temps de progression vers N.60, persistance du profil complet et monde partagé Symfony.
 
 Des armes tenues correctement dans les animations, un début de jeu où les ressources imposent de choisir ses compétences, cinq classes distinctes, une progression naturelle modérée et des combats exigeants contre des monstres jusqu’à deux ou trois niveaux supérieurs. Les personnages connectés doivent réellement partager la présence des joueurs, l’état des monstres et les récompenses de combat.
 
 ## 1. Sprites et caméra
 
-Régénérer les planches de classes avec une prise en main cohérente de l’arc, des dagues et du grimoire, dans chaque direction et pour chaque phase de marche/attaque. Les armes doivent suivre les mains et passer devant ou derrière le corps selon la pose, avec des pivots propres à l’objet. Vérifier les planches en mouvement, pas seulement une image immobile. Préserver les identités visuelles des personnages déjà appréciés et la cohérence PixelLab des décors.
+Régénérer les planches de classes avec une prise en main cohérente de l’arc et des dagues dans chaque direction. Pour le Démoniste, représenter directement la magie noire autour du personnage, sans livre visible. Vérifier le mouvement et les effets en jeu. Préserver les identités visuelles des personnages déjà appréciés et la cohérence PixelLab des décors.
 
 Proposition : zoom par défaut ×2, pixels nets et caméra toujours bornée au monde. Le réglage actuel est dans `public/game/exploration.js`, fonction `cameraZoom`, ligne 52 au commit examiné. `public/game/world.js:104` l’applique avec `cam.setZoom(...)`.
 
@@ -103,3 +111,15 @@ Conserver une branche dédiée et livrer des commits cohérents : rendu/caméra,
 Vérifications attendues : tests de migration, portée et ressources ; zéro régénération issue de l’intelligence ; spécialisation N.10 ; capture/refus d’un squelette ; coefficients de familiers avec équipement ; suppression/remboursement des anciens rangs ; comportement neutre des monstres N.1–10 ; notification ; simulation N.1–60 ; inspection visuelle des planches et de leurs mains ; deux sessions réelles contre un même monstre, déconnexion et récompense sans doublon.
 
 Actualiser les documents du dépôt selon le résultat effectivement livré. Le déploiement Render reste manuel comme demandé précédemment.
+
+## Avancement du 21 novembre 2026
+
+Livré dans le code : barème XP version 2, migration proportionnelle locale/SQL, simulation reproductible des cinq classes (151–178 min de référence), coûts à 28 % minimum, potions à 30 % avec recharge commune 15 s, baguette à pleine puissance, présence Symfony avec interpolation des personnages et bail par personnage.
+
+Non livré : autorité serveur des combats, monstres/PV/morts/captures partagés, attribution atomique des récompenses, XP de groupe, population et réapparition selon les joueurs actifs, profil complet en base. La présence visuelle seule ne constitue pas le monde partagé décrit à la section 6. Contrôle visuel à deux fenêtres restant : serveur local inaccessible depuis Edge.
+
+Ajout ciblé : Trappe d’apprivoisement de départ du Chasseur, touche 3, neutralisation 6 s puis W pour capturer, recharge 20 s. Réutilise les conditions existantes et reste locale au navigateur.
+
+Lot communication : quatre canaux de tchat Symfony (global/groupe/chuchotement/proximité), groupes privés sur invitation, compteurs de recharge et état visuel de ressource des sorts. Ce tchat ne livre pas les combats partagés ni l’XP de groupe. Illustrations des sorts remplacées seules selon le choix du propriétaire ; apparences des personnages conservées.
+
+Itération fluidité : cible 2 à 10 joueurs confirmée, cadence réseau corrigée, positions horodatées interpolées, événements d’animation rejoués localement, maintien des acteurs pendant les courts défauts réseau. Le lissage implique un tampon sur les acteurs distants ; les FPS réels et la capacité Render restent à mesurer, sans modifier le périmètre futur des combats partagés.
