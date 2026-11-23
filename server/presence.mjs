@@ -23,6 +23,7 @@ export function readTicket(token, secret, now = Date.now()) {
 }
 
 export function publicState(s, profile, now) {
+    if(s?.staff!==undefined&&typeof s.staff!=='boolean')throw new Error('Arme invalide');
     if (!s || !finite(s.x) || !finite(s.y) || s.x < 0 || s.x >= 4096 || s.y < 0 || s.y >= 4032
         || !directions.includes(s.facing) || typeof s.walking !== 'boolean' || typeof s.alive !== 'boolean'
         || !Number.isInteger(s.attackFrame) || s.attackFrame < -1 || s.attackFrame > 8 || typeof s.ranged !== 'boolean'
@@ -37,7 +38,7 @@ export function publicState(s, profile, now) {
     });
     return { id: profile.id, name: profile.name, skin: profile.skin, level: profile.level,
         x: s.x, y: s.y, facing: s.facing, walking: s.walking, alive: s.alive, attackFrame: s.attackFrame,
-        ranged: s.ranged, actions, updatedAt: time, visuals: s.visuals };
+        ranged: s.ranged, staff:Boolean(s.staff), actions, updatedAt: time, visuals: s.visuals };
 }
 
 export function createPresenceServer({ secret, port = 8081, host = '127.0.0.1' }) {

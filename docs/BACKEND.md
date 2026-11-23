@@ -87,3 +87,6 @@ Depuis le 22 novembre 2026, `POST /personnages/{id}/temps-reel` vérifie propri�
 ## Ressources visuelles du Voleur
 
 Le relais autorise la texture `rogue-vfx` dans les images de combat validées. Les effets restent cosmétiques et suivent les limites de taille et de fréquence existantes. Aucun nouveau champ de personnage ni migration. [Ressources et limites](VOLEUR_ART.md).
+## Apparence du Mage dans le monde partagé
+
+Le champ facultatif `staff` de présence est un booléen, validé par `WorldController` et `server/presence.mjs` ; son absence vaut `false` pour les clients précédents. Il indique uniquement quelle arme dessiner. Les images `mage-vfx` passent par la liste autorisée des visuels partagés. Ces champs ne changent ni les statistiques ni les récompenses et ne nécessitent aucune migration. Voir [les ressources du Mage](MAGE_ART.md).

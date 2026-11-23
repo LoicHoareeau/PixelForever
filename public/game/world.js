@@ -6,6 +6,7 @@ import { vfxFrameSize } from './combat-vfx.js';
 import { equippedWeaponStyles } from './equipped-art.js';
 import { loadHunterArt, createHunterArt, applyHunterArt } from './hunter-art.js';
 import { loadRogueArt, createRogueArt, applyRogueArt } from './rogue-art.js';
+import { loadMageArt, createMageArt, applyMageArt } from './mage-art.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -80,6 +81,7 @@ import { petKeys } from './pet-rules.js';
             this.load.setPath(assetPath);
             loadHunterArt(this);
             loadRogueArt(this);
+            loadMageArt(this);
             this.load.json('terrain', 'terrain.json');
             this.load.image('starter-town', 'bastion-de-braise.png');
             this.load.spritesheet('town-residents', 'bastion-habitants.png', { frameWidth: 48, frameHeight: 48 });
@@ -158,6 +160,7 @@ import { petKeys } from './pet-rules.js';
 
             createHunterArt(this);
             createRogueArt(this);
+            createMageArt(this);
             this.walkDistance = 0;
             this.lastWalkAt = -Infinity;
             const { x, y, facing } = starterSpawn;
@@ -746,7 +749,8 @@ import { petKeys } from './pet-rules.js';
                 origin = 56 / 64;
             }
             const customArt = (this.hunterArtReady && this.skin === 'hunter' && this.combat.weaponStyle === 'bow')
-                || (this.rogueArtReady && this.skin === 'rogue' && this.combat.weaponStyle === 'daggers');
+                || (this.rogueArtReady && this.skin === 'rogue' && this.combat.weaponStyle === 'daggers')
+                || (this.mageArtReady && this.skin === 'noe');
             if (!customArt
                 && (this.avatar.texture.key !== texture || this.avatar.frame.name !== frame)) this.avatar.setTexture(texture, frame).setOrigin(0.5, origin);
             this.avatar.setFlipX(flip).setPosition(Math.round(x), Math.round(y)).setDepth(y);
@@ -756,8 +760,11 @@ import { petKeys } from './pet-rules.js';
                 walking ? this.facing : gesture?.attack.facing ?? this.facing, walking, this.walkDistance,
                 gesture?.frame ?? -1, this.combat.weaponStyle);
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
+            if(this.mageArtReady && this.skin==='noe')applyMageArt(this.avatar,
+                walking?this.facing:gesture?.attack.facing??this.facing,walking,this.walkDistance,
+                gesture?.frame??-1,this.combat.progress.weapon==='rare',gesture?.attack.ranged??true);
             if (this.weaponSprite) {
-                if (integratedWeapon) {
+                if (integratedWeapon || (this.mageArtReady && this.skin==='noe')) {
                     this.weaponSprite.setVisible(false);
                     this.offHandSprite.setVisible(false);
                 } else this.renderArmament(gesture, walking, time);

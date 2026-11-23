@@ -92,3 +92,7 @@ Déployer ensemble `rogue-art.js`, `rogue-frames.js`, le dossier `public/game/va
 ## Ressources de la clairière
 
 La refonte jouable de la clairière utilise `clearing-props-v2.webp`, `clearing-extras-v1.webp` (et leurs atlas JSON), ainsi que `clearing-ground-v5.webp` dans `public/game/val-des-saules`, avec les modules `clearing-layout.js`, `clearing-style.js`, `regional-art.js` et `clearing-atmosphere.js`. La refonte HD du Cimetière utilise `cemetery-ground-v2.webp`, `cemetery-props-v2.webp` / `cemetery-props-v2.json` et le module `cemetery-art.js` (calque sol 2×, lanternes/piliers, lumières de cryptes/lanternes et VFX d’ambiance lunaire). Publier ces fichiers avec `world.js` et `clearing-art.js`. Le sanglier utilise désormais `monsters/boar-v2.png` avec `monster-art.js` et `monsters.js`, ainsi que `class-combat.js` pour sa marche et sa frappe en familier. Aucune migration de base n'est nécessaire. La validation locale ne déclenche pas un déploiement Render.
+
+## Déploiement de la refonte du Mage
+
+Publier ensemble `mage-art.js`, `mage-frames.js`, le dossier `public/game/val-des-saules/mage-v2/`, les trois templates de portrait, les modules de rendu et le relais autorisant `mage-vfx` et `staff`. Aucune migration de base et aucune génération d'images à lancer sur Render. Vérifier le commit réellement déployé sur le service, qui peut suivre une branche différente de `main`. [Vérifications détaillées](MAGE_ART.md).
