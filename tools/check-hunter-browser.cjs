@@ -5,10 +5,10 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 
 (async () => {
-    const skin=process.env.PIXEL_CHARACTER||'hunter';
+    const character=process.env.PIXEL_CHARACTER||'hunter',skin=character==='mage'?'noe':character;
     const checkClearing=process.env.PIXEL_CLEARING_CHECK==='1';
-    assert(['hunter','rogue'].includes(skin));
-    const fixture=process.env['PIXEL_'+skin.toUpperCase()+'_HTML'];
+    assert(['hunter','rogue','mage'].includes(character));
+    const fixture=process.env['PIXEL_'+character.toUpperCase()+'_HTML'];
     assert(fixture, 'Export the character fixture via tests/account_flow.php.');
     const html = await fs.readFile(fixture, 'utf8');
     const browser = await chromium.launch({ headless: true, executablePath: process.env.PIXEL_BROWSER_PATH || undefined });
@@ -55,16 +55,22 @@ const assert = require('node:assert/strict');
             });
             const guide = page.locator('#game-guide');
             if (await guide.evaluate(element=>element.open)) await guide.locator('form button').click();
-            if(skin==='rogue') {
-                assert((await page.locator('.hud-portrait').getAttribute('src')).includes('rogue-v2/portrait.webp'));
+            if(skin==='rogue'||character==='mage') {
+                assert((await page.locator('.hud-portrait').getAttribute('src')).includes(character+'-v2/portrait.webp'));
                 await page.waitForFunction(()=>document.querySelector('.hud-portrait').naturalWidth>0);
             }
         }
         for (const page of pages) await page.waitForFunction(()=>window.__hunterGame.scene.getScenes(true)[0].presence.players.size===1, null, {timeout:10000});
-        const result = await pages[0].evaluate(async ({skin,checkClearing}) => {
+        if(character==='mage'){
+            const previous=await pages[0].evaluate(()=>{const s=window.__hunterGame.scene.getScenes(true)[0];const p=s.combat.progress.weapon;s.combat.progress.weapon='rare';s.lastWalkAt=-Infinity;return p;});
+            await pages[1].waitForFunction(()=>[...window.__hunterGame.scene.getScenes(true)[0].presence.players.values()]
+                .some(player=>String(player.sprite.frame.name).startsWith('staff-')),null,{timeout:10000});
+            await pages[0].evaluate(previous=>{window.__hunterGame.scene.getScenes(true)[0].combat.progress.weapon=previous;},previous);
+        }
+        const result = await pages[0].evaluate(async ({skin,character,checkClearing}) => {
             const s = window.__hunterGame.scene.getScenes(true)[0]; s.scene.pause();
             window.__mapTestScene=s;
-            const windup=skin==='hunter'?180:140, weaponStyle=skin==='hunter'?'bow':'daggers';
+            const windup=skin==='rogue'?140:180, weaponStyle=skin==='hunter'?'bow':character==='mage'?'wand':'daggers';
             const directions=['east','south-east','south','south-west','west','north-west','north','north-east'];
             const result=[];
             for (const facing of directions) {
@@ -77,12 +83,12 @@ const assert = require('node:assert/strict');
                 for(let n=0;n<8;n++) {
                     const now=1000+n*20;
                     s.walkDistance=n*7;s.lastWalkAt=now;
-                    s.combat.attackVisual={facing,weaponStyle,ranged:skin==='hunter',start:1000,castMs:windup,end:windup+1000};
+                    s.combat.attackVisual={facing,weaponStyle,ranged:skin!=='rogue',start:1000,castMs:windup,end:windup+1000};
                     s.renderAvatar(now);movingShots.add(s.avatar.frame.name);
                 }
                 const shots=new Set();s.lastWalkAt=-Infinity;
                 for(let n=0;n<9;n++) {
-                    s.combat.attackVisual={facing,weaponStyle,ranged:skin==='hunter',start:0,castMs:windup,end:windup};
+                    s.combat.attackVisual={facing,weaponStyle,ranged:skin!=='rogue',start:0,castMs:windup,end:windup};
                     s.renderAvatar(n<4?n*windup/4:windup+(n-4)*42);
                     shots.add(s.avatar.frame.name);
                 }
@@ -98,6 +104,31 @@ const assert = require('node:assert/strict');
                 vfx.push(s.combat.vfx.images().map(image=>({texture:image.texture.key,frame:Number(image.frame.name)})));
             }
             const remote=s.presence.players.values().next().value;
+            const staff=[];
+            if(character==='mage'){
+                const saved=s.combat.progress.weapon;s.combat.progress.weapon='rare';
+                for(const facing of directions){
+                    s.facing=facing;
+                    for(const mode of ['walk','cast','strike']){
+                        const frames=new Set();
+                        for(let n=0;n<8;n++){
+                            const now=n<4?n*windup/4:windup+(n-4)*42;
+                            s.walkDistance=n*7;s.lastWalkAt=mode==='walk'?now:-Infinity;
+                            s.combat.attackVisual={facing,weaponStyle:'wand',ranged:mode!=='strike',start:0,castMs:windup,end:windup};
+                            s.renderAvatar(now);frames.add(s.avatar.frame.name);
+                        }
+                        staff.push({facing,mode,frames:[...frames]});
+                    }
+                }
+                s.combat.progress.weapon=saved;
+                for(let phase=0;phase<6;phase++){
+                    s.combat.vfx.begin();
+                    ['mage-firebolt','mage-fire-wall','mage-fire-whirl','mage-arcane','mage-frost-nova','mage-ice-armor'].forEach((kind,i)=>
+                        s.combat.vfx.play(kind,s.position.x+(i%3-1)*40,s.position.y-55+Math.floor(i/3)*30,(phase+.1)/6,.3));
+                    vfx.push(s.combat.vfx.images().map(image=>({texture:image.texture.key,frame:Number(image.frame.name)})));
+                }
+                s.combat.attackVisual=null;s.facing='south-east';s.lastWalkAt=-Infinity;s.renderAvatar(1000);
+            }
             let clearing=null;
             if(checkClearing){
                 const {clearingTrail,clearingGlades,clearingScenery}=await import('/game/clearing-layout.js');
@@ -133,16 +164,26 @@ const assert = require('node:assert/strict');
                 clearing.boar.petTexture=s.combat.familiar.actor.texture.key;
                 s.combat.familiar.recalled=true;s.combat.progress.capturedPet=captured;
             }
-            return {poses:result,vfx,clearing,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
+            return {poses:result,vfx,staff,clearing,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
                 maxTexture: s.game.renderer.gl?.getParameter(s.game.renderer.gl.MAX_TEXTURE_SIZE)};
-        },{skin,checkClearing});
+        },{skin,character,checkClearing});
         assert.equal(result.skin,skin); assert.equal(result.failed,0);
         for(const pose of result.poses) {
             assert.equal(pose.steps,8);assert.equal(pose.shots,8);assert.equal(pose.flip,false);assert.equal(pose.origin,1);
             assert.deepEqual(pose.movingShots,Array.from({length:8},(_,i)=>'walk-'+i));
-            assert(pose.textures.every(t=>t.startsWith(skin+'-v2-')));assert(pose.scale>0&&pose.scale<1);
+            assert(pose.textures.every(t=>t.startsWith(character+'-v2-')));assert(pose.scale>0&&pose.scale<1);
         }
-        assert(result.remoteTexture.startsWith(skin+'-v2-'));
+        assert(result.remoteTexture.startsWith(character+'-v2-'));
+        if(character==='mage'){
+            assert.equal(result.staff.length,24);
+            for(const pose of result.staff){
+                const prefix=pose.mode==='walk'?'staff-walk-':pose.mode==='cast'?'staff-cast-':'staff-strike-';
+                assert.deepEqual(pose.frames,Array.from({length:8},(_,n)=>prefix+n));
+            }
+            for(const [phase,effects] of result.vfx.entries()){
+                assert.equal(effects.length,6);effects.forEach((fx,row)=>{assert.equal(fx.texture,'mage-vfx');assert.equal(fx.frame,row*6+phase);});
+            }
+        }
         if(skin==='rogue') for(const [phase,effects] of result.vfx.entries()) {
             assert.equal(effects.length,4);
             effects.forEach((effect,row)=>{assert.equal(effect.texture,'rogue-vfx');assert.equal(effect.frame,row*4+phase);});

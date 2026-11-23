@@ -853,7 +853,7 @@ export class TrainingCombat {
         if (slotKey !== 'basic' && slotKey !== 'special' && this.pending?.kind !== 'classCast') {
             this.attackVisual = {
                 start: now, end: now + 210, castMs: 180,
-                ranged: this.ranged, facing: this.scene.facing,
+                ranged: this.classKey==='mage'||this.ranged, facing: this.scene.facing,
             };
         }
     }

@@ -69,7 +69,8 @@ final class WorldController extends AbstractController
             || !in_array($state['facing'] ?? null, $directions, true)
             || !is_bool($state['walking'] ?? null) || !is_bool($state['alive'] ?? null)
             || !is_int($state['attackFrame'] ?? null) || $state['attackFrame'] < -1 || $state['attackFrame'] > 8
-            || !is_bool($state['ranged'] ?? null)) {
+            || !is_bool($state['ranged'] ?? null)
+            || (array_key_exists('staff', $state) && !is_bool($state['staff']))) {
             return $this->json(['error' => 'Présence invalide.'], 400);
         }
         $actions = $state['actions'] ?? [];
@@ -88,7 +89,7 @@ final class WorldController extends AbstractController
         $public = ['id' => $id, 'name' => $character->getName(), 'skin' => $character->getClass()->skin(),
             'level' => $character->getLevel(), 'x' => (float) $state['x'], 'y' => (float) $state['y'],
             'facing' => $state['facing'], 'walking' => $state['walking'], 'alive' => $state['alive'],
-            'attackFrame' => $state['attackFrame'], 'ranged' => $state['ranged']];
+            'attackFrame' => $state['attackFrame'], 'ranged' => $state['ranged'], 'staff' => $state['staff'] ?? false];
         $connection = $entities->getConnection();
         $now = microtime(true);
         $result = $connection->transactional(function ($db) use ($id, $lease, $public, $now, $data, $actions): array {

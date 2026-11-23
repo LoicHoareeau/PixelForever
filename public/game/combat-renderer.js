@@ -1,5 +1,6 @@
 import { drawInfernoBeam } from './combat-vfx.js';
 import { bowGrip } from './equipped-art.js';
+import { mageEffect } from './mage-art.js';
 import { warlockAuraState, drawWarlockAura } from './warlock-vfx.js';
 import { malakorIgnitionMs, malakorRageProgress, malakorSurgeMs, malakorWave, malakorWaveImpactMs } from './malakor.js';
 
@@ -23,18 +24,22 @@ export function drawEffectsView(combat, now) {
     const darkAura = warlockAuraState(combat,now);
     const rogueVenom = combat.classKey === 'rogue' && combat.scene.rogueArtReady && combat.health > 0
         && now < (combat.rogueVenomUntil ?? 0);
+    const iceArmor = combat.classKey==='mage'&&combat.scene.mageArtReady&&combat.health>0
+        &&(combat.progress.talents.m_ice_armor??0)>0;
     const enemyAttacking = combat.monsters.some((monster) => monster.isAlive && (
         (monster.isBoss && (monster.phase === 3 || monster.trial || monster.echo))
         || (monster.attackVisual && (monster.attackVisual.projectile || now < monster.attackVisual.end + recoveryMs))
     ));
     combat.spellEffects = (combat.spellEffects ?? []).filter((fx) => now - fx.start < fx.duration);
-    if (!combat.pending && !combat.recovery && combat.impacts.length === 0 && combat.spellEffects.length === 0 && !enemyAttacking && !darkAura && !rogueVenom) {
+    if (!combat.pending && !combat.recovery && combat.impacts.length === 0 && combat.spellEffects.length === 0 && !enemyAttacking && !darkAura && !rogueVenom && !iceArmor) {
         combat.effect.clear();
         return;
     }
 
     combat.effect.clear();
     if (darkAura) drawWarlockAura(combat,darkAura,now);
+    if(iceArmor)combat.vfx?.play('mage-ice-armor',combat.scene.position.x,combat.scene.position.y-20,
+        combat.scene.motionPreference.matches ? .42 : (now%1200)/1200,.44,0,.34);
     if (rogueVenom) {
         const { x, y } = combat.scene.position;
         const progress = combat.scene.motionPreference.matches ? .4 : (now % 400) / 400;
@@ -102,7 +107,7 @@ export function drawEffectsView(combat, now) {
         if (attack.projectile === 'arrow' && !released) return;
         const size = attack.special ? .84 : .43;
         const hunterArrow = attack.projectile === 'arrow' && combat.scene.hunterArtReady;
-        combat.vfx?.play(hunterArrow ? 'hunter-arrow' : attack.projectile ?? (attack.special ? 'firebolt' : 'arcane'), x, y,
+        combat.vfx?.play(hunterArrow ? 'hunter-arrow' : mageEffect(combat,attack.projectile ?? (attack.special ? 'firebolt' : 'arcane')), x, y,
             still ? .4 : (elapsed % 220) / 220, (released ? size : size * .44) * (hunterArrow ? .55 : 1), angle, released ? .94 : .78);
     } else {
         combat.drawMelee(attack, progress, true);
@@ -153,20 +158,26 @@ export function drawSpellEffectsView(combat, now) {
             const dx = fx.targetX - fx.x;
             const dy = fx.targetY - fx.y;
             const angle = Math.atan2(dy, dx);
+            if(combat.classKey==='mage'&&combat.scene.mageArtReady){
+                const travel=still?1:Math.min(1,progress*3);
+                if(travel<1)combat.vfx.play('mage-arcane',fx.x+dx*travel,fx.y+dy*travel,pose,.35,angle,alpha);
+                else combat.vfx.play('mage-arcane',fx.targetX,fx.targetY,pose,.65,0,alpha);
+                break;
+            }
             const extension = still ? 1 : Math.min(1, .12 + progress * 3.6);
             const width = .90;
             if (progress < .8) {
-                combat.vfx.play('arcane_stream', fx.x + dx * extension / 2, fx.y + dy * extension / 2,
+                combat.vfx.play(mageEffect(combat,'arcane_stream'), fx.x + dx * extension / 2, fx.y + dy * extension / 2,
                     pose, width, angle, alpha, Math.max(.15, Math.hypot(dx, dy) * extension / (116 * width)));
             }
-            if (extension === 1) combat.vfx.play('arcane_burst', fx.targetX, fx.targetY, pose, .86, 0, alpha);
+            if (extension === 1) combat.vfx.play(mageEffect(combat,'arcane_burst'), fx.targetX, fx.targetY, pose, .86, 0, alpha);
             break;
         }
         case 'fire_whirl':
-            combat.vfx.play('vortex', fx.x, fx.y - 25, pose, radius / 39, 0, alpha);
+            combat.vfx.play(mageEffect(combat,'vortex'), fx.x, fx.y - 25, pose, radius / 39, 0, alpha);
             break;
         case 'frost_nova':
-            combat.vfx.play('frost', fx.x, fx.y - 6, pose, radius / 41, 0, alpha);
+            combat.vfx.play(mageEffect(combat,'frost'), fx.x, fx.y - 6, pose, radius / 41, 0, alpha);
             break;
         case 'shield_wave':
             combat.vfx.play('ward', fx.x, fx.y, pose, radius / 36, 0, alpha);
@@ -175,7 +186,7 @@ export function drawSpellEffectsView(combat, now) {
             combat.vfx.play('gilded_spin', fx.x, fx.y + 2, pose, radius / 32, 0, alpha);
             break;
         case 'fire_wall':
-            combat.vfx.play('flame', fx.x, fx.y - 18, pose, radius / 47, 0, alpha, 1.10);
+            combat.vfx.play(mageEffect(combat,'flame'), fx.x, fx.y - 18, pose, radius / 47, 0, alpha, 1.10);
             break;
         case 'obsidian_impact':
             combat.vfx.play('slash', fx.x, fx.y - 5, pose, radius / 42, fx.angle, alpha);
@@ -197,7 +208,7 @@ export function drawSpellEffectsView(combat, now) {
             combat.vfx.play('seismic', fx.x, fx.y - radius / 4, pose, radius / 43, 0, alpha);
             break;
         case 'fireball_burst':
-            combat.vfx.play('fire_burst', fx.x, fx.y - 18, pose, 1.03, 0, alpha);
+            combat.vfx.play(mageEffect(combat,'fire_burst'), fx.x, fx.y - 18, pose, 1.03, 0, alpha);
             break;
         case 'heavy_slash':
             combat.vfx.play('ward', fx.x, fx.y, pose, .43, 0, alpha * .85);

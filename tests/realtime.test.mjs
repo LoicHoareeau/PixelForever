@@ -16,6 +16,12 @@ const monster = { id: 'monster-1', texture: 'boar-motion', frame: 37, x: 80, y: 
 const state = () => ({ x: 100, y: 100, facing: 'east', walking: true, alive: true, attackFrame: -1,
     ranged: false, actions: [], visuals: { sprites: [monster], graphics: [[['fillStyle', 0xff0000, 1], ['fillRect', 75, 95, 10, 2]], []] } });
 
+test('le relais transmet le bâton du Mage et refuse une valeur de type invalide',()=>{
+    assert.equal(publicState({...state(),staff:true},profile(1),Date.now()).staff,true);
+    assert.equal(publicState(state(),profile(1),Date.now()).staff,false);
+    assert.throws(()=>publicState({...state(),staff:'yes'},profile(1),Date.now()));
+});
+
 test('les tickets signés expirent et les états ne divulguent ni bail ni attributs de compte', () => {
     const p = profile(1);
     assert.equal(readTicket(ticket(p), secret).id, 1);

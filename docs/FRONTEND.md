@@ -147,6 +147,10 @@ Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement
 
 `WorldPresence` ouvre une connexion WebSocket sous la même origine et renouvelle son ticket toutes les 20 s. Les mouvements et les images de combat sont envoyés toutes les 50 ms. `RemoteMotion(50)` interpole les déplacements avec un tampon court adapté à la latence ; les tracés du combat restent ceux du moteur existant. Les enregistrements et objets distants sont libérés à l’arrêt de la scène. Une reconnexion conserve un état explicite. [Vérifications à deux sessions](VISIBILITE-COMBATS.md).
 
+## Mage : animations et effets
+
+Le Mage utilise désormais `mage-art.js`, `mage-frames.js` et les atlas `mage-v2` pour ses huit orientations, ses deux armes et ses six VFX. La marche reste prioritaire en mouvement ; ses portraits sont actualisés sans toucher aux icônes de sorts. [Détails et reconstruction](MAGE_ART.md).
+
 ## Voleur : animation et effets
 
 Le Voleur à deux dagues utilise huit orientations dessinées et quatre effets animés dans les atlas `rogue-v2`. Sa marche reste prioritaire en déplacement et son portrait utilise le même dessin. [Préparation, détails et vérifications](VOLEUR_ART.md).
