@@ -4,6 +4,8 @@ Le projet utilise un conteneur PHP 8.2 / Apache. Le `Dockerfile` installe les d�
 
 ## Branche Git et déploiement
 
+L’étape Docker `checks` inclut `tools/mage-sprite-bounds.cjs`, utilisé par le test des découpes du Mage. Ce fichier est autorisé dans `.dockerignore` et copié uniquement dans l’étape de vérification ; il n’est pas nécessaire dans l’image de production.
+
 La révision de magie noire ajoute `warlock-vfx.js` et `items/shadow-focus.png`, avec les nouvelles planches des trois classes et les libellés du contrôleur. Déployer cet ensemble avec `equipped-art.js`, `combat.js` et `combat-renderer.js`. Aucun changement de schéma de données n’est requis.
 
 Le lot armes ajoute neuf PNG équipés dans les dossiers `hunter`, `rogue` et `warlock`, ainsi que le module `equipped-art.js`. Publier ces fichiers avec les modifications de `world.js`, `combat.js` et `combat-renderer.js`. Les planches sont déjà générées et versionnées : aucun générateur GD ni migration n’est requis sur Render pour les servir.
