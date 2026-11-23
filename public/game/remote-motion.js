@@ -90,7 +90,7 @@ export class RemoteMotion {
             if (elapsed < 0 || elapsed >= end || found && start < found.start) continue;
             const frame = elapsed < windup ? Math.min(3, Math.floor(4 * elapsed / windup))
                 : Math.min(8, 4 + Math.floor(5 * (elapsed - windup) / 210));
-            found = { start, frame, ranged, facing };
+            found = { start, frame, ranged, facing, windup };
         }
         return found;
     }

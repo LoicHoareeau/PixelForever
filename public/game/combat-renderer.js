@@ -105,10 +105,13 @@ export function drawEffectsView(combat, now) {
         const angle = Math.atan2(target.sprite.y - 12 - attack.y, target.sprite.x - attack.x);
         const released = elapsed >= attack.castMs;
         if (attack.projectile === 'arrow' && !released) return;
-        const size = attack.special ? .84 : .43;
+        const mage = combat.classKey==='mage'&&combat.scene.mageArtReady;
+        const size = mage ? (attack.special ? .5 : .25) : (attack.special ? .84 : .43);
         const hunterArrow = attack.projectile === 'arrow' && combat.scene.hunterArtReady;
-        combat.vfx?.play(hunterArrow ? 'hunter-arrow' : mageEffect(combat,attack.projectile ?? (attack.special ? 'firebolt' : 'arcane')), x, y,
-            still ? .4 : (elapsed % 220) / 220, (released ? size : size * .44) * (hunterArrow ? .55 : 1), angle, released ? .94 : .78);
+        const kind=hunterArrow?'hunter-arrow':mageEffect(combat,attack.projectile??(attack.special?'firebolt':'arcane'));
+        const cycle=still ? .4 : (elapsed%220)/220;
+        const phase=kind==='mage-firebolt'?cycle*3/6:kind==='mage-arcane'?cycle*2/6:cycle;
+        combat.vfx?.play(kind,x,y,phase,(released ? size : size * .44) * (hunterArrow ? .55 : 1), angle, released ? .94 : .78);
     } else {
         combat.drawMelee(attack, progress, true);
     }
@@ -160,8 +163,8 @@ export function drawSpellEffectsView(combat, now) {
             const angle = Math.atan2(dy, dx);
             if(combat.classKey==='mage'&&combat.scene.mageArtReady){
                 const travel=still?1:Math.min(1,progress*3);
-                if(travel<1)combat.vfx.play('mage-arcane',fx.x+dx*travel,fx.y+dy*travel,pose,.35,angle,alpha);
-                else combat.vfx.play('mage-arcane',fx.targetX,fx.targetY,pose,.65,0,alpha);
+                if(travel<1)combat.vfx.play('mage-arcane',fx.x+dx*travel,fx.y+dy*travel,(pose%1)*2/6,.25,angle,alpha);
+                else combat.vfx.play('mage-arcane',fx.targetX,fx.targetY,.5+pose*.5,.5,0,alpha);
                 break;
             }
             const extension = still ? 1 : Math.min(1, .12 + progress * 3.6);
@@ -208,7 +211,9 @@ export function drawSpellEffectsView(combat, now) {
             combat.vfx.play('seismic', fx.x, fx.y - radius / 4, pose, radius / 43, 0, alpha);
             break;
         case 'fireball_burst':
-            combat.vfx.play(mageEffect(combat,'fire_burst'), fx.x, fx.y - 18, pose, 1.03, 0, alpha);
+            if(combat.classKey==='mage'&&combat.scene.mageArtReady)
+                combat.vfx.play('mage-firebolt',fx.x,fx.y-18,.5+pose*.5,.65,0,alpha);
+            else combat.vfx.play('fire_burst', fx.x, fx.y - 18, pose, 1.03, 0, alpha);
             break;
         case 'heavy_slash':
             combat.vfx.play('ward', fx.x, fx.y, pose, .43, 0, alpha * .85);

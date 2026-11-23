@@ -151,6 +151,8 @@ Le badge numérique `.world-online-count`, en haut au centre, affiche uniquement
 
 Le Mage utilise désormais `mage-art.js`, `mage-frames.js` et les atlas `mage-v2` pour ses huit orientations, ses deux armes et ses six VFX. La marche reste prioritaire en mouvement ; ses portraits sont actualisés sans toucher aux icônes de sorts. [Détails et reconstruction](MAGE_ART.md).
 
+Les cycles du Mage comportent seize poses. Leur ancrage suit les bottes réelles ; la marche avance tous les 3,5 pixels sans changer la vitesse du joueur. Les attaques locales et distantes utilisent le temps réel de préparation et de récupération. Le projectile conserve ses dessins de vol jusqu'à l'impact.
+
 ## Voleur : animation et effets
 
 Le Voleur à deux dagues utilise huit orientations dessinées et quatre effets animés dans les atlas `rogue-v2`. Sa marche reste prioritaire en déplacement et son portrait utilise le même dessin. [Préparation, détails et vérifications](VOLEUR_ART.md).

@@ -72,24 +72,43 @@ const assert = require('node:assert/strict');
             window.__mapTestScene=s;
             const windup=skin==='rogue'?140:180, weaponStyle=skin==='hunter'?'bow':character==='mage'?'wand':'daggers';
             const directions=['east','south-east','south','south-west','west','north-west','north','north-east'];
+            const count=character==='mage'?16:8,walkStep=56/count,half=count/2;
+            let anchorError=0;
+            const checkedFeet=new Map();
+            function checkFeet(){
+                if(character!=='mage')return;
+                const sprite=s.avatar,frame=sprite.frame,key=sprite.texture.key+':'+frame.name;
+                let foot=checkedFeet.get(key);
+                if(!foot){
+                    const canvas=document.createElement('canvas');canvas.width=frame.cutWidth;canvas.height=frame.cutHeight;
+                    const ctx=canvas.getContext('2d');ctx.drawImage(frame.source.image,frame.cutX,frame.cutY,frame.cutWidth,frame.cutHeight,0,0,canvas.width,canvas.height);
+                    const {data}=ctx.getImageData(0,0,canvas.width,canvas.height);
+                    let left=canvas.width,right=0;
+                    for(let y=Math.floor(canvas.height*.88);y<canvas.height;y++)for(let x=0;x<canvas.width;x++)
+                        if(data[(y*canvas.width+x)*4+3]>160){left=Math.min(left,x);right=Math.max(right,x);}
+                    if(right<left)throw new Error('Boots missing in '+key);
+                    foot=(left+right)/2;checkedFeet.set(key,foot);
+                }
+                anchorError=Math.max(anchorError,Math.abs((foot-sprite.originX*frame.cutWidth)*sprite.scaleX));
+            }
             const result=[];
             for (const facing of directions) {
                 s.facing=facing; const textures=new Set(), steps=new Set();
-                for(let n=0;n<8;n++) {
-                    s.combat.attackVisual=null;s.walkDistance=n*7;s.lastWalkAt=100;s.renderAvatar(100);
+                for(let n=0;n<count;n++) {
+                    s.combat.attackVisual=null;s.walkDistance=n*walkStep;s.lastWalkAt=100;s.renderAvatar(100);checkFeet();
                     steps.add(s.avatar.frame.name); textures.add(s.avatar.texture.key);
                 }
                 const movingShots=new Set();
-                for(let n=0;n<8;n++) {
+                for(let n=0;n<count;n++) {
                     const now=1000+n*20;
-                    s.walkDistance=n*7;s.lastWalkAt=now;
+                    s.walkDistance=n*walkStep;s.lastWalkAt=now;
                     s.combat.attackVisual={facing,weaponStyle,ranged:skin!=='rogue',start:1000,castMs:windup,end:windup+1000};
-                    s.renderAvatar(now);movingShots.add(s.avatar.frame.name);
+                    s.renderAvatar(now);checkFeet();movingShots.add(s.avatar.frame.name);
                 }
                 const shots=new Set();s.lastWalkAt=-Infinity;
-                for(let n=0;n<9;n++) {
+                for(let n=0;n<(character==='mage'?16:9);n++) {
                     s.combat.attackVisual={facing,weaponStyle,ranged:skin!=='rogue',start:0,castMs:windup,end:windup};
-                    s.renderAvatar(n<4?n*windup/4:windup+(n-4)*42);
+                    s.renderAvatar(n<half?n*windup/half:windup+(n-half)*210/(character==='mage'?8:5));checkFeet();
                     shots.add(s.avatar.frame.name);
                 }
                 result.push({facing,steps:steps.size,movingShots:[...movingShots],shots:shots.size,textures:[...textures],flip:s.avatar.flipX,scale:s.avatar.scaleX,
@@ -111,11 +130,11 @@ const assert = require('node:assert/strict');
                     s.facing=facing;
                     for(const mode of ['walk','cast','strike']){
                         const frames=new Set();
-                        for(let n=0;n<8;n++){
-                            const now=n<4?n*windup/4:windup+(n-4)*42;
-                            s.walkDistance=n*7;s.lastWalkAt=mode==='walk'?now:-Infinity;
+                        for(let n=0;n<count;n++){
+                            const now=n<half?n*windup/half:windup+(n-half)*210/half;
+                            s.walkDistance=n*walkStep;s.lastWalkAt=mode==='walk'?now:-Infinity;
                             s.combat.attackVisual={facing,weaponStyle:'wand',ranged:mode!=='strike',start:0,castMs:windup,end:windup};
-                            s.renderAvatar(now);frames.add(s.avatar.frame.name);
+                            s.renderAvatar(now);checkFeet();frames.add(s.avatar.frame.name);
                         }
                         staff.push({facing,mode,frames:[...frames]});
                     }
@@ -164,25 +183,52 @@ const assert = require('node:assert/strict');
                 clearing.boar.petTexture=s.combat.familiar.actor.texture.key;
                 s.combat.familiar.recalled=true;s.combat.progress.capturedPet=captured;
             }
-            return {poses:result,vfx,staff,clearing,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
+            return {poses:result,vfx,staff,anchorError,clearing,skin:s.skin,failed:s.load.totalFailed,remoteTexture:remote.sprite.texture.key,
                 maxTexture: s.game.renderer.gl?.getParameter(s.game.renderer.gl.MAX_TEXTURE_SIZE)};
         },{skin,character,checkClearing});
         assert.equal(result.skin,skin); assert.equal(result.failed,0);
         for(const pose of result.poses) {
-            assert.equal(pose.steps,8);assert.equal(pose.shots,8);assert.equal(pose.flip,false);assert.equal(pose.origin,1);
-            assert.deepEqual(pose.movingShots,Array.from({length:8},(_,i)=>'walk-'+i));
+            assert.equal(pose.steps,character==='mage'?16:8);assert.equal(pose.shots,character==='mage'?16:8);assert.equal(pose.flip,false);assert.equal(pose.origin,1);
+            assert.deepEqual(pose.movingShots,Array.from({length:character==='mage'?16:8},(_,i)=>'walk-'+i));
             assert(pose.textures.every(t=>t.startsWith(character+'-v2-')));assert(pose.scale>0&&pose.scale<1);
         }
         assert(result.remoteTexture.startsWith(character+'-v2-'));
         if(character==='mage'){
+            assert(result.anchorError<.5,'Les pieds glissent par rapport à la position du joueur');
             assert.equal(result.staff.length,24);
             for(const pose of result.staff){
                 const prefix=pose.mode==='walk'?'staff-walk-':pose.mode==='cast'?'staff-cast-':'staff-strike-';
-                assert.deepEqual(pose.frames,Array.from({length:8},(_,n)=>prefix+n));
+                assert.deepEqual(pose.frames,Array.from({length:16},(_,n)=>prefix+n));
             }
             for(const [phase,effects] of result.vfx.entries()){
                 assert.equal(effects.length,6);effects.forEach((fx,row)=>{assert.equal(fx.texture,'mage-vfx');assert.equal(fx.frame,row*6+phase);});
             }
+            await pages[0].bringToFront();
+            result.movement=await pages[0].evaluate(async()=>{
+                const s=window.__mapTestScene;
+                let start=null;
+                for(let y=136;y<800&&!start;y+=16)for(let x=136;x<800&&!start;x+=16)
+                    if(Array.from({length:121},(_,n)=>s.canStand(x+n*2,y)).every(Boolean))start={x,y};
+                if(!start)throw new Error('No clear movement corridor');
+                s.position.set(start.x,start.y);s.combat.attackVisual=null;s.walkDistance=0;
+                s.scene.resume();s.heldKeys.add('ArrowRight');
+                const intervals=[],steps=[],frames=new Set();let previousTime=null,previousX=start.x,startedAt=null;
+                await new Promise(resolve=>{
+                    function sample(time){
+                        startedAt??=time;
+                        if(previousTime!==null){intervals.push(time-previousTime);steps.push(s.position.x-previousX);}
+                        previousTime=time;previousX=s.position.x;frames.add(s.avatar.frame.name);
+                        if(time-startedAt<1000&&intervals.length<360)requestAnimationFrame(sample);else resolve();
+                    }
+                    requestAnimationFrame(sample);
+                });
+                s.heldKeys.clear();s.scene.pause();
+                const sorted=[...intervals].sort((a,b)=>a-b);
+                return {meanMs:intervals.reduce((a,b)=>a+b,0)/intervals.length,p95Ms:sorted[Math.floor(sorted.length*.95)],
+                    maxStep:Math.max(...steps),distance:s.position.x-start.x,frames:frames.size};
+            });
+            assert(result.movement.maxStep<=4.1,'déplacement réel anormal');
+            assert(result.movement.distance>56);assert.equal(result.movement.frames,16);
         }
         if(skin==='rogue') for(const [phase,effects] of result.vfx.entries()) {
             assert.equal(effects.length,4);
