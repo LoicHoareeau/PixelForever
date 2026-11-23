@@ -83,7 +83,7 @@
                 <section class="player-hud" data-hud-block="player" data-hud-label="Personnage" aria-label="État du personnage">
                     <img
                         class="hud-portrait"
-                        src="{{ app.request.basePath }}/game/val-des-saules/{{ character.class.skin in ['hunter', 'rogue'] ? character.class.skin ~ '-v2/portrait.webp' : (warrior ? 'warrior' : character.class.skin) ~ '/south.png' }}"
+                        src="{{ app.request.basePath }}/game/val-des-saules/{{ character.class.value in ['hunter', 'rogue', 'mage'] ? character.class.value ~ '-v2/portrait.webp' : (warrior ? 'warrior' : character.class.skin) ~ '/south.png' }}"
                         width="48"
                         height="48"
                         alt=""

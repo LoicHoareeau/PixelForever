@@ -124,6 +124,10 @@ ATH personnalisable : Échap ouvre le menu 16 bits (Options, Modifier l’ATH, G
 Depuis « Mes personnages », le lien « Supprimer » ouvre une confirmation avant la suppression définitive du personnage et de sa progression.
 
 Un petit nombre en haut de l’écran indique le total des personnages actifs sur le serveur, toi compris, quelle que soit leur distance. Les présences expirent après 12 s sans nouvelles ; « — » indique une connexion indisponible.
+## Mage : graphismes
+
+Le Mage dispose de nouvelles animations dans huit directions, à la baguette et au bâton, et de six effets magiques animés. [Ressources et vérifications](docs/MAGE_ART.md).
+
 ## Clairière jouable
 
 La clairière utilise un sol pixel, un sentier continu, trois espaces dégagés et des décors ponctuels avec collisions. Des rayons chauds et un pollen discret complètent l'ambiance. Voir les paramètres et vérifications dans [la documentation du moteur graphique](docs/FRONTEND.md#clairière-jouable--décors-et-lumière).

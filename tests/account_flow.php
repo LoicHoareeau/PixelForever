@@ -165,8 +165,9 @@ try {
     $magePage = visit($bob, 'GET', '/personnages/jeu', 200);
     $mageRules = json_decode(htmlValue($magePage, '//div[@id="world"]/@data-combat'), true, flags: JSON_THROW_ON_ERROR);
     if ($previewPath = getenv('PIXEL_HUD_BOB_HTML')) file_put_contents($previewPath, $magePage->getContent());
-    check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le mage doit utiliser les animations de Noé.');
-    check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/noe/south.png'), 'Le portrait du mage doit correspondre à son sprite.');
+    check(htmlValue($magePage, '//div[@id="world"]/@data-skin') === 'noe', 'Le Mage conserve son identifiant de sauvegarde.');
+    check(str_ends_with(htmlValue($magePage, '//img[contains(@class,"hud-portrait")]/@src'), '/mage-v2/portrait.webp'), 'Le portrait du Mage doit utiliser son nouveau dessin.');
+    if ($previewPath = getenv('PIXEL_MAGE_HTML')) file_put_contents($previewPath, $magePage->getContent());
     check($mageRules['classKey'] === 'mage' && $mageRules['ranged'] && $mageRules['range'] == 5.0, 'La baguette doit porter à 5 cases.');
     check($mageRules['specialRange'] == 15.0 && $mageRules['wandDamageMultiplier'] == 1.0, 'Le mage doit lancer ses sorts à 15 cases et tirer à puissance normale à la baguette.');
     check(htmlValue($magePage, '//*[@data-sheet-basic-damage]') === '12 dégâts', 'La fiche doit afficher les dégâts réduits avant le démarrage du jeu.');

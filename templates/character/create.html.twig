@@ -22,7 +22,7 @@
                         {% set class = choice.vars.value %}
                         <label class="class-choice {{ class }}">
                             {{ form_widget(choice) }}
-                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class in ['hunter', 'rogue'] ? class ~ '-v2/portrait.webp' : (class == 'mage' ? 'noe' : class) ~ '/south.png' }}"
+                            <img src="{{ app.request.basePath }}/game/val-des-saules/{{ class in ['hunter', 'rogue', 'mage'] ? class ~ '-v2/portrait.webp' : class ~ '/south.png' }}"
                                  width="48" height="48" alt="">
                             <span>
                                 <strong>{{ choice.vars.label }}</strong>

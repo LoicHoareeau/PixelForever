@@ -2,6 +2,7 @@ export const vfxFrameSize = 128;
 export const vfxFrames = 16;
 const hunterRows = ['hunter-dust', 'hunter-release', 'hunter-arrow'];
 const rogueRows = ['rogue-slash', 'rogue-flurry', 'rogue-venom', 'rogue-shadow'];
+const mageRows = ['mage-firebolt','mage-fire-wall','mage-fire-whirl','mage-arcane','mage-frost-nova','mage-ice-armor'];
 
 const rows = [
     'firebolt', 'arcane', 'frostbolt', 'vortex', 'frost', 'arcane_burst',
@@ -116,11 +117,13 @@ export function createCombatVfx(scene, depth) {
                 || y + margin < view.y || y - margin > view.bottom || used >= 80) return;
             const hunter = hunterRows.indexOf(kind);
             const rogue = rogueRows.indexOf(kind);
-            const nativeRow = hunter >= 0 ? hunter : rogue;
+            const mage = mageRows.indexOf(kind);
+            const nativeRow = hunter >= 0 ? hunter : rogue >=0 ? rogue : mage;
+            const count = mage>=0?6:4;
             const frame = nativeRow < 0 ? vfxFrame(kind, progress)
-                : nativeRow * 4 + Math.max(0, Math.min(3, Math.floor(progress * 4)));
+                : nativeRow * count + Math.max(0, Math.min(count-1, Math.floor(progress * count)));
             if (frame < 0) return;
-            const texture = hunter >= 0 ? 'hunter-vfx' : rogue >= 0 ? 'rogue-vfx'
+            const texture = hunter >= 0 ? 'hunter-vfx' : rogue >= 0 ? 'rogue-vfx' : mage>=0?'mage-vfx'
                 : classRows.includes(kind) ? 'class-vfx' : 'combat-vfx';
             if (used === pool.length) pool.push(scene.add.image(x, y, texture).setDepth(depth));
             const sprite = pool[used++];
