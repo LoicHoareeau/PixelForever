@@ -1,0 +1,171 @@
+{
+    "frames": {
+        "mausoleum": {
+            "frame": {
+                "x": 4,
+                "y": 4,
+                "w": 154,
+                "h": 168
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 154,
+                "h": 168
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 154,
+                "h": 168
+            }
+        },
+        "tombstone": {
+            "frame": {
+                "x": 162,
+                "y": 96,
+                "w": 58,
+                "h": 76
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 58,
+                "h": 76
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 58,
+                "h": 76
+            }
+        },
+        "celticGrave": {
+            "frame": {
+                "x": 224,
+                "y": 98,
+                "w": 64,
+                "h": 74
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 64,
+                "h": 74
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 64,
+                "h": 74
+            }
+        },
+        "deadTree": {
+            "frame": {
+                "x": 292,
+                "y": 18,
+                "w": 142,
+                "h": 154
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 142,
+                "h": 154
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 142,
+                "h": 154
+            }
+        },
+        "deadWillow": {
+            "frame": {
+                "x": 438,
+                "y": 24,
+                "w": 144,
+                "h": 148
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 144,
+                "h": 148
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 144,
+                "h": 148
+            }
+        },
+        "ironGate": {
+            "frame": {
+                "x": 586,
+                "y": 68,
+                "w": 155,
+                "h": 104
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 155,
+                "h": 104
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 155,
+                "h": 104
+            }
+        },
+        "pillar": {
+            "frame": {
+                "x": 745,
+                "y": 64,
+                "w": 43,
+                "h": 108
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 43,
+                "h": 108
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 43,
+                "h": 108
+            }
+        },
+        "lantern": {
+            "frame": {
+                "x": 792,
+                "y": 94,
+                "w": 47,
+                "h": 78
+            },
+            "rotated": false,
+            "trimmed": false,
+            "sourceSize": {
+                "w": 47,
+                "h": 78
+            },
+            "spriteSourceSize": {
+                "x": 0,
+                "y": 0,
+                "w": 47,
+                "h": 78
+            }
+        }
+    },
+    "meta": {
+        "image": "cemetery-props-v2.webp",
+        "size": {
+            "w": 843,
+            "h": 176
+        }
+    }
+}

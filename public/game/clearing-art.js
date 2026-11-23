@@ -4,8 +4,22 @@ import { addCoastalProps, animateCoast, drawCoastalFloor } from './coast-art.js'
 import { addCemeteryMist, addRegionalScenery, createScorchedCliff, drawRegionalGround } from './regional-art.js';
 import { isInStarterTown, starterTown } from './starter-town.js';
 import { clearingScenery, inClearingGlade } from './clearing-layout.js';
-import { createClearingGround, clearingRoadMask, createClearingSceneryTextures } from './clearing-style.js';
+import {
+    bilerpSdf,
+    buildSignedDistance,
+    clamp01,
+    clearingRoadMask,
+    createClearingGround,
+    createClearingSceneryTextures,
+    drawSoftShadow,
+    extractTransitionMasks,
+    hash2d,
+    readPatternData,
+    smoothField,
+    smoothNoise,
+} from './clearing-style.js';
 import { createClearingAtmosphere } from './clearing-atmosphere.js';
+import { addCemeteryDecor, buildCemeteryHdFloor, createCemeteryAtmosphere } from './cemetery-art.js';
 
 const frameSize = 48;
 // Positions are the feet of the tree trunks, so the canopy sorts with actors.
@@ -66,151 +80,6 @@ function drawLantern(context) {
     context.fillRect(9, 5, 3, 4);
     context.fillStyle = '#ffcf79';
     context.fillRect(10, 6, 2, 2);
-}
-
-function hash2d(x, y) {
-    let h = Math.imul(x, 1597334677) ^ Math.imul(y, 3812015801);
-    h = Math.imul(h ^ (h >>> 16), 2246822519);
-    return ((h ^ (h >>> 13)) >>> 0) / 4294967295;
-}
-
-function smoothNoise(x, y, period) {
-    const c = Math.floor(x / period), r = Math.floor(y / period);
-    const u = x / period - c, v = y / period - r;
-    const top = hash2d(c, r) * (1 - u) + hash2d(c + 1, r) * u;
-    const bot = hash2d(c, r + 1) * (1 - u) + hash2d(c + 1, r + 1) * u;
-    return top * (1 - v) + bot * v;
-}
-
-function clamp01(value) {
-    return Math.max(0, Math.min(1, value));
-}
-
-function edt1d(f, d, v, z, n) {
-    let k = 0;
-    v[0] = 0;
-    z[0] = -Infinity;
-    z[1] = Infinity;
-    for (let q = 1; q < n; q++) {
-        let s;
-        while (true) {
-            const r = v[k];
-            s = ((f[q] + q * q) - (f[r] + r * r)) / (2 * (q - r));
-            if (s > z[k]) break;
-            k--;
-        }
-        k++;
-        v[k] = q;
-        z[k] = s;
-        z[k + 1] = Infinity;
-    }
-    k = 0;
-    for (let q = 0; q < n; q++) {
-        while (z[k + 1] < q) k++;
-        const dx = q - v[k];
-        d[q] = dx * dx + f[v[k]];
-    }
-}
-
-function edt2d(grid, width, height) {
-    const maxLen = Math.max(width, height);
-    const f = new Float64Array(maxLen);
-    const d = new Float64Array(maxLen);
-    const v = new Int32Array(maxLen);
-    const z = new Float64Array(maxLen + 1);
-    const out = new Float64Array(width * height);
-
-    for (let y = 0; y < height; y++) {
-        const row = y * width;
-        for (let x = 0; x < width; x++) f[x] = grid[row + x];
-        edt1d(f, d, v, z, width);
-        for (let x = 0; x < width; x++) out[row + x] = d[x];
-    }
-    for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) f[y] = out[y * width + x];
-        edt1d(f, d, v, z, height);
-        for (let y = 0; y < height; y++) out[y * width + x] = d[y];
-    }
-    return out;
-}
-
-function buildSignedDistance(mask, width, height, cellPx) {
-    const inf = 1e9;
-    const gOut = new Float64Array(width * height);
-    const gIn = new Float64Array(width * height);
-    for (let i = 0; i < mask.length; i++) {
-        gOut[i] = mask[i] ? 0 : inf;
-        gIn[i] = mask[i] ? inf : 0;
-    }
-    const dOut = edt2d(gOut, width, height);
-    const dIn = edt2d(gIn, width, height);
-    const sdf = new Float32Array(width * height);
-    for (let i = 0; i < mask.length; i++) {
-        sdf[i] = (mask[i] ? -Math.sqrt(dIn[i]) + 0.5 : Math.sqrt(dOut[i]) - 0.5) * cellPx;
-    }
-    return sdf;
-}
-
-function smoothField(field, width, height, passes = 2) {
-    let src = field;
-    for (let pass = 0; pass < passes; pass++) {
-        const dst = new Float32Array(src.length);
-        for (let y = 0; y < height; y++) {
-            const ym1 = Math.max(0, y - 1), yp1 = Math.min(height - 1, y + 1);
-            const ym2 = Math.max(0, y - 2), yp2 = Math.min(height - 1, y + 2);
-            for (let x = 0; x < width; x++) {
-                let sum = 0;
-                for (let ky = -2; ky <= 2; ky++) {
-                    const yy = ky === -2 ? ym2 : ky === -1 ? ym1 : ky === 0 ? y : ky === 1 ? yp1 : yp2;
-                    const row = yy * width;
-                    for (let kx = -2; kx <= 2; kx++) {
-                        sum += src[row + Math.max(0, Math.min(width - 1, x + kx))];
-                    }
-                }
-                dst[y * width + x] = sum / 25;
-            }
-        }
-        src = dst;
-    }
-    return src;
-}
-
-function bilerpSdf(sdf, width, height, cx, cy) {
-    const clampedX = Math.max(0, Math.min(width - 1.001, cx));
-    const clampedY = Math.max(0, Math.min(height - 1.001, cy));
-    const x0 = Math.floor(clampedX), y0 = Math.floor(clampedY);
-    const tx = clampedX - x0, ty = clampedY - y0;
-    const i00 = y0 * width + x0;
-    const top = sdf[i00] * (1 - tx) + sdf[i00 + 1] * tx;
-    const bot = sdf[i00 + width] * (1 - tx) + sdf[i00 + width + 1] * tx;
-    return top * (1 - ty) + bot * ty;
-}
-
-function extractTransitionMasks(scene, sheetKey, tileSize, thresholdFn) {
-    const canvas = document.createElement('canvas');
-    canvas.width = tileSize;
-    canvas.height = tileSize;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    return Array.from({ length: 16 }, (_, index) => {
-        ctx.clearRect(0, 0, tileSize, tileSize);
-        drawFrame(ctx, scene.textures.getFrame(sheetKey, index), 0, 0);
-        const pixels = ctx.getImageData(0, 0, tileSize, tileSize).data;
-        const mask = new Uint8Array(tileSize * tileSize);
-        for (let i = 0; i < mask.length; i++) {
-            const p = i * 4;
-            mask[i] = thresholdFn(pixels[p], pixels[p + 1], pixels[p + 2]) ? 1 : 0;
-        }
-        return mask;
-    });
-}
-
-function readPatternData(image) {
-    const canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(image, 0, 0);
-    return { data: ctx.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
 }
 
 function buildClearingHdFloor(scene, terrain, tileSize, cleanGround) {
@@ -379,11 +248,6 @@ function buildClearingHdFloor(scene, terrain, tileSize, cleanGround) {
     hdCtx.putImageData(outImg, 0, 0);
     hdFloor.refresh();
     scene.add.image(0, 0, hdFloor.key).setOrigin(0).setScale(0.5).setDepth(0.5);
-}
-
-function drawSoftShadow(graphics, x, y, width, height) {
-    graphics.fillStyle(0x182d29, .12).fillEllipse(x, y, width, height);
-    graphics.fillStyle(0x182d29, .14).fillEllipse(x, y, Math.round(width * 0.68), Math.max(3, Math.round(height * 0.68)));
 }
 
 export function treePositions(terrain) {
@@ -557,6 +421,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
     floor.refresh();
     scene.add.image(0, 0, floor.key).setOrigin(0);
     buildClearingHdFloor(scene, terrain, tileSize, cleanGround);
+    buildCemeteryHdFloor(scene, terrain, tileSize);
 
     const atlas = scene.textures.get('environment-detailed').getSourceImage();
     const cell = atlas.width / 2;
@@ -616,6 +481,7 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
         scene.obstacles.push(new Phaser.Geom.Rectangle(x - 20, y - 7, 40, 8));
     });
     addRegionalScenery(scene, shadows, tileSize);
+    addCemeteryDecor(scene, shadows, tileSize);
     for (const prop of clearingScenery(tileSize)) {
         if (prop.kind !== 'flowers') drawSoftShadow(shadows, prop.x + 1, prop.y - 1, Math.round(prop.width * 0.72), 7);
         scene.add.image(prop.x, prop.y, 'clearing-' + prop.kind).setOrigin(.5, 1)
@@ -679,9 +545,11 @@ export function buildClearing(scene, terrain, tileSize, width, height, baseTiles
 
     const ambience = scene.add.graphics().setDepth(2);
     const daylight = createClearingAtmosphere(scene);
+    const cemeteryVfx = createCemeteryAtmosphere(scene, tileSize);
     let previousFrame = -1;
     const animate = (time, still) => {
         daylight(time, still);
+        cemeteryVfx(time, still);
         const frame = still ? 0 : Math.floor(time / 200);
         if (frame === previousFrame) return;
         previousFrame = frame;

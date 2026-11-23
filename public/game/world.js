@@ -90,6 +90,8 @@ import { petKeys } from './pet-rules.js';
             this.load.atlas('clearing-props-v2', 'clearing-props-v2.webp', 'clearing-props-v2.json');
             this.load.atlas('clearing-extras-v1', 'clearing-extras-v1.webp', 'clearing-extras-v1.json');
             this.load.image('clearing-ground-v5', 'clearing-ground-v5.webp');
+            this.load.atlas('cemetery-props-v2', 'cemetery-props-v2.webp', 'cemetery-props-v2.json');
+            this.load.image('cemetery-ground-v2', 'cemetery-ground-v2.webp');
             for (const atlas of ['regional-ground', 'cemetery-scenery', 'wasteland-scenery']) {
                 this.load.image(atlas, atlas + '.png');
             }
