@@ -1,5 +1,7 @@
 import { cemeteryRuins, graves, wastelandRuins } from './exploration.js';
 import { tileHasNonClearingBiome, writeBiomeWeights } from './biome-gradient.js';
+import { drawSoftShadow } from './clearing-style.js';
+import { cemeteryLights } from './cemetery-art.js';
 
 const textureSize = 256;
 const propCellSize = 128;
@@ -292,6 +294,7 @@ export function drawRegionalGround(scene, context, terrain, tileSize) {
         });
     }
 
+    lights.push(...cemeteryLights(tileSize));
     return { cinders, lights };
 }
 
@@ -327,8 +330,27 @@ export function addRegionalScenery(scene, shadows, tileSize) {
             );
         }
     }
-    for (const { atlas, frame, x, y, size, bounds } of regionalScenery(tileSize)) {
-        shadows.fillEllipse(x + 3, y - 2, bounds[2] + 7, 7);
+    const hasCemeteryV2 = scene.textures.exists('cemetery-props-v2');
+    for (const [index, { atlas, frame, x, y, size, bounds }] of regionalScenery(tileSize).entries()) {
+        drawSoftShadow(shadows, x + 2, y - 2, bounds[2] + 9, 8, 0x141c24);
+        if (atlas === 'cemetery-scenery' && hasCemeteryV2) {
+            const name = frame === 0
+                ? 'mausoleum'
+                : frame === 1
+                    ? (index % 2 === 0 ? 'celticGrave' : 'tombstone')
+                    : frame === 2
+                        ? (index % 2 === 0 ? 'deadWillow' : 'deadTree')
+                        : 'ironGate';
+            const f = scene.textures.getFrame('cemetery-props-v2', name);
+            if (f) {
+                const heightScale = frame === 0 ? 1.12 : frame === 1 ? 1.15 : frame === 2 ? 1.25 : 1.10;
+                const dh = Math.round(size * heightScale);
+                const dw = Math.round(dh * f.cutWidth / f.cutHeight);
+                scene.add.image(x, y, 'cemetery-props-v2', name).setOrigin(0.5, 1).setDisplaySize(dw, dh).setDepth(y);
+                scene.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
+                continue;
+            }
+        }
         scene.add.image(x, y, atlas, frame).setScale(size / propCellSize).setOrigin(0.5, 1).setDepth(y);
         scene.obstacles.push(new Phaser.Geom.Rectangle(...bounds));
     }
