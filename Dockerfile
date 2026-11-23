@@ -42,6 +42,7 @@ CMD ["bash", "docker/start.sh"]
 
 FROM runtime AS checks
 COPY tests/ ./tests/
+COPY tools/mage-sprite-bounds.cjs ./tools/mage-sprite-bounds.cjs
 RUN node --test tests/*.test.mjs \
     && php tests/account_flow.php \
     && php tests/game_assets.php \
