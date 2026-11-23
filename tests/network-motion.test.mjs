@@ -149,6 +149,22 @@ function onlineCounter() {
     return { textContent: '', attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
 }
 
+test('le Mage distant conserve ses nouvelles textures pendant la marche',t=>{
+    t.mock.method(performance,'now',()=>1000);
+    const textures=[];let position=0;
+    const actor={x:0,y:0,texture:{key:''},frame:{name:''},
+        setTexture(key,frame){textures.push(key);this.texture.key=key;this.frame.name=frame;return this;},
+        setOrigin(){return this;},setScale(){return this;},setPosition(){return this;},setDepth(){return this;},
+        setFlipX(){return this;},setAlpha(){return this;}};
+    const player={sprite:actor,shadow:actor,label:actor,distance:0,renderPosition:{x:0,y:0},
+        motion:{sample:()=>({x:++position,y:0,time:1000,state:{skin:'noe',facing:'east',alive:true}})}};
+    const presence=Object.create(WorldPresence.prototype);
+    Object.assign(presence,{scene:{mageArtReady:true},captureActions(){},lastSnapshotAt:1000,players:new Map([[1,player]])});
+    for(let i=0;i<56;i++)presence.update();
+    assert(textures.every(key=>key.startsWith('mage-v2-')));
+    assert(textures.length<=17,'une seule sélection de texture par pose dessinée');
+});
+
 test('le compteur affiche le total serveur, puis une indisponibilité et la reconnexion', async t => {
     const replies = [
         { ok: true, json: async () => ({ players: [], onlineCount: 3 }) },

@@ -6,7 +6,7 @@ import { vfxFrameSize } from './combat-vfx.js';
 import { equippedWeaponStyles } from './equipped-art.js';
 import { loadHunterArt, createHunterArt, applyHunterArt } from './hunter-art.js';
 import { loadRogueArt, createRogueArt, applyRogueArt } from './rogue-art.js';
-import { loadMageArt, createMageArt, applyMageArt } from './mage-art.js';
+import { loadMageArt, createMageArt, applyMageArt, mageAttackFrame } from './mage-art.js';
 import { malakorFrameSize } from './malakor.js';
 import { TrainingCombat } from './combat.js';
 import { buildClearing, createPoseSheet } from './clearing-art.js';
@@ -760,7 +760,7 @@ import { petKeys } from './pet-rules.js';
             this.avatarShadow.setPosition(Math.round(x), Math.round(y) - 1);
             if(this.mageArtReady && this.skin==='noe')applyMageArt(this.avatar,
                 walking?this.facing:gesture?.attack.facing??this.facing,walking,this.walkDistance,
-                gesture?.frame??-1,this.combat.progress.weapon==='rare',gesture?.attack.ranged??true);
+                mageAttackFrame(gesture?.attack,time),this.combat.progress.weapon==='rare',gesture?.attack.ranged??true);
             if (this.weaponSprite) {
                 if (integratedWeapon || (this.mageArtReady && this.skin==='noe')) {
                     this.weaponSprite.setVisible(false);

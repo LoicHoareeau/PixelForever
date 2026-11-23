@@ -168,6 +168,8 @@ Le Voleur dispose de nouvelles poses de marche et de frappe dans les huit orient
 
 La refonte du Mage est visuelle : baguette et sceptre à distance, bâton au contact pour l'auto-attaque, sorts offensifs toujours à leur portée propre. Les sorts du Mage au bâton utilisent une incantation à distance distincte de sa frappe physique. Les VFX de zone restent centrés sur la cible ; l'aura d'armure de glace illustre le talent existant sans ajouter de bonus.
 
+Les seize poses par cycle améliorent les raccords sans modifier la vitesse, les dégâts, les coûts ni les recharges. Les images d'explosion des projectiles sont réservées à l'impact.
+
 ## Clairière : lisibilité du terrain
 
 Le sol adouci reprend la palette des arbres en réduisant les petits détails. Le sanglier sauvage et le sanglier apprivoisé partagent le même nouveau dessin. La marche du familier dépend de son déplacement réel et sa frappe montre préparation, contact et retour ; ses statistiques, dégâts, portée et règles de capture restent identiques.

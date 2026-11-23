@@ -2,7 +2,7 @@ import { CombatVisuals, captureVisuals, recordGraphics } from './combat-visuals.
 import { RemoteMotion } from './remote-motion.js';
 import { applyHunterArt } from './hunter-art.js';
 import { applyRogueArt } from './rogue-art.js';
-import { applyMageArt } from './mage-art.js';
+import { applyMageArt, mageAttackFrame } from './mage-art.js';
 const directions = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 const equipped = ['hunter', 'rogue', 'warlock'];
 
@@ -282,7 +282,8 @@ export class WorldPresence {
                     flip = s.skin === 'noe' && facing.includes('west');
                 }
             }
-            if (player.texture !== texture || player.frame !== frame || player.origin !== origin) {
+            const customMage=this.scene.mageArtReady&&s.skin==='noe';
+            if (!customMage && (player.texture !== texture || player.frame !== frame || player.origin !== origin)) {
                 player.sprite.setTexture(texture, frame).setOrigin(.5, origin);
                 Object.assign(player, { texture, frame, origin });
             }
@@ -293,8 +294,10 @@ export class WorldPresence {
             if (this.scene.rogueArtReady && s.skin === 'rogue') applyRogueArt(player.sprite,
                 walking ? s.facing : facing, walking, player.distance, attackFrame);
             player.label.setPosition(p.x, p.y - 47).setDepth(p.y + 1);
-            if(this.scene.mageArtReady&&s.skin==='noe')applyMageArt(player.sprite,
-                walking?s.facing:facing,walking,player.distance,attackFrame,Boolean(s.staff),action?.ranged??true);
+            if(customMage)applyMageArt(player.sprite,
+                walking?s.facing:facing,walking,player.distance,
+                action?.windup?mageAttackFrame({start:action.start,castMs:action.windup,end:action.start+action.windup,ranged:action.ranged},p.time)
+                    :attackFrame<0?-1:Math.min(15,attackFrame*2),Boolean(s.staff),action?.ranged??true);
         }
     }
 

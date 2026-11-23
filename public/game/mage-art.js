@@ -15,8 +15,18 @@ export function createMageArt(scene) {
 export function magePose(facing,walking,distance,attackFrame=-1,staff=false,ranged=true) {
     const art=magePoses[facing];if(!art)return null;
     const prefix=walking?(staff?'staff-walk-':'walk-'):staff?(ranged?'staff-cast-':'staff-strike-'):'cast-';
-    const step=walking?Math.floor(Math.max(0,distance)/7)%8:Math.max(0,Math.min(7,attackFrame));
-    return {...art.frames[prefix+step],scale:40/art.height};
+    const count=art.count??8;
+    const step=walking?Math.floor(Math.max(0,distance)/(56/count))%count:Math.max(0,Math.min(count-1,attackFrame));
+    const pose=art.frames[prefix+step];
+    return {...pose,scale:pose.scale??40/art.height};
+}
+
+export function mageAttackFrame(attack,now) {
+    if(!attack)return -1;
+    const strike=attack.ranged?attack.start+attack.castMs:attack.end;
+    if(now>=strike+210)return -1;
+    return now<strike?Math.max(0,Math.min(7,Math.floor(8*(now-attack.start)/Math.max(1,strike-attack.start))))
+        :8+Math.min(7,Math.floor(8*(now-strike)/210));
 }
 
 export function applyMageArt(sprite,facing,walking,distance,attackFrame=-1,staff=false,ranged=true) {
