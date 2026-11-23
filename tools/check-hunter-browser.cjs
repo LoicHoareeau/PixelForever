@@ -212,12 +212,13 @@ const assert = require('node:assert/strict');
                 if(!start)throw new Error('No clear movement corridor');
                 s.position.set(start.x,start.y);s.combat.attackVisual=null;s.walkDistance=0;
                 s.scene.resume();s.heldKeys.add('ArrowRight');
-                const intervals=[],steps=[],frames=new Set();let previousTime=null,previousX=start.x;
+                const intervals=[],steps=[],frames=new Set();let previousTime=null,previousX=start.x,startedAt=null;
                 await new Promise(resolve=>{
                     function sample(time){
+                        startedAt??=time;
                         if(previousTime!==null){intervals.push(time-previousTime);steps.push(s.position.x-previousX);}
                         previousTime=time;previousX=s.position.x;frames.add(s.avatar.frame.name);
-                        if(intervals.length<90)requestAnimationFrame(sample);else resolve();
+                        if(time-startedAt<1000&&intervals.length<360)requestAnimationFrame(sample);else resolve();
                     }
                     requestAnimationFrame(sample);
                 });
@@ -227,7 +228,7 @@ const assert = require('node:assert/strict');
                     maxStep:Math.max(...steps),distance:s.position.x-start.x,frames:frames.size};
             });
             assert(result.movement.maxStep<=4.1,'déplacement réel anormal');
-            assert(result.movement.distance>40);assert(result.movement.frames>=12);
+            assert(result.movement.distance>56);assert.equal(result.movement.frames,16);
         }
         if(skin==='rogue') for(const [phase,effects] of result.vfx.entries()) {
             assert.equal(effects.length,4);
